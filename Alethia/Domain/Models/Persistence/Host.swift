@@ -1,0 +1,62 @@
+//
+//  Host.swift
+//  Alethia
+//
+//  Created by Angelo Carasig on 10/4/2025.
+//
+
+import Foundation
+import GRDB
+
+struct Host: Codable, Identifiable {
+    var id: Int64?
+    
+    var name: String
+    var baseUrl: String
+}
+
+
+extension Host {
+    static var sources = hasMany(Source.self)
+}
+
+extension Host {
+    var sources: QueryInterfaceRequest<Source> {
+        request(for: Host.sources)
+    }
+}
+
+extension Host: TableRecord {
+    enum Columns {
+        static let id = Column(Host.CodingKeys.id)
+        static let name = Column(Host.CodingKeys.name)
+        static let baseUrl = Column(Host.CodingKeys.baseUrl)
+    }
+}
+
+extension Host: FetchableRecord {}
+extension Host: PersistableRecord {}
+extension Host: DatabaseUnique {
+    static func uniqueFilter(for instance: Host) -> QueryInterfaceRequest<Host> {
+        filter(Columns.baseUrl == instance.baseUrl)
+    }
+}
+
+extension Host: DatabaseModel {
+    static var version: Version = Version(1, 0, 0)
+    
+    static func createTable(db: Database) throws {
+        try db.create(table: databaseTableName, body: { t in
+            // Persistence
+            t.autoIncrementedPrimaryKey(Columns.id.name)
+            t.column(Columns.name.name, .text).notNull()
+            t.column(Columns.baseUrl.name, .text)
+                .notNull()
+                .unique(onConflict: .fail)
+        })
+    }
+    
+    static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
+        // Nothing for now
+    }
+}

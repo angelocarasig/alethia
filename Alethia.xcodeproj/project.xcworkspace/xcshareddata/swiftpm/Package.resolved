@@ -1,0 +1,24 @@
+{
+  "originHash" : "84d1e4a56b681af821bb9e49fada549132fc6988aaac6511d7cb27c8c32235da",
+  "pins" : [
+    {
+      "identity" : "grdb.swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/groue/GRDB.swift.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "04e73c26c4ce8218ab85aaf791942bb0b204f330"
+      }
+    },
+    {
+      "identity" : "nuke",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kean/Nuke.git",
+      "state" : {
+        "revision" : "0ead44350d2737db384908569c012fe67c421e4d",
+        "version" : "12.8.0"
+      }
+    }
+  ],
+  "version" : 3
+}
