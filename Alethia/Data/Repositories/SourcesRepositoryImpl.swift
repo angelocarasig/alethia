@@ -1,0 +1,41 @@
+//
+//  SourcesRepositoryImpl.swift
+//  Alethia
+//
+//  Created by Angelo Carasig on 18/4/2025.
+//
+
+import Foundation
+import Combine
+
+final class SourcesRepositoryImpl {
+    private let local: SourceLocalDataSource
+    private let remote: SourceRemoteDataSource
+    
+    init(local: SourceLocalDataSource, remote: SourceRemoteDataSource) {
+        self.local = local
+        self.remote = remote
+    }
+}
+
+extension SourcesRepositoryImpl: SourcesRepository {
+    func getSources() -> AnyPublisher<[Source], Never> {
+        return local.getSources()
+    }
+    
+    func testHostUseCase(url: String) async throws -> NewHostPayload {
+        return try await remote.testHost(url: url)
+    }
+    
+    func createHostUseCase(payload: NewHostPayload) async throws -> Void {
+        try await local.createHost(with: payload)
+    }
+    
+    func toggleSourcePinned(sourceId: Int64, newValue: Bool) throws -> Void {
+        try local.toggleSourcePinned(sourceId: sourceId, newValue: newValue)
+    }
+    
+    func toggleSourceDisabled(sourceId: Int64, newValue: Bool) throws -> Void {
+        try local.toggleSourceDisabled(sourceId: sourceId, newValue: newValue)
+    }
+}

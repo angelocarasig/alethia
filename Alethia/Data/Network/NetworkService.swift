@@ -48,14 +48,29 @@ extension NetworkService {
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        return try await URLSession.shared.data(for: request)
+        do {
+            return try await URLSession.shared.data(for: request)
+        } catch let urlError as URLError {
+            switch urlError.code {
+            case .notConnectedToInternet:
+                throw NetworkError.noInternetConnection
+            case .timedOut:
+                throw NetworkError.timeout
+            case .cannotFindHost, .cannotConnectToHost:
+                throw NetworkError.invalidURL(url: url.absoluteString)
+            default:
+                throw NetworkError.requestFailed(underlyingError: urlError)
+            }
+        } catch {
+            throw NetworkError.requestFailed(underlyingError: URLError(.unknown))
+        }
     }
     
     func handleResponse(_ response: URLResponse) throws {
         guard let httpResponse = response as? HTTPURLResponse else { return }
         
         guard (200...299).contains(httpResponse.statusCode) else {
-            throw NetworkError.invalidResponse
+            throw NetworkError.invalidResponse(statusCode: httpResponse.statusCode, response: httpResponse)
         }
     }
     

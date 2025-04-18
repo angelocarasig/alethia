@@ -9,6 +9,7 @@ import Foundation
 import GRDB
 
 extension DatabaseProvider {
+    @available(*, deprecated, message: "Only use for testing purposes")
     func seed(_ writer: DatabaseWriter) throws {
         try writer.write { db in
             let url = "some url"

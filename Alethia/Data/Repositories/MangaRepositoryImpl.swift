@@ -8,7 +8,6 @@
 import Foundation
 import Combine
 
-// @unchecked Sendable
 final class MangaRepositoryImpl {
     private let local: MangaLocalDataSource
     private let remote: MangaRemoteDataSource

@@ -40,7 +40,7 @@ final class DatabaseProvider {
         try migrator.migrate(writer)
         
         #if DEBUG
-        try self.seed(writer)
+        // try self.seed(writer)
         #endif
     }
 }
