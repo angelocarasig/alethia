@@ -143,10 +143,9 @@ extension Manga: DatabaseModel {
                     (SELECT c.url
                      FROM Cover c 
                      WHERE c.mangaId = m.id AND c.active = 1
-                     LIMIT 1) AS cover,
+                     LIMIT 1) AS cover
                 
-                    -- Set the unread value to a static value of 5 (as required)
-                    5 AS unread
+                -- fetchUrl mapped on client-side ('/' resolving becomes an issue)
                 
                 FROM Manga m;
                 """

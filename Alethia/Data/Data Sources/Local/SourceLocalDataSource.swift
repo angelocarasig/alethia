@@ -82,7 +82,24 @@ final class SourceLocalDataSource {
             try source.update(db)
         }
     }
+    
+    func observeMatchEntries(entries: [Entry]) -> AnyPublisher<[Entry], Never> {
+        ValueObservation
+            .tracking { db in
+                try entries.map { entry in
+                    var updated = entry
+                    updated.match = try self.match(for: entry, db: db)
+                    return updated
+                }
+            }
+            // can put this one in main actor since not an immediate requirement
+            .publisher(in: DatabaseProvider.shared.reader, scheduling: .mainActor)
+            .replaceError(with: entries)
+            .eraseToAnyPublisher()
+    }
 }
+
+// MARK: Downloading helper
 
 private extension SourceLocalDataSource {
     func downloadSourceIcons(id: Int64, payload: NewHostPayload) async throws -> URL {
@@ -116,7 +133,7 @@ private extension SourceLocalDataSource {
         return folderURL
     }
     
-    private func downloadAndSaveImage(sourceName: String, url: URL, folderURL: URL) async throws {
+    func downloadAndSaveImage(sourceName: String, url: URL, folderURL: URL) async throws {
         return try await withCheckedThrowingContinuation { continuation in
             KingfisherManager.shared.retrieveImage(with: url) { result in
                 switch result {
@@ -141,5 +158,49 @@ private extension SourceLocalDataSource {
                 }
             }
         }
+    }
+}
+
+// MARK: Source matching helper
+
+extension SourceLocalDataSource {
+    func match(for entry: Entry, db: Database) throws -> EntryMatch {
+        // 1. Match by mangaId
+        if let mangaId = entry.mangaId,
+           let _ = try Manga.fetchOne(db, key: mangaId) {
+            return .exact
+        }
+        
+        let title = entry.title
+        let sourceId = entry.sourceId
+        
+        // 2. Check for a match by title + source (via origin)
+        let mangaWithMatchingSource = try Manga
+            .filter(Manga.Columns.inLibrary == true)
+            .joining(required: Manga.origins
+                .filter(Origin.Columns.sourceId == sourceId)
+            )
+            .joining(optional: Manga.titles)
+            .filter(
+                Manga.Columns.title == title ||
+                Title.Columns.title == title
+            )
+            .fetchOne(db)
+        
+        if mangaWithMatchingSource != nil {
+            return .exact
+        }
+        
+        // 3. Fallback: match just by title
+        let mangaWithTitleOnly = try Manga
+            .filter(Manga.Columns.inLibrary == true)
+            .joining(optional: Manga.titles)
+            .filter(
+                Manga.Columns.title == title ||
+                Title.Columns.title == title
+            )
+            .fetchOne(db)
+        
+        return mangaWithTitleOnly != nil ? .partial : .none
     }
 }

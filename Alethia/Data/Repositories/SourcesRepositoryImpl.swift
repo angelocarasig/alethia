@@ -42,4 +42,8 @@ extension SourcesRepositoryImpl: SourcesRepository {
     func getSourceRouteContent(sourceRouteId: Int64, page: Int) async throws -> [Entry] {
         return try await remote.getSourceRouteContent(sourceRouteId: sourceRouteId, page: page)
     }
+    
+    func observeMatchEntries(entries: [Entry]) -> AnyPublisher<[Entry], Never> {
+        return local.observeMatchEntries(entries: entries)
+    }
 }

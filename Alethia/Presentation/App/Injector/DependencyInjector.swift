@@ -65,4 +65,8 @@ extension DependencyInjector {
     func makeGetSourceRouteContentUseCase() -> GetSourceRouteContentUseCase {
          return GetSourceRouteContentUseCaseImpl(repository: sourcesRepository)
     }
+    
+    func makeObserveMatchEntriesUseCase() -> ObserveMatchEntriesUseCase {
+        return ObserveMatchEntriesUseCaseImpl(repository: sourcesRepository)
+    }
 }

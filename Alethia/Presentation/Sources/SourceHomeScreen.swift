@@ -137,7 +137,7 @@ private struct RowView: View {
                 .padding(.horizontal)
             
             Button(action: {
-                //                Task { await load() }
+                Task { await vm.load(with: route.id!) }
             }) {
                 Text("Retry")
                     .fontWeight(.semibold)
@@ -158,36 +158,53 @@ private struct RowView: View {
 private final class ViewModel: ObservableObject {
     @Published private(set) var loading: Bool = true
     @Published private(set) var firstLoad: Bool = true
-    
     @Published var items: [Entry] = []
     
+    /**
+     Seperating raw with the `matched` objects which if not done:
+     - Lose the original entries (can't reapply match logic)
+     - Have to refetch them every time the library changes (wasted effort)
+     */
+    private var raw: [Entry] = []
     private var cancellables = Set<AnyCancellable>()
-    private let getSourceRouteContentUseCase: GetSourceRouteContentUseCase
     
-    init(
-    ) {
+    private let getSourceRouteContentUseCase: GetSourceRouteContentUseCase
+    private let observeMatchEntriesUseCase: ObserveMatchEntriesUseCase
+    
+    init() {
         self.getSourceRouteContentUseCase = DependencyInjector.shared.makeGetSourceRouteContentUseCase()
+        self.observeMatchEntriesUseCase = DependencyInjector.shared.makeObserveMatchEntriesUseCase()
     }
     
     @MainActor
     func load(with id: Int64) async {
-        defer {
-            withAnimation {
-                loading = false
-                firstLoad = false
-            }
-        }
+        withAnimation { loading = true }
         
         do {
-            withAnimation {
-                loading = true
-            }
-            
             let results = try await getSourceRouteContentUseCase.execute(sourceRouteId: id)
-            items.append(contentsOf: results)
-        }
-        catch {
+            raw = results
+            bind()
+        } catch {
             print("Error: \(error)")
         }
+        
+        withAnimation {
+            loading = false
+            firstLoad = false
+        }
+    }
+    
+    private func bind() {
+        guard !raw.isEmpty else { return }
+        
+        cancellables.removeAll()
+        
+        observeMatchEntriesUseCase
+            .execute(entries: raw)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] updated in
+                self?.items = updated
+            }
+            .store(in: &cancellables)
     }
 }

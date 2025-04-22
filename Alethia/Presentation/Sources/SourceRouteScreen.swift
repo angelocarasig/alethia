@@ -97,23 +97,32 @@ private final class ViewModel: ObservableObject {
     @Published var refreshing: Bool = false
     @Published var firstLoad: Bool = true
     @Published var noMoreContent: Bool = false
-    
+
+    /**
+     Seperating raw with the `matched` objects which if not done:
+     - Lose the original entries (can't reapply match logic)
+     - Have to refetch them every time the library changes (wasted effort)
+     */
+    private var raw: [Entry] = []
+    private var cancellables = Set<AnyCancellable>()
     private var currentTask: Task<Void, Never>?
+
     private let getSourceRouteContentUseCase: GetSourceRouteContentUseCase
-    
+    private let observeMatchEntriesUseCase: ObserveMatchEntriesUseCase
+
     init() {
         self.getSourceRouteContentUseCase = DependencyInjector.shared.makeGetSourceRouteContentUseCase()
+        self.observeMatchEntriesUseCase = DependencyInjector.shared.makeObserveMatchEntriesUseCase()
     }
-    
+
     deinit {
         currentTask?.cancel()
     }
-    
+
     @MainActor
     func load(with id: Int64) async {
-        // Cancel any existing task
         currentTask?.cancel()
-        
+
         currentTask = Task {
             defer {
                 if !Task.isCancelled {
@@ -124,51 +133,63 @@ private final class ViewModel: ObservableObject {
                 }
                 currentTask = nil
             }
-            
+
             do {
                 withAnimation(.easeInOut) {
                     loading = true
                 }
-                
+
                 print("Fetching for page: \(page)")
-                let results = try await getSourceRouteContentUseCase.execute(sourceRouteId: id, page: page)
-                
-                // Check if we were cancelled while waiting
+                let newEntries = try await getSourceRouteContentUseCase.execute(sourceRouteId: id, page: page)
+
                 try Task.checkCancellation()
-                
-                if results.isEmpty {
+
+                if newEntries.isEmpty {
                     noMoreContent = true
                     return
                 }
-                
-                withAnimation(.easeInOut) {
-                    items.append(contentsOf: results)
-                }
+
+                raw.append(contentsOf: newEntries)
+                bind()
             } catch {
                 print("Error: \(error)")
             }
         }
-        
+
         await currentTask?.value
     }
-    
+
     @MainActor
     func refresh(with id: Int64) async {
-        // Cancel any existing task
         currentTask?.cancel()
-        
+
         withAnimation(.easeInOut) {
             page = 0
             refreshing = true
             items.removeAll()
+            raw.removeAll()
             noMoreContent = false
             firstLoad = true
         }
-        
+
         await load(with: id)
-        
+
         withAnimation(.easeInOut) {
             refreshing = false
         }
+    }
+
+    private func bind() {
+        guard !raw.isEmpty else { return }
+
+        cancellables.removeAll()
+
+        observeMatchEntriesUseCase
+            .execute(entries: raw)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] updated in
+                self?.items = updated
+            }
+            .store(in: &cancellables)
     }
 }

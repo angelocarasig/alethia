@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import GRDB
 
 final class SourceRemoteDataSource {
     private let networkService: NetworkService
@@ -67,9 +68,9 @@ final class SourceRemoteDataSource {
                 sourceId: sourceFetching.source.id,
                 title: item.title,
                 cover: item.cover,
-                fetchUrl: sourceFetching.itemUrl(item.slug),
-                unread: nil
+                fetchUrl: sourceFetching.itemUrl(item.slug)
             )
         }
     }
 }
+

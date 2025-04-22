@@ -20,4 +20,6 @@ protocol SourcesRepository {
     func toggleSourceDisabled(sourceId: Int64, newValue: Bool) throws -> Void
     
     func getSourceRouteContent(sourceRouteId: Int64, page: Int) async throws -> [Entry]
+    
+    func observeMatchEntries(entries: [Entry]) -> AnyPublisher<[Entry], Never>
 }
