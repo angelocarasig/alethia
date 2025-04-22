@@ -9,6 +9,8 @@ import Foundation
 import Combine
 
 protocol MangaRepository {
+    func getLibrary() -> AnyPublisher<[Entry], Error>
+    
     // Returns array for view to handle when multiple matches are found
     func getMangaDetail(entry: Entry) -> AnyPublisher<[Detail], Error>
     

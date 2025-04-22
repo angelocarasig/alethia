@@ -3,6 +3,52 @@ import Combine
 import GRDB
 
 final class MangaLocalDataSource {
+    func getLibrary() -> AnyPublisher<[Entry], Error> {
+        return ValueObservation
+            .tracking { db -> [Entry] in
+                let sql = """
+                    SELECT e.*
+                    FROM entry e
+                    JOIN Manga m ON e.mangaId = m.id
+                    WHERE m.inLibrary = 1
+                """
+                
+                let entries = try Entry.fetchAll(db, sql: sql)
+                
+                let items: [Entry] = try entries.map { entry in
+                    guard let mangaId = entry.mangaId,
+                          let sourceId = entry.sourceId,
+                          let source = try Source.fetchOne(db, key: sourceId),
+                          let host = try Host.fetchOne(db, key: source.hostId)
+                    else { throw ApplicationError.internalError }
+                    
+                    guard let origin = try Origin
+                        .filter(Origin.Columns.mangaId == mangaId)
+                        .order(Origin.Columns.priority.asc)
+                        .fetchOne(db)
+                    else {
+                        throw ApplicationError.internalError
+                    }
+                    
+                    // cover can be nil if none were set
+                    let cover = try Cover
+                        .filter(Cover.Columns.mangaId == mangaId && Cover.Columns.active)
+                        .fetchOne(db)
+                    
+                    var contextful = entry
+                    
+                    contextful.fetchUrl = URL.appendingPaths(host.baseUrl, source.path, "manga", origin.slug)!.absoluteString
+                    contextful.cover = cover?.url ?? nil
+                    
+                    return contextful
+                }
+                
+                return items
+            }
+            .publisher(in: DatabaseProvider.shared.writer, scheduling: .immediate)
+            .eraseToAnyPublisher()
+    }
+    
     func saveNewManga(payload: DetailDTO, with sourceId: Int64?) -> AnyPublisher<Detail, Error> {
         return Deferred {
             Future<Detail, Error> { promise in
@@ -105,8 +151,8 @@ private extension MangaLocalDataSource {
     private func fetchDetailWithChapters(db: Database, manga: Manga) throws -> Detail? {
         let titles = try manga.titles.fetchAll(db)
         let covers = try manga.covers.fetchAll(db)
-        let authors = try manga.request(for: Manga.authors).fetchAll(db)
-        let tags = try manga.request(for: Manga.tags).fetchAll(db)
+        let authors = try manga.authors.fetchAll(db)
+        let tags = try manga.tags.fetchAll(db)
         let origins = try manga.origins.fetchAll(db)
             .sorted { $0.priority < $1.priority }
         
@@ -233,9 +279,9 @@ private extension MangaLocalDataSource {
         }
         
         // Insert covers
-        for coverUrl in payload.origin.covers {
+        for (index, coverUrl) in payload.origin.covers.enumerated() {
             try Cover(
-                active: false,
+                active: index == 0, // First one is active, rest are false
                 url: coverUrl,
                 path: coverUrl,
                 mangaId: mangaId

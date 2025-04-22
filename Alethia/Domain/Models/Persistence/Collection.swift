@@ -1,43 +1,40 @@
 //
-//  Author.swift
+//  Collection.swift
 //  Alethia
 //
-//  Created by Angelo Carasig on 10/4/2025.
+//  Created by Angelo Carasig on 23/4/2025.
 //
 
 import Foundation
 import GRDB
 
-struct Author: Codable, Identifiable {
+struct Collection: Codable, Identifiable, Equatable {
     var id: Int64?
-    var name: String
     
-    init(name: String) {
-        self.name = name
-    }
+    var name: String
 }
 
-extension Author {
-    static let mangaAuthor = hasMany(MangaAuthor.self)
-    static let manga = hasMany(Manga.self, through: mangaAuthor, using: MangaAuthor.manga)
+extension Collection {
+    static let mangaCollection = hasMany(MangaCollection.self)
+    static let manga = hasMany(Manga.self, through: mangaCollection, using: MangaCollection.manga)
 }
 
-extension Author: TableRecord {
+extension Collection: TableRecord {
     enum Columns {
         static let id = Column(CodingKeys.id)
         static let name = Column(CodingKeys.name)
     }
 }
 
-extension Author: FetchableRecord {}
-extension Author: PersistableRecord {}
-extension Author: DatabaseUnique {
-    static func uniqueFilter(for instance: Author) -> QueryInterfaceRequest<Author> {
+extension Collection: FetchableRecord, PersistableRecord {}
+
+extension Collection: DatabaseUnique {
+    static func uniqueFilter(for instance: Collection) -> QueryInterfaceRequest<Collection> {
         filter(Columns.name == instance.name)
     }
 }
 
-extension Author: DatabaseModel {
+extension Collection: DatabaseModel {
     static var version: Version = Version(1, 0, 0)
     
     static func createTable(db: Database) throws {
@@ -52,7 +49,7 @@ extension Author: DatabaseModel {
         })
     }
     
-    static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
+    static func migrate(with migrator: inout GRDB.DatabaseMigrator, from version: Version) throws {
         // Nothing for now
     }
 }

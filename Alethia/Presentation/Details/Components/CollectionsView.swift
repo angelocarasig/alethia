@@ -7,10 +7,6 @@
 
 import SwiftUI
 
-struct Collection {
-    var name: String
-}
-
 struct CollectionsView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     

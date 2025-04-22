@@ -203,6 +203,7 @@ private final class ViewModel: ObservableObject {
             .execute(entries: raw)
             .receive(on: RunLoop.main)
             .sink { [weak self] updated in
+                print("Item 1: \(updated[0])")
                 self?.items = updated
             }
             .store(in: &cancellables)

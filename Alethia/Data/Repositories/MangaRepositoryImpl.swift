@@ -18,7 +18,11 @@ final class MangaRepositoryImpl {
     }
 }
 
-extension MangaRepositoryImpl: MangaRepository {    
+extension MangaRepositoryImpl: MangaRepository {
+    func getLibrary() -> AnyPublisher<[Entry], Error> {
+        return local.getLibrary()
+    }
+    
     func getMangaDetail(entry: Entry) -> AnyPublisher<[Detail], Error> {
         return local.getMangaDetail(entry: entry)
             .flatMap { localDetail -> AnyPublisher<[Detail], Error> in

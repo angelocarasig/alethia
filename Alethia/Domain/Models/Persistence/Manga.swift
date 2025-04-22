@@ -38,6 +38,9 @@ extension Manga {
     
     static let mangaTag = hasMany(MangaTag.self)
     static let tags = hasMany(Tag.self, through: mangaTag, using: MangaTag.tag)
+    
+    static let mangaCollection = hasMany(MangaCollection.self)
+    static let collections = hasMany(Collection.self, through: mangaCollection, using: MangaCollection.collection)
 }
 
 extension Manga {
@@ -59,6 +62,10 @@ extension Manga {
     
     var tags: QueryInterfaceRequest<Tag> {
         request(for: Manga.tags)
+    }
+    
+    var collections: QueryInterfaceRequest<Collection> {
+        request(for: Manga.collections)
     }
 }
 

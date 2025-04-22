@@ -19,6 +19,6 @@ final class ToggleMangaInLibraryUserCaseImpl: ToggleMangaInLibraryUseCase {
     }
     
     func execute(mangaId: Int64, newValue: Bool) throws -> Void {
-        try self.repository.toggleMangaInLibrary(mangaId: mangaId, newValue: newValue)
+        try repository.toggleMangaInLibrary(mangaId: mangaId, newValue: newValue)
     }
 }

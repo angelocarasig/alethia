@@ -30,6 +30,10 @@ final class DependencyInjector {
 // MARK: Manga
 
 extension DependencyInjector {
+    func makeGetLibraryUseCase() -> GetLibraryUseCase {
+        return GetLibraryUseCaseImpl(repository: mangaRepository)
+    }
+    
     func makeGetMangaDetailUseCase() -> GetMangaDetailUseCase {
         return GetMangaDetailUseCaseImpl(repository: mangaRepository)
     }

@@ -19,10 +19,17 @@ enum EntryMatch {
     case exact
 }
 
-struct Entry: Codable, Hashable, FetchableRecord {
+struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
+    var id: String {
+        "\(sourceId ?? 0)-\(fetchUrl ?? title)"
+    }
+    
+    var transitionId: String {
+        "\(sourceId ?? 0)-\(fetchUrl ?? title)"
+    }
+    
     var mangaId: Int64?
     var sourceId: Int64?
-    
     var title: String
     var cover: String?
     var fetchUrl: String?
@@ -59,11 +66,5 @@ struct Entry: Codable, Hashable, FetchableRecord {
         self.fetchUrl = fetchUrl
         self.unread = unread
         self.match = match ?? .none
-    }
-}
-
-extension Entry {
-    var transitionId: String {
-        "\(sourceId ?? 0)-\(fetchUrl ?? title)"
     }
 }
