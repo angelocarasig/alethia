@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import NukeUI
+import Kingfisher
 
 struct ChapterListView: View {
     @EnvironmentObject private var vm: DetailsViewModel
@@ -19,8 +19,8 @@ struct ChapterListView: View {
         LazyVStack {
             ChapterHeaderView()
             
-            ForEach(details.chapters) { chapter in
-                ChapterRow(chapter: chapter)
+            ForEach(details.chapters, id: \.chapter.id) { chapter in
+                ChapterRow(item: chapter)
             }
         }
     }
@@ -47,7 +47,7 @@ private struct ChapterHeaderView: View {
                 }
                 
                 Spacer()
-                    
+                
                 SortButton()
             }
             
@@ -81,21 +81,21 @@ private struct ChapterHeaderView: View {
     private func SortButton() -> some View {
         Menu {
             Section {
-//                ForEach(ChapterSortOption.allCases, id: \.rawValue) { option in
-//                    Button(action: {
-//                        vm.toggleSortOption(context: modelContext, option: option)
-//                    }) {
-//                        HStack {
-//                            Text(option.rawValue)
-//                                .foregroundColor(.primary)
-//                            Spacer()
-//                            if settings.sortOption == option {
-//                                Image(systemName: settings.sortDirection == .descending ? "arrow.down" : "arrow.up")
-//                                    .foregroundColor(.accentColor)
-//                            }
-//                        }
-//                    }
-//                }
+                //                ForEach(ChapterSortOption.allCases, id: \.rawValue) { option in
+                //                    Button(action: {
+                //                        vm.toggleSortOption(context: modelContext, option: option)
+                //                    }) {
+                //                        HStack {
+                //                            Text(option.rawValue)
+                //                                .foregroundColor(.primary)
+                //                            Spacer()
+                //                            if settings.sortOption == option {
+                //                                Image(systemName: settings.sortDirection == .descending ? "arrow.down" : "arrow.up")
+                //                                    .foregroundColor(.accentColor)
+                //                            }
+                //                        }
+                //                    }
+                //                }
             } header: {
                 Text("Sort Chapters")
                     .font(.headline)
@@ -138,38 +138,31 @@ private struct CircleButton: View {
 }
 
 private struct ChapterRow: View {
-    let chapter: Chapter
+    let item: ChapterExtended
     
     var read: Bool {
-        chapter.progress >= 1.0
+        item.chapter.progress >= 1.0
     }
     
     private let iconSize: CGFloat = 40
     
     var body: some View {
-        HStack(spacing: 10) {
-            LazyImage(url: URL(fileURLWithPath: "")) { state in
-                if let image = state.image {
-                    image
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: iconSize, height: iconSize)
-                        .cornerRadius(12)
-                }
-                else {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.tint)
-                        .frame(width: iconSize, height: iconSize)
-                }
-            }
+        HStack(spacing: 8) {
+            KFImage(URL(fileURLWithPath: item.source?.icon ?? ""))
+                .placeholder { Color.tint.shimmer() }
+                .resizable()
+                .scaledToFit()
+                .frame(width: iconSize, height: iconSize)
+                .cornerRadius(8)
+                .padding(.trailing, 8)
             
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
-                    Text("Chapter \(chapter.number.toString())")
+                    Text("Chapter \(item.chapter.number.toString())")
                     Text("•").foregroundColor(.secondary)
-                    Text(chapter.date.toRelativeString()).foregroundColor(.secondary)
+                    Text(item.chapter.date.toRelativeString()).foregroundColor(.secondary)
                     
-                    if chapter.date >= Calendar.current.date(byAdding: .day, value: -3, to: Date())! {
+                    if item.chapter.date >= Calendar.current.date(byAdding: .day, value: -3, to: Date())! {
                         Text("NEW")
                             .font(.caption)
                             .foregroundStyle(.white)
@@ -191,24 +184,24 @@ private struct ChapterRow: View {
                 }
                 .font(.subheadline)
                 
-                Text(chapter.title)
+                Text(item.chapter.title)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                     .font(.headline)
                     .fontWeight(.semibold)
                 
-//                Text(chapter.scanlator)
-//                    .font(.subheadline)
-//                    .foregroundColor(.secondary)
+                Text(item.scanlator.name)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
                 
-                if chapter.progress > 0 && chapter.progress != 1 {
+                if item.chapter.progress > 0 && item.chapter.progress != 1 {
                     Spacer()
                     
-                    ProgressView(value: chapter.progress)
+                    ProgressView(value: item.chapter.progress)
                         .tint(Color.accentColor)
                         .frame(height: 3)
                         .clipShape(Capsule())
-                        .opacity(chapter.progress > 0.0 ? 1.0 : 0.0)
+                        .opacity(item.chapter.progress > 0.0 ? 1.0 : 0.0)
                 }
             }
             Spacer()
@@ -238,60 +231,60 @@ private struct ChapterRow: View {
     @ViewBuilder
     private func ContextMenu() -> some View {
         Text("CTX")
-//        Group {
-//            ControlGroup {
-//                Button {
-//                } label: {
-//                    Label("Mark Read", systemImage: "book.closed")
-//                }
-//                .disabled(read)
-//                
-//                Button {
-//                    
-//                } label: {
-//                    Label("Read Above", systemImage: "arrow.up.square.fill")
-//                }
-//                
-//                Button {
-//                    
-//                } label: {
-//                    Label("Read Below", systemImage: "arrow.down.square.fill")
-//                }
-//            }
-//            
-//            ControlGroup {
-//                Button {
-//                } label: {
-//                    Label("Mark Unread", systemImage: "book")
-//                }
-//                .disabled(!chapter.read)
-//                
-//                Button {
-//                    
-//                } label: {
-//                    Label("Unread Above", systemImage: "arrow.up.square")
-//                }
-//                
-//                Button {
-//                    
-//                } label: {
-//                    Label("Unread Below", systemImage: "arrow.down.square")
-//                }
-//            }
-//            
-//            ControlGroup {
-//                Button {
-//                } label: {
-//                    Label("Start Chapter Download", systemImage: "arrow.down")
-//                }
-//                .disabled(chapter.isDownloaded)
-//                
-//                Button(role: .destructive) {
-//                } label: {
-//                    Label("Remove Chapter Download", systemImage: "trash.fill")
-//                }
-//                .disabled(!chapter.isDownloaded)
-//            }
-//        }
+        //        Group {
+        //            ControlGroup {
+        //                Button {
+        //                } label: {
+        //                    Label("Mark Read", systemImage: "book.closed")
+        //                }
+        //                .disabled(read)
+        //
+        //                Button {
+        //
+        //                } label: {
+        //                    Label("Read Above", systemImage: "arrow.up.square.fill")
+        //                }
+        //
+        //                Button {
+        //
+        //                } label: {
+        //                    Label("Read Below", systemImage: "arrow.down.square.fill")
+        //                }
+        //            }
+        //
+        //            ControlGroup {
+        //                Button {
+        //                } label: {
+        //                    Label("Mark Unread", systemImage: "book")
+        //                }
+        //                .disabled(!chapter.read)
+        //
+        //                Button {
+        //
+        //                } label: {
+        //                    Label("Unread Above", systemImage: "arrow.up.square")
+        //                }
+        //
+        //                Button {
+        //
+        //                } label: {
+        //                    Label("Unread Below", systemImage: "arrow.down.square")
+        //                }
+        //            }
+        //
+        //            ControlGroup {
+        //                Button {
+        //                } label: {
+        //                    Label("Start Chapter Download", systemImage: "arrow.down")
+        //                }
+        //                .disabled(chapter.isDownloaded)
+        //
+        //                Button(role: .destructive) {
+        //                } label: {
+        //                    Label("Remove Chapter Download", systemImage: "trash.fill")
+        //                }
+        //                .disabled(!chapter.isDownloaded)
+        //            }
+        //        }
     }
 }

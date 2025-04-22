@@ -1,5 +1,5 @@
 {
-  "originHash" : "84d1e4a56b681af821bb9e49fada549132fc6988aaac6511d7cb27c8c32235da",
+  "originHash" : "76d44729287c2a8a058336b339a33bf04a99d48be203c91bf973991809cd0481",
   "pins" : [
     {
       "identity" : "grdb.swift",
@@ -11,12 +11,30 @@
       }
     },
     {
-      "identity" : "nuke",
+      "identity" : "kingfisher",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/kean/Nuke.git",
+      "location" : "https://github.com/onevcat/Kingfisher.git",
       "state" : {
-        "revision" : "0ead44350d2737db384908569c012fe67c421e4d",
-        "version" : "12.8.0"
+        "revision" : "7deda23bbdca612076c5c315003d8638a08ed0f1",
+        "version" : "8.3.2"
+      }
+    },
+    {
+      "identity" : "scrollviewloader",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/gh123man/ScrollViewLoader.git",
+      "state" : {
+        "revision" : "a8017b65df2f937a850eff79def12e23e961f115",
+        "version" : "1.1.2"
+      }
+    },
+    {
+      "identity" : "swiftui-introspect",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/siteline/SwiftUI-Introspect.git",
+      "state" : {
+        "revision" : "807f73ce09a9b9723f12385e592b4e0aaebd3336",
+        "version" : "1.3.0"
       }
     }
   ],

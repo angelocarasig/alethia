@@ -48,6 +48,7 @@ extension Tag: DatabaseModel {
             t.column(Columns.name.name, .text)
                 .notNull()
                 .unique()
+                .collate(.nocase)
                 .indexed()
         })
     }

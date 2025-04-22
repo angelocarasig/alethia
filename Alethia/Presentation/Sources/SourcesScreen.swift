@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import NukeUI
+import Kingfisher
 import Combine
 
 struct SourcesScreen: View {
@@ -170,20 +170,13 @@ private struct AddSourceSheet: View {
         let iconSize: CGFloat = 40
         
         HStack {
-            LazyImage(url: URL(string: source.icon)) { state in
-                if let image = state.image {
-                    image
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: iconSize, height: iconSize)
-                        .cornerRadius(12)
-                }
-                else {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.tint)
-                        .frame(width: iconSize, height: iconSize)
-                }
-            }
+            KFImage(URL(string: source.icon))
+                .placeholder { Color.tint.shimmer() }
+                .resizable()
+                .scaledToFit()
+                .frame(width: iconSize, height: iconSize)
+                .cornerRadius(8)
+                .padding(.trailing, 8)
             
             Text(source.name)
                 .font(.headline)
@@ -200,22 +193,15 @@ private struct SourceRow: View {
     let iconSize: CGFloat = 40
     
     var body: some View {
-        NavigationLink(destination: Text("hi")) {
+        NavigationLink(destination: SourceHomeScreen(source: source)) {
             HStack {
-                LazyImage(url: URL(fileURLWithPath: source.icon)) { state in
-                    if let image = state.image {
-                        image
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: iconSize, height: iconSize)
-                            .clipShape(.circle)
-                    } else {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.tint)
-                            .frame(width: iconSize, height: iconSize)
-                            .shimmer()
-                    }
-                }
+                KFImage(URL(filePath: source.icon))
+                    .placeholder { Color.tint.shimmer() }
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: iconSize, height: iconSize)
+                    .cornerRadius(8)
+                    .padding(.trailing, 8)
                 
                 Text(source.name)
                     .font(.headline)

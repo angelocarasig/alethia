@@ -52,6 +52,7 @@ extension Host: DatabaseModel {
             t.column(Columns.name.name, .text).notNull()
             t.column(Columns.baseUrl.name, .text)
                 .notNull()
+                .collate(.nocase)
                 .unique(onConflict: .fail)
         })
     }

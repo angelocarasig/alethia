@@ -8,7 +8,7 @@
 import Foundation
 import GRDB
 
-struct Entry: Codable, FetchableRecord {
+struct Entry: Codable, Hashable, FetchableRecord {
     var mangaId: Int64?
     var sourceId: Int64?
     

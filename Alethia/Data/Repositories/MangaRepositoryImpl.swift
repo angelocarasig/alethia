@@ -18,12 +18,12 @@ final class MangaRepositoryImpl {
     }
 }
 
-extension MangaRepositoryImpl: MangaRepository {
-    func getMangaDetail(entry: Entry) -> AnyPublisher<Detail, Error> {
+extension MangaRepositoryImpl: MangaRepository {    
+    func getMangaDetail(entry: Entry) -> AnyPublisher<[Detail], Error> {
         return local.getMangaDetail(entry: entry)
-            .flatMap { localDetail -> AnyPublisher<Detail, Error> in
+            .flatMap { localDetail -> AnyPublisher<[Detail], Error> in
                 // Return local detail immediately if available
-                if let localDetail = localDetail {
+                if !localDetail.isEmpty {
                     return Just(localDetail)
                         .setFailureType(to: Error.self)
                         .receive(on: DispatchQueue.main)
@@ -32,8 +32,14 @@ extension MangaRepositoryImpl: MangaRepository {
                 
                 // Fetch from remote and persist
                 return self.fetchAndPersistRemoteDetail(entry: entry)
+                    .map { [$0] } // need to map to array
+                    .eraseToAnyPublisher()
             }
             .eraseToAnyPublisher()
+    }
+    
+    func toggleMangaInLibrary(mangaId: Int64, newValue: Bool) throws {
+        try local.toggleMangaInLibrary(mangaId: mangaId, newValue: newValue)
     }
 }
 

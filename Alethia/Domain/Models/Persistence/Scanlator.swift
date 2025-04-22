@@ -63,6 +63,7 @@ extension Scanlator: DatabaseModel {
             t.column(Columns.originId.name, .integer)
                 .notNull()
                 .indexed()
+                .collate(.nocase)
                 .references(Manga.databaseTableName, onDelete: .cascade)
         })
     }

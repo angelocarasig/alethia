@@ -46,28 +46,61 @@ final class MangaLocalDataSource {
         .eraseToAnyPublisher()
     }
     
-    func getMangaDetail(entry: Entry) -> AnyPublisher<Detail?, Never> {
+    func getMangaDetail(entry: Entry) -> AnyPublisher<[Detail], Never> {
         let mangaId = entry.mangaId
         let title = entry.title
         
         return ValueObservation
-            .tracking { db -> Detail? in
-                // First try to fetch by ID
-                let manga = try Manga.fetchOne(db, Manga.filter(id: mangaId))
-                    ?? Manga.filter(Manga.Columns.title.collating(.nocase) == title)
-                        .joining(optional: Manga.titles.filter(Title.Columns.title.collating(.nocase) == title))
-                        .fetchOne(db)
+            .tracking { db -> [Detail] in
+                var details: [Detail] = []
                 
-                guard let manga = manga else { return nil }
+                // First: fetch by ID (if valid)
+                if let manga = try Manga.fetchOne(db, key: mangaId),
+                   let detail = try self.fetchDetailWithChapters(db: db, manga: manga) {
+                    details.append(detail)
+                }
                 
-                // Fetch detail with prioritized chapters
-                return try self.fetchDetailWithChapters(db: db, manga: manga)
+                // Then: fetch by title, across both Manga.title and Title.title
+                let mangas = try Manga
+                    .filter(Manga.Columns.title == title || Title.Columns.title == title)
+                    .joining(optional: Manga.titles.filter(Title.Columns.title == title))
+                    .distinct()
+                    .order(
+                        sql: """
+                        CASE
+                            WHEN manga.title = ? THEN 0
+                            ELSE 1
+                        END
+                        """,
+                        arguments: [title]
+                    )
+                    .fetchAll(db)
+                
+                for manga in mangas where !details.contains(where: { $0.manga.id == manga.id }) {
+                    if let detail = try self.fetchDetailWithChapters(db: db, manga: manga) {
+                        details.append(detail)
+                    }
+                }
+                
+                return details
             }
             .publisher(in: DatabaseProvider.shared.writer, scheduling: .immediate)
-            .catch { _ in Just(nil) }
+            .catch { _ in Just([]) }
             .eraseToAnyPublisher()
     }
     
+    func toggleMangaInLibrary(mangaId: Int64, newValue: Bool) throws -> Void {
+        try DatabaseProvider.shared.writer.write { db in
+            guard var manga = try Manga.fetchOne(db, key: mangaId) else { throw MangaError.notFound }
+            
+            manga.inLibrary = newValue
+            
+            try manga.update(db)
+        }
+    }
+}
+
+private extension MangaLocalDataSource {
     // Post fetch retrieve
     private func fetchDetailWithChapters(db: Database, manga: Manga) throws -> Detail? {
         let titles = try manga.titles.fetchAll(db)
@@ -78,11 +111,27 @@ final class MangaLocalDataSource {
             .sorted { $0.priority < $1.priority }
         
         // Get prioritized chapters based on manga preferences
-        let chapters = try self.getPrioritizedChapters(
+        let rawChapters = try self.getPrioritizedChapters(
             db: db,
             manga: manga,
             origins: origins
         )
+        
+        let chapters = try rawChapters.map { chapter in
+            guard let origin = try Origin.filter(id: chapter.originId).fetchOne(db),
+                  let scanlator = try Scanlator.filter(id: chapter.scanlatorId).fetchOne(db)
+            else { throw ApplicationError.internalError }
+            
+            // source can be nil hence not inside guard clause
+            let source = try Source.filter(id: origin.sourceId).fetchOne(db)
+            
+            return ChapterExtended(
+                chapter: chapter,
+                scanlator: scanlator,
+                origin: origin,
+                source: source
+            )
+        }
         
         return Detail(
             manga: manga,
@@ -102,8 +151,8 @@ final class MangaLocalDataSource {
         
         // Determine which origins to use based on showAllChapters flag
         let relevantOriginIds = manga.showAllChapters
-            ? origins.map { $0.id! }
-            : [origins.first!.id!]
+        ? origins.map { $0.id! }
+        : [origins.first!.id!]
         
         // Build chapter query with origin filter
         var chapterQuery = Chapter.filter(relevantOriginIds.contains(Chapter.Columns.originId))
@@ -125,7 +174,7 @@ final class MangaLocalDataSource {
         // Create a lookup for scanlator priorities
         var scanlatorPriorities: [Int64: Int] = [:]
         for originId in relevantOriginIds {
-            let scanlators = try Scanlator.filter(Column("originId") == originId).fetchAll(db)
+            let scanlators = try Scanlator.filter(Scanlator.Columns.originId == originId).fetchAll(db)
             for scanlator in scanlators {
                 if let id = scanlator.id {
                     scanlatorPriorities[id] = scanlator.priority
@@ -171,11 +220,7 @@ final class MangaLocalDataSource {
         // Sort chapters by number before returning
         return prioritizedChapters.sorted { $0.number > $1.number }
     }
-}
-
-// MARK: Helpers
-
-private extension MangaLocalDataSource {
+    
     func insertRelatedEntities(
         for payload: DetailDTO,
         mangaId: Int64,
@@ -201,7 +246,8 @@ private extension MangaLocalDataSource {
         for authorName in payload.manga.authors {
             let author = try Author.findOrCreate(db, instance: Author(name: authorName))
             if let authorId = author.id {
-                try MangaAuthor(authorId: authorId, mangaId: mangaId).insert(db)
+                // Ignore as mapping already exists (case where Author name shows up twice as both author/artist))
+                try MangaAuthor(authorId: authorId, mangaId: mangaId).insert(db, onConflict: .ignore)
             }
         }
         

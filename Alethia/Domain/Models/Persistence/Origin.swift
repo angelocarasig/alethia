@@ -82,7 +82,7 @@ extension Origin: DatabaseModel {
             t.column(Columns.sourceId.name, .integer)
                 .notNull()
                 .indexed()
-                .references(Host.databaseTableName, onDelete: .setNull)
+                .references(Source.databaseTableName, onDelete: .setNull)
         })
     }
     

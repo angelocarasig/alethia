@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import NukeUI
+import Kingfisher
 
 fileprivate let BACKGROUND_GRADIENT_BREAKPOINT: CGFloat = 800
 
@@ -16,28 +16,23 @@ struct BackdropView: View {
     var body: some View {
         let cover = cover?.url ?? ""
         GeometryReader { geometry in
-            LazyImage(url: URL(string: cover)) { state in
-                if let image = state.image {
-                    image
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: geometry.size.width, height: BACKGROUND_GRADIENT_BREAKPOINT)
-                        .clipped()
-                        .overlay(
-                            LinearGradient(
-                                gradient: Gradient(colors: [.clear, Color.background]),
-                                startPoint: .center,
-                                endPoint: .bottom
-                            )
-                        )
-                        .ignoresSafeArea()
-                        .id(cover)
-                }
-                else {
-                    Color.gray.shimmer()
-                }
-            }
-            .priority(.high)
+            KFImage(URL(string: cover))
+                .placeholder { Color.secondary.shimmer() }
+                .retry(maxCount: 5, interval: .seconds(2))
+                .resizable()
+                .fade(duration: 0.25)
+                .scaledToFill()
+                .id(cover)
+                .frame(width: geometry.size.width, height: BACKGROUND_GRADIENT_BREAKPOINT)
+                .clipped()
+                .overlay(
+                    LinearGradient(
+                        gradient: Gradient(colors: [.clear, Color.background]),
+                        startPoint: .center,
+                        endPoint: .bottom
+                    )
+                )
+                .ignoresSafeArea()
         }
     }
 }

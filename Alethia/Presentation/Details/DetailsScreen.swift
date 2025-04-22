@@ -8,11 +8,22 @@
 import SwiftUI
 
 struct DetailsScreen: View {
-    @StateObject var vm = DetailsViewModel()
+    @StateObject var vm: DetailsViewModel
+
+    var entry: Entry
+    
+    init(entry: Entry) {
+        self._vm = StateObject(wrappedValue: DetailsViewModel(entry: entry))
+        self.entry = entry
+    }
     
     var body: some View {
         Group {
-            if case .empty = vm.state {
+            if case .conflict = vm.state {
+                Text("Conflict Found on Manga: \(entry.title)...")
+                Text("TODO: Will Fix Later")
+            }
+            else if case .empty = vm.state {
                 EmptyView()
             }
             else if case .error(let error) = vm.state {
@@ -69,8 +80,6 @@ private struct ErrorView: View {
 private struct DetailContentView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
-    typealias Tabs = DetailsViewModel.Tabs
-    
     var body: some View {
         ZStack {
             BackdropView(cover: vm.details?.covers.first)
@@ -110,6 +119,7 @@ private struct DetailContentView: View {
                             PlaceholderView(geometry: geometry)
                         }
                     }
+                    .animation(.easeInOut, value: vm.details != nil)
                     .frame(maxHeight: .infinity)
                     .padding(.horizontal, 12)
                     .background(BackgroundGradientView())

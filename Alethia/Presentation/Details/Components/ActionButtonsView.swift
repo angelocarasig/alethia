@@ -29,18 +29,18 @@ struct ActionButtonsView: View {
     var body: some View {
         HStack(spacing: 12) {
             Button {
-                print("TODO: Toggling Library!")
+                vm.toggleInLibrary()
             } label: {
                 LibraryButton()
             }
-            .actionButton(!details.manga.inLibrary)
+            .actionButton(details.manga.inLibrary)
             
             Button {
                 print("TODO: Adding Origin!")
             } label: {
                 OriginButton()
             }
-            .actionButton(vm.entry.sourceId != nil)
+            .actionButton(vm.sourcePresent)
             .disabled(!details.manga.inLibrary || vm.entry.fetchUrl == nil)
             
             QuickButtonsView()

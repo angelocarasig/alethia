@@ -96,7 +96,9 @@ extension Manga: DatabaseModel {
         try db.create(table: databaseTableName, body: { t in
             // Persistence
             t.autoIncrementedPrimaryKey(Columns.id.name)
-            t.column(Columns.title.name, .text).notNull()
+            t.column(Columns.title.name, .text)
+                .notNull()
+                .collate(.nocase)
             t.column(Columns.synopsis.name, .text).notNull()
             t.column(Columns.addedAt.name, .datetime).notNull()
             t.column(Columns.updatedAt.name, .datetime).notNull()

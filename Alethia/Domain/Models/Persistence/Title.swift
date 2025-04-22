@@ -47,13 +47,14 @@ extension Title: DatabaseModel {
             t.column(Columns.title.name, .text)
                 .notNull()
                 .indexed()
-                // TODO: Remove
-                // .unique(onConflict: .fail)
+                .collate(.nocase)
             
             t.column(Columns.mangaId.name, .integer)
                 .notNull()
                 .indexed()
                 .references(Manga.databaseTableName, onDelete: .cascade)
+            
+            t.uniqueKey([Columns.title.name, Columns.mangaId.name], onConflict: .ignore)
         })
     }
     

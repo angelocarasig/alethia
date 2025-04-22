@@ -9,13 +9,8 @@ import Foundation
 import Combine
 
 protocol MangaRepository {
-    // MARK: Create
+    // Returns array for view to handle when multiple matches are found
+    func getMangaDetail(entry: Entry) -> AnyPublisher<[Detail], Error>
     
-    // MARK: Read
-    
-    func getMangaDetail(entry: Entry) -> AnyPublisher<Detail, Error>
-    
-    // MARK: Update
-    
-    // MARK: Delete
+    func toggleMangaInLibrary(mangaId: Int64, newValue: Bool) throws -> Void
 }

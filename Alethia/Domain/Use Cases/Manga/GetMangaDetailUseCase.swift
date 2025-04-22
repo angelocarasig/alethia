@@ -14,7 +14,7 @@ import Combine
  - Returns: observer to the detail struct
  */
 protocol GetMangaDetailUseCase {
-    func execute(entry: Entry) -> AnyPublisher<Detail, Error>
+    func execute(entry: Entry) -> AnyPublisher<[Detail], Error>
 }
 
 final class GetMangaDetailUseCaseImpl: GetMangaDetailUseCase {
@@ -24,7 +24,7 @@ final class GetMangaDetailUseCaseImpl: GetMangaDetailUseCase {
         self.repository = repository
     }
     
-    func execute(entry: Entry) -> AnyPublisher<Detail, Error> {
+    func execute(entry: Entry) -> AnyPublisher<[Detail], Error> {
         return repository.getMangaDetail(entry: entry)
     }
 }

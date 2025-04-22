@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import NukeUI
+import Kingfisher
 
 struct SourcesView: View {
     @EnvironmentObject var vm: DetailsViewModel
@@ -48,21 +48,15 @@ struct SourcesView: View {
         let sourceDisabled = origin.sourceId == nil
         
         HStack(spacing: 12) {
-            LazyImage(url: URL(fileURLWithPath: "")) { state in
-                if let image = state.image {
-                    image
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 44, height: 44)
-                        .cornerRadius(12)
-                        .grayscale(sourceDisabled ? 1 : 0)
+            KFImage(URL(fileURLWithPath: ""))
+                .placeholder {
+                    Color.gray.opacity(0.3)
                 }
-                else {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.tint)
-                        .frame(width: 44, height: 44)
-                }
-            }
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 48, height: 48)
+                .cornerRadius(12)
+                .grayscale(sourceDisabled ? 1 : 0)
             
             VStack(alignment: .leading, spacing: 4) {
                 // TODO:

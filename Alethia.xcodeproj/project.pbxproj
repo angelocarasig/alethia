@@ -8,8 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		179E8D752DA6A3DE00F43EBC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 179E8D742DA6A3DE00F43EBC /* GRDB */; };
-		179E92402DA96EC600F43EBC /* Nuke in Frameworks */ = {isa = PBXBuildFile; productRef = 179E923F2DA96EC600F43EBC /* Nuke */; };
-		179E92422DA96EC600F43EBC /* NukeUI in Frameworks */ = {isa = PBXBuildFile; productRef = 179E92412DA96EC600F43EBC /* NukeUI */; };
+		17EAA3D32DB3141E00CB9EE5 /* ScrollViewLoader in Frameworks */ = {isa = PBXBuildFile; productRef = 17EAA3D22DB3141E00CB9EE5 /* ScrollViewLoader */; };
+		17EAA3E02DB3281F00CB9EE5 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 17EAA3DF2DB3281F00CB9EE5 /* Kingfisher */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,9 +52,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				179E92422DA96EC600F43EBC /* NukeUI in Frameworks */,
+				17EAA3E02DB3281F00CB9EE5 /* Kingfisher in Frameworks */,
+				17EAA3D32DB3141E00CB9EE5 /* ScrollViewLoader in Frameworks */,
 				179E8D752DA6A3DE00F43EBC /* GRDB in Frameworks */,
-				179E92402DA96EC600F43EBC /* Nuke in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -66,6 +66,7 @@
 			children = (
 				17D458D02DA6A34700CF3BA4 /* Alethia */,
 				179E90802DA7DC6E00F43EBC /* AlethiaTests */,
+				17EAA3DE2DB3281F00CB9EE5 /* Frameworks */,
 				17D458CF2DA6A34700CF3BA4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -77,6 +78,13 @@
 				179E907F2DA7DC6E00F43EBC /* AlethiaTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		17EAA3DE2DB3281F00CB9EE5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -123,8 +131,8 @@
 			name = Alethia;
 			packageProductDependencies = (
 				179E8D742DA6A3DE00F43EBC /* GRDB */,
-				179E923F2DA96EC600F43EBC /* Nuke */,
-				179E92412DA96EC600F43EBC /* NukeUI */,
+				17EAA3D22DB3141E00CB9EE5 /* ScrollViewLoader */,
+				17EAA3DF2DB3281F00CB9EE5 /* Kingfisher */,
 			);
 			productName = Alethia;
 			productReference = 17D458CE2DA6A34700CF3BA4 /* Alethia.app */;
@@ -160,7 +168,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				179E8D732DA6A3DE00F43EBC /* XCRemoteSwiftPackageReference "GRDB.swift" */,
-				179E923E2DA96EC600F43EBC /* XCRemoteSwiftPackageReference "Nuke" */,
+				17EAA3D12DB3141E00CB9EE5 /* XCRemoteSwiftPackageReference "ScrollViewLoader" */,
+				17EAA3DD2DB3280E00CB9EE5 /* XCRemoteSwiftPackageReference "Kingfisher" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 17D458CF2DA6A34700CF3BA4 /* Products */;
@@ -470,12 +479,20 @@
 				kind = branch;
 			};
 		};
-		179E923E2DA96EC600F43EBC /* XCRemoteSwiftPackageReference "Nuke" */ = {
+		17EAA3D12DB3141E00CB9EE5 /* XCRemoteSwiftPackageReference "ScrollViewLoader" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/kean/Nuke.git";
+			repositoryURL = "https://github.com/gh123man/ScrollViewLoader.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 12.8.0;
+				minimumVersion = 1.1.2;
+			};
+		};
+		17EAA3DD2DB3280E00CB9EE5 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Kingfisher.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.3.2;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -486,15 +503,15 @@
 			package = 179E8D732DA6A3DE00F43EBC /* XCRemoteSwiftPackageReference "GRDB.swift" */;
 			productName = GRDB;
 		};
-		179E923F2DA96EC600F43EBC /* Nuke */ = {
+		17EAA3D22DB3141E00CB9EE5 /* ScrollViewLoader */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 179E923E2DA96EC600F43EBC /* XCRemoteSwiftPackageReference "Nuke" */;
-			productName = Nuke;
+			package = 17EAA3D12DB3141E00CB9EE5 /* XCRemoteSwiftPackageReference "ScrollViewLoader" */;
+			productName = ScrollViewLoader;
 		};
-		179E92412DA96EC600F43EBC /* NukeUI */ = {
+		17EAA3DF2DB3281F00CB9EE5 /* Kingfisher */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 179E923E2DA96EC600F43EBC /* XCRemoteSwiftPackageReference "Nuke" */;
-			productName = NukeUI;
+			package = 17EAA3DD2DB3280E00CB9EE5 /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

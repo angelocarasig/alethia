@@ -9,33 +9,28 @@ import Foundation
 import Combine
 
 final class DetailsViewModel: ObservableObject {
+    @Published var options: [Detail] = []
+    
     @Published var details: Detail? = nil
     @Published var error: Error? = nil
     @Published var loading: Bool = false
     
-    enum Tabs: String, CaseIterable {
-        case details = "Details"
-        case manage = "Manage"
-        case chapters = "Chapters"
-        case artwork = "Artwork"
+    var sourcePresent: Bool {
+        return self.details != nil &&
+        self.details!.manga.inLibrary &&
+        self.details!.origins.contains { entry.fetchUrl?.decodeUri.contains($0.slug.decodeUri) ?? false }
     }
-    @Published var activeTab: Tabs = .details
-    
+
     private var cancellables = Set<AnyCancellable>()
     private let getMangaDetailUseCase: GetMangaDetailUseCase
+    private let toggleMangaInLibraryUseCase: ToggleMangaInLibraryUseCase
     
     var entry: Entry
     
-    init(entry: Entry? = nil) {
-        self.entry = Entry(
-            mangaId: nil,
-            sourceId: 1,
-            title: "Guild no Uketsukejou Desu ga, Zangyou wa Iya Nanode Boss wo Solo Toubatsu Shiyou to Omoimasu",
-            cover: nil,
-            fetchUrl: "https://fortune.alethia.workers.dev/mangadex/manga/3b9bade6-28a0-4f2f-8211-4b5106a2cbbd"
-        )
-        
+    init(entry: Entry) {
+        self.entry = entry
         self.getMangaDetailUseCase = DependencyInjector.shared.makeGetMangaDetailUseCase()
+        self.toggleMangaInLibraryUseCase = DependencyInjector.shared.makeToggleMangaInLibraryUseCase()
     }
     
     func bind() {
@@ -52,14 +47,50 @@ final class DetailsViewModel: ObservableObject {
                     self.error = error
                 }
             } receiveValue: { [weak self] detail in
-                self?.details = detail
-                print("Received detail: \(self?.details?.manga.title)")
+                self?.options = []
+                
+                // When multiple entries are found the proper one needs to be picked
+                if detail.count > 1 {
+                    self?.options = detail
+                }
+                else if detail.isEmpty {
+                    self?.details = nil
+                }
+                else {
+                    self?.details = detail.first!
+                }
             }
             .store(in: &cancellables)
     }
     
-    func setActiveTab(_ tab: Tabs) -> Void {
-        self.activeTab = tab
+    func pickOption(option: Detail) {
+        // should update the entry object with the selected option's mangaId and re-bind for proper observation
+        self.entry = Entry(
+            mangaId: option.manga.id!,
+            sourceId: entry.sourceId,
+            title: entry.title,
+            cover: entry.cover,
+            fetchUrl: entry.fetchUrl,
+            unread: entry.unread
+        )
+        
+        bind()
+    }
+    
+    func toggleInLibrary() -> Void {
+        do {
+            guard let details = details,
+                  let mangaId = details.manga.id
+            else { return }
+            
+            try toggleMangaInLibraryUseCase.execute(
+                mangaId: mangaId,
+                newValue: !details.manga.inLibrary
+            )
+        }
+        catch {
+            print("Error: \(error)")
+        }
     }
 }
 
@@ -68,6 +99,7 @@ final class DetailsViewModel: ObservableObject {
 extension DetailsViewModel {
     enum State {
         case loading
+        case conflict
         case success(Detail)
         case error(Error)
         case empty
@@ -76,7 +108,10 @@ extension DetailsViewModel {
     var state: State {
         if loading {
             return .loading
-        } else if let details {
+        } else if !options.isEmpty {
+            return .conflict
+        }
+        else if let details {
             return .success(details)
         } else if let error {
             return .error(error)

@@ -38,4 +38,8 @@ extension SourcesRepositoryImpl: SourcesRepository {
     func toggleSourceDisabled(sourceId: Int64, newValue: Bool) throws -> Void {
         try local.toggleSourceDisabled(sourceId: sourceId, newValue: newValue)
     }
+    
+    func getSourceRouteContent(sourceRouteId: Int64, page: Int) async throws -> [Entry] {
+        return try await remote.getSourceRouteContent(sourceRouteId: sourceRouteId, page: page)
+    }
 }

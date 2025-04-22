@@ -9,7 +9,7 @@ import SwiftUI
 
 @main
 struct AlethiaApp: App {
-    @State var database: DatabaseProvider = DatabaseProvider.shared
+    var database: DatabaseProvider = DatabaseProvider.shared
     
     var body: some Scene {
         WindowGroup {
@@ -20,7 +20,7 @@ struct AlethiaApp: App {
                         Text("Home")
                     }
                 
-                DetailsScreen()
+                LibraryScreen()
                     .tabItem {
                         Image(systemName: "books.vertical.fill")
                         Text("Library")

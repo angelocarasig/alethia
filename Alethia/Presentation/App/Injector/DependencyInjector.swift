@@ -33,6 +33,10 @@ extension DependencyInjector {
     func makeGetMangaDetailUseCase() -> GetMangaDetailUseCase {
         return GetMangaDetailUseCaseImpl(repository: mangaRepository)
     }
+    
+    func makeToggleMangaInLibraryUseCase() -> ToggleMangaInLibraryUseCase {
+        return ToggleMangaInLibraryUserCaseImpl(repository: mangaRepository)
+    }
 }
 
 // MARK: Sources
@@ -56,5 +60,9 @@ extension DependencyInjector {
     
     func makeToggleSourceDisabledUseCase() -> ToggleSourceDisabledUseCase {
         return ToggleSourceDisabledUseCaseImpl(repository: sourcesRepository)
+    }
+    
+    func makeGetSourceRouteContentUseCase() -> GetSourceRouteContentUseCase {
+         return GetSourceRouteContentUseCaseImpl(repository: sourcesRepository)
     }
 }

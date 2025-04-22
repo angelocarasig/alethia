@@ -18,4 +18,6 @@ protocol SourcesRepository {
     func toggleSourcePinned(sourceId: Int64, newValue: Bool) throws -> Void
     
     func toggleSourceDisabled(sourceId: Int64, newValue: Bool) throws -> Void
+    
+    func getSourceRouteContent(sourceRouteId: Int64, page: Int) async throws -> [Entry]
 }

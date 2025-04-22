@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import GRDB
+import Kingfisher
 
 final class SourceLocalDataSource {
     func getSources() -> AnyPublisher<[Source], Never> {
@@ -87,7 +88,7 @@ private extension SourceLocalDataSource {
     func downloadSourceIcons(id: Int64, payload: NewHostPayload) async throws -> URL {
         let fileManager = FileManager.default
         let folderURL = fileManager
-            .urls(for: .applicationSupportDirectory, in: .userDomainMask)
+            .urls(for: .documentDirectory, in: .userDomainMask)
             .first!
             .appendingPathComponent("Local")
             .appendingPathComponent("host-\(id)", isDirectory: true)
@@ -101,9 +102,11 @@ private extension SourceLocalDataSource {
                 }
                 
                 group.addTask {
-                    let (data, _) = try await URLSession.shared.data(from: iconURL)
-                    let fileURL = folderURL.appendingPathComponent("\(source.path).png")
-                    try data.write(to: fileURL)
+                    try await self.downloadAndSaveImage(
+                        sourceName: source.path,
+                        url: iconURL,
+                        folderURL: folderURL
+                    )
                 }
             }
             
@@ -111,5 +114,32 @@ private extension SourceLocalDataSource {
         }
         
         return folderURL
+    }
+    
+    private func downloadAndSaveImage(sourceName: String, url: URL, folderURL: URL) async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            KingfisherManager.shared.retrieveImage(with: url) { result in
+                switch result {
+                case .success(let value):
+                    let image = value.image
+                    guard let imageData = image.pngData() else {
+                        continuation.resume(throwing: ApplicationError.internalError)
+                        return
+                    }
+                    
+                    let fileURL = folderURL.appendingPathComponent("\(sourceName).png")
+                    
+                    do {
+                        try imageData.write(to: fileURL)
+                        continuation.resume(returning: ())
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                    
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
     }
 }
