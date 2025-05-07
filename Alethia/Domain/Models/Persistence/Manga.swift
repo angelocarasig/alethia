@@ -67,6 +67,41 @@ extension Manga {
     var collections: QueryInterfaceRequest<Collection> {
         request(for: Manga.collections)
     }
+    
+    static var entry: QueryInterfaceRequest<Entry> {
+        let originSlug = Origin
+            .filter(Origin.Columns.mangaId == Manga.Columns.id)
+            .order(Origin.Columns.priority.asc)
+            .limit(1)
+            .select(Origin.Columns.slug)
+            .sqlSubquery
+        
+        let sourceId = Origin
+            .filter(Origin.Columns.mangaId == Manga.Columns.id)
+            .order(Origin.Columns.priority.asc)
+            .limit(1)
+            .select(Origin.Columns.sourceId)
+            .sqlSubquery
+        
+        // NOTE: For some reason cover needs to be fetched like this
+        let cover = SQL("""
+            (SELECT url FROM cover
+            WHERE cover.mangaId = manga.id
+            AND cover.active = 1
+            ORDER BY id DESC
+            LIMIT 1)
+        """)
+        
+        return Manga
+            .select([
+                Manga.Columns.id    .forKey("mangaId"),
+                Manga.Columns.title .forKey("title"),
+                sourceId            .forKey("sourceId"),
+                originSlug          .forKey("originSlug"),
+                cover               .forKey("cover")
+            ])
+            .asRequest(of: Entry.self)
+    }
 }
 
 extension Manga: TableRecord {

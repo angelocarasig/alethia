@@ -61,7 +61,6 @@ private struct ContentView: View {
                 ForEach(vm.items) { CardView($0) }
             }
             .padding(.horizontal, 8)
-            .animation(.default, value: vm.items)
         }
         .onPullToRefresh {
             vm.refreshCollection()

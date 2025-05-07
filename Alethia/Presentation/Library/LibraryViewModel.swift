@@ -38,7 +38,9 @@ final class LibraryViewModel: ObservableObject {
                     print("Library fetch failed:", error)
                 }
             } receiveValue: { [weak self] updated in
-                self?.items = updated
+                withAnimation {
+                    self?.items = updated
+                }
             }
             .store(in: &cancellables)
     }
