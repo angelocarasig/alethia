@@ -21,6 +21,14 @@ struct Chapter: Codable, Identifiable {
     
     var progress: Double = 0.0
     var localPath: String? = nil
+    
+    var read: Bool {
+        progress == 1.0
+    }
+    
+    func toString() -> String {
+        return "Chapter \(self.number.toString())"
+    }
 }
 
 extension Chapter {

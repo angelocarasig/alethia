@@ -9,7 +9,7 @@ import SwiftUI
 
 struct DetailsScreen: View {
     @StateObject var vm: DetailsViewModel
-
+    
     var entry: Entry
     
     init(entry: Entry) {
@@ -96,7 +96,7 @@ private struct DetailContentView: View {
                             )
                             
                             ActionButtonsView()
-
+                            
                             SynopsisView(synopsis: details.manga.synopsis)
                             
                             TagsView(tags: details.tags)
@@ -125,6 +125,8 @@ private struct DetailContentView: View {
                     .background(BackgroundGradientView())
                 }
             }
+            
+            ContinueReadingView()
         }
     }
 }
