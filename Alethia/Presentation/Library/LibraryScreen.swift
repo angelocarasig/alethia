@@ -13,17 +13,13 @@ struct LibraryScreen: View {
     var body: some View {
         NavigationStack {
             VStack {
-                SearchBar(searchText: $vm.searchText).padding()
+                SearchBar(searchText: $vm.filters.searchText).padding()
                 
                 CollectionSelectorView()
                 
                 ContentView()
             }
-            .task {
-                vm.bind()
-            }
             .navigationTitle("Library")
-            .environmentObject(vm)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 16) {
@@ -38,7 +34,12 @@ struct LibraryScreen: View {
                     }
                 }
             }
+            .sheet(isPresented: $vm.showFilters) {
+                LibraryFilterView()
+                    .presentationDetents([.medium, .large])
+            }
         }
+        .environmentObject(vm)
     }
 }
 
@@ -60,12 +61,12 @@ private struct ContentView: View {
                 ForEach(vm.items) { CardView($0) }
             }
             .padding(.horizontal, 8)
+            .animation(.default, value: vm.items)
         }
         .onPullToRefresh {
             vm.refreshCollection()
         }
         .padding(.horizontal, 8)
-        .transition(.opacity)
         .frame(maxWidth: .infinity)
     }
     

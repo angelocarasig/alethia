@@ -6,12 +6,13 @@
 //
 
 import Foundation
+import SwiftUI
 import Combine
 import GRDB
 
 final class LibraryViewModel: ObservableObject {
-    @Published var searchText: String = ""
     @Published var showFilters: Bool = false
+    @Published var filters: LibraryFilters = .init()
     
     @Published var items: [Entry] = []
     
@@ -23,21 +24,21 @@ final class LibraryViewModel: ObservableObject {
     
     init() {
         self.getLibraryUseCase = DependencyInjector.shared.makeGetLibraryUseCase()
-    }
-    
-    func bind() -> Void {
-        cancellables.removeAll()
         
-        getLibraryUseCase
-            .execute()
+        $filters
+            .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
+            .flatMap { [unowned self] filters in
+                self.getLibraryUseCase
+                    .execute(filters: filters)
+                    .catch { _ in Just([]) } // just catch errors for now
+            }
             .receive(on: RunLoop.main)
             .sink { completion in
                 if case .failure(let error) = completion {
-                    print("Error: \(error)")
+                    print("Library fetch failed:", error)
                 }
-            } receiveValue: { [weak self] items in
-                print("Item 1: \(items[0])")
-                self?.items = items
+            } receiveValue: { [weak self] updated in
+                self?.items = updated
             }
             .store(in: &cancellables)
     }

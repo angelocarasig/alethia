@@ -19,8 +19,8 @@ final class MangaRepositoryImpl {
 }
 
 extension MangaRepositoryImpl: MangaRepository {
-    func getLibrary() -> AnyPublisher<[Entry], Error> {
-        return local.getLibrary()
+    func getLibrary(filters: LibraryFilters) -> AnyPublisher<[Entry], Error> {
+        return local.getLibrary(filters: filters)
     }
     
     func getMangaDetail(entry: Entry) -> AnyPublisher<[Detail], Error> {

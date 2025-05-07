@@ -3,47 +3,87 @@ import Combine
 import GRDB
 
 final class MangaLocalDataSource {
-    func getLibrary() -> AnyPublisher<[Entry], Error> {
+    func getLibrary(filters: LibraryFilters) -> AnyPublisher<[Entry], Error> {
+        print("Fetching library...")
+        let search = filters.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pattern = "%\(search)%"
+        
         return ValueObservation
             .tracking { db -> [Entry] in
-                let sql = """
-                    SELECT e.*
-                    FROM entry e
-                    JOIN Manga m ON e.mangaId = m.id
-                    WHERE m.inLibrary = 1
-                """
+                var request = Manga
+                    // Must be in library
+                    .filter(Manga.Columns.inLibrary)
                 
-                let entries = try Entry.fetchAll(db, sql: sql)
-                
-                let items: [Entry] = try entries.map { entry in
-                    guard let mangaId = entry.mangaId,
-                          let sourceId = entry.sourceId,
-                          let source = try Source.fetchOne(db, key: sourceId),
-                          let host = try Host.fetchOne(db, key: source.hostId)
-                    else { throw ApplicationError.internalError }
-                    
-                    guard let origin = try Origin
-                        .filter(Origin.Columns.mangaId == mangaId)
-                        .order(Origin.Columns.priority.asc)
-                        .fetchOne(db)
-                    else {
-                        throw ApplicationError.internalError
-                    }
-                    
-                    // cover can be nil if none were set
-                    let cover = try Cover
-                        .filter(Cover.Columns.mangaId == mangaId && Cover.Columns.active)
-                        .fetchOne(db)
-                    
-                    var contextful = entry
-                    
-                    contextful.fetchUrl = URL.appendingPaths(host.baseUrl, source.path, "manga", origin.slug)!.absoluteString
-                    contextful.cover = cover?.url ?? nil
-                    
-                    return contextful
+                // Filter by title
+                if !search.isEmpty {
+                    request = request
+                        .joining(optional: Manga.titles)
+                        .filter(Manga.Columns.title.like(pattern) || Title.Columns.title.like(pattern))
                 }
                 
+                // Apply sorting options
+                let sortColumn: Column = {
+                    switch filters.sortType {
+                    case .title:
+                        return Manga.Columns.title
+                    case .created:
+                        fallthrough
+                    case .added:
+                        return Manga.Columns.addedAt
+                    case .updated:
+                        return Manga.Columns.updatedAt
+                    }
+                }()
+                
+                let ordering: SQLOrderingTerm = filters.sortDirection == .ascending
+                    ? sortColumn.asc
+                    : sortColumn.desc
+                
+                request = request.order(ordering)
+                
+                let manga  = try request.fetchAll(db)
+                let ids    = manga.compactMap(\.id)
+
+                guard !ids.isEmpty else { return [] }
+
+                let entries = try Entry
+                    .filter(ids.contains(Entry.Columns.mangaId))
+                    .fetchAll(db)
+
+                // Map so that ordering is preserved
+                let entryByMangaID = Dictionary(
+                    uniqueKeysWithValues: entries.map { ($0.mangaId!, $0) }
+                )
+
+                let items: [Entry] = try manga.compactMap { m in
+                    guard
+                      let entry    = entryByMangaID[m.id!],
+                      let sourceId = entry.sourceId,
+                      let source   = try Source.fetchOne(db, key: sourceId),
+                      let host     = try Host.fetchOne(db, key: source.hostId),
+                      let origin   = try Origin
+                                        .filter(Origin.Columns.mangaId == m.id!)
+                                        .order(Origin.Columns.priority.asc)
+                                        .fetchOne(db)
+                    else {
+                      throw ApplicationError.internalError
+                    }
+
+                    var contextful = entry
+                    contextful.fetchUrl = URL
+                        .appendingPaths(host.baseUrl, source.path, "manga", origin.slug)!
+                        .absoluteString
+
+                    contextful.cover = try Cover
+                        .filter(Cover.Columns.mangaId == m.id! && Cover.Columns.active)
+                        .fetchOne(db)?
+                        .url
+
+                    return contextful
+                }
+
                 return items
+
             }
             .publisher(in: DatabaseProvider.shared.writer, scheduling: .immediate)
             .eraseToAnyPublisher()

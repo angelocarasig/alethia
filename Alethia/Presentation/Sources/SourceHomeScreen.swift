@@ -57,7 +57,7 @@ private struct RowView: View {
                 ContentView(content: vm.items)
             }
         }
-        .padding(.horizontal)
+        .padding(.horizontal, 10)
         .task {
             guard vm.firstLoad else { return }
             await vm.load(with: route.id!)

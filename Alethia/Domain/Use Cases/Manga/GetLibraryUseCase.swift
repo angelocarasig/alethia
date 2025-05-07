@@ -9,7 +9,7 @@ import Foundation
 import Combine
 
 protocol GetLibraryUseCase {
-    func execute() -> AnyPublisher<[Entry], Error>
+    func execute(filters: LibraryFilters) -> AnyPublisher<[Entry], Error>
 }
 
 final class GetLibraryUseCaseImpl: GetLibraryUseCase {
@@ -19,7 +19,7 @@ final class GetLibraryUseCaseImpl: GetLibraryUseCase {
         self.repository = repository
     }
     
-    func execute() -> AnyPublisher<[Entry], any Error> {
-        return repository.getLibrary()
+    func execute(filters: LibraryFilters) -> AnyPublisher<[Entry], any Error> {
+        return repository.getLibrary(filters: filters)
     }
 }
