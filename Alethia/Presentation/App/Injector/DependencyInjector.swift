@@ -53,6 +53,10 @@ extension DependencyInjector {
 // MARK: Sources
 
 extension DependencyInjector {
+    func makeGetHostsUseCase() -> GetHostsUseCase {
+        return GetHostsUseCaseImpl(repository: sourcesRepository)
+    }
+    
     func makeGetSourcesUseCase() -> GetSourcesUseCase {
         return GetSourcesUseCaseImpl(repository: sourcesRepository)
     }
@@ -63,6 +67,10 @@ extension DependencyInjector {
     
     func makeCreateHostUseCase() -> CreateHostUseCase {
         return CreateHostUseCaseImpl(repository: sourcesRepository)
+    }
+    
+    func makeDeleteHostUseCase() -> DeleteHostUseCase {
+        return DeleteHostUseCaseImpl(repository: sourcesRepository)
     }
     
     func makeToggleSourcePinnedUseCase() -> ToggleSourcePinnedUseCase {

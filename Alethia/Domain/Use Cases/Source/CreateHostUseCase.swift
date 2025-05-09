@@ -19,6 +19,6 @@ final class CreateHostUseCaseImpl: CreateHostUseCase {
     }
     
     func execute(_ payload: NewHostPayload) async throws -> Void {
-        try await repository.createHostUseCase(payload: payload)
+        try await repository.createHost(payload: payload)
     }
 }

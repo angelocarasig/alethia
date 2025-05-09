@@ -9,11 +9,15 @@ import Foundation
 import Combine
 
 protocol SourcesRepository {
+    func getHosts() -> AnyPublisher<[Host], Never>
+    
     func getSources() -> AnyPublisher<[Source], Never>
     
     func testHostUseCase(url: String) async throws -> NewHostPayload
     
-    func createHostUseCase(payload: NewHostPayload) async throws -> Void
+    func createHost(payload: NewHostPayload) async throws -> Void
+    
+    func deleteHost(host: Host) throws -> Void
     
     func toggleSourcePinned(sourceId: Int64, newValue: Bool) throws -> Void
     

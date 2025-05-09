@@ -19,6 +19,10 @@ final class SourcesRepositoryImpl {
 }
 
 extension SourcesRepositoryImpl: SourcesRepository {
+    func getHosts() -> AnyPublisher<[Host], Never> {
+        return local.getHosts()
+    }
+    
     func getSources() -> AnyPublisher<[Source], Never> {
         return local.getSources()
     }
@@ -27,8 +31,12 @@ extension SourcesRepositoryImpl: SourcesRepository {
         return try await remote.testHost(url: url)
     }
     
-    func createHostUseCase(payload: NewHostPayload) async throws -> Void {
+    func createHost(payload: NewHostPayload) async throws -> Void {
         try await local.createHost(with: payload)
+    }
+    
+    func deleteHost(host: Host) throws {
+        try local.deleteHost(host: host)
     }
     
     func toggleSourcePinned(sourceId: Int64, newValue: Bool) throws -> Void {

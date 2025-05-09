@@ -83,7 +83,6 @@ extension Origin: DatabaseModel {
                 .references(Manga.databaseTableName, onDelete: .cascade)
             
             t.column(Columns.sourceId.name, .integer)
-                .notNull()
                 .indexed()
                 .references(Source.databaseTableName, onDelete: .setNull)
         })

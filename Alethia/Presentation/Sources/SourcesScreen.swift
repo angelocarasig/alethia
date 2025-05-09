@@ -203,9 +203,19 @@ private struct SourceRow: View {
                     .cornerRadius(8)
                     .padding(.trailing, 8)
                 
-                Text(source.name)
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                VStack(alignment: .leading) {
+                    Text(source.name)
+                        .lineLimit(1)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    
+                    // TODO: Enforce hosts to have this format
+                    // maybe require author and name instead and format like so
+                    Text("@alethia/fortune")
+                        .lineLimit(1)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
             }
             .contextMenu {
                 // Pin

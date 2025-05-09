@@ -11,6 +11,16 @@ import GRDB
 import Kingfisher
 
 final class SourceLocalDataSource {
+    func getHosts() -> AnyPublisher<[Host], Never> {
+        return ValueObservation
+            .tracking { db -> [Host] in
+                return try Host.order(Host.Columns.name).fetchAll(db)
+            }
+            .publisher(in: DatabaseProvider.shared.writer, scheduling: .immediate)
+            .catch { _ in Just([]) }
+            .eraseToAnyPublisher()
+    }
+    
     func getSources() -> AnyPublisher<[Source], Never> {
         return ValueObservation
             .tracking { db -> [Source] in
@@ -58,6 +68,12 @@ final class SourceLocalDataSource {
                     try route.insert(db)
                 }
             }
+        }
+    }
+    
+    func deleteHost(host: Host) throws -> Void {
+        try DatabaseProvider.shared.writer.write { db in
+            _ = try host.delete(db)
         }
     }
     
