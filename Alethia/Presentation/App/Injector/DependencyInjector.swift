@@ -25,6 +25,13 @@ final class DependencyInjector {
         
         return SourcesRepositoryImpl(local: local, remote: remote)
     }()
+    
+    private lazy var chapterRepository: ChapterRepository = {
+        let local = ChapterLocalDataSource()
+        let remote = ChapterRemoteDataSource()
+        
+        return ChapterRepositoryImpl(local: local, remote: remote)
+    }()
 }
 
 // MARK: Manga
@@ -67,10 +74,18 @@ extension DependencyInjector {
     }
     
     func makeGetSourceRouteContentUseCase() -> GetSourceRouteContentUseCase {
-         return GetSourceRouteContentUseCaseImpl(repository: sourcesRepository)
+        return GetSourceRouteContentUseCaseImpl(repository: sourcesRepository)
     }
     
     func makeObserveMatchEntriesUseCase() -> ObserveMatchEntriesUseCase {
         return ObserveMatchEntriesUseCaseImpl(repository: sourcesRepository)
+    }
+}
+
+// MARK: Chapters
+
+extension DependencyInjector {
+    func makeGetChapterContentsUseCase() -> GetChapterContentsUseCase {
+        return GetChapterContentsUseCaseImpl(repository: chapterRepository)
     }
 }

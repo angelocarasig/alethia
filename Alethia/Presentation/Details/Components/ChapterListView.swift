@@ -19,8 +19,18 @@ struct ChapterListView: View {
         LazyVStack {
             ChapterHeaderView()
             
-            ForEach(details.chapters, id: \.chapter.id) { chapter in
-                ChapterRow(item: chapter)
+            ForEach(Array(details.chapters.enumerated()), id: \.element.chapter.id) {
+                index,
+                chapter in
+                NavigationLink(
+                    destination: ReaderScreen(
+                        chapters: vm.details!.chapters,
+                        currentChapterIndex: index
+                    )
+                ) {
+                    ChapterRow(item: chapter)
+                }
+                .buttonStyle(.plain)
             }
         }
     }

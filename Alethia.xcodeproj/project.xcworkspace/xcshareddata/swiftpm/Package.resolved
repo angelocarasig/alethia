@@ -1,6 +1,15 @@
 {
-  "originHash" : "c2e83ed155a6f0ca2bd92a6ab00e8bfdd94d0dd781d8b60fd160299c0e4bdddf",
+  "originHash" : "bfa99daa73a367e763552d7f5c68fa4a5dbae3259ed506dd0b189307b5552a4d",
   "pins" : [
+    {
+      "identity" : "devicekit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/devicekit/DeviceKit.git",
+      "state" : {
+        "revision" : "513b9d7e7a1bd46504a1009bbab943b75ce2f195",
+        "version" : "5.6.0"
+      }
+    },
     {
       "identity" : "grdb.swift",
       "kind" : "remoteSourceControl",

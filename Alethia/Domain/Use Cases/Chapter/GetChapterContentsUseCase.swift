@@ -19,6 +19,7 @@ final class GetChapterContentsUseCaseImpl: GetChapterContentsUseCase {
     }
     
     func execute(chapter: Chapter) async throws -> [String] {
-        return []
+        print("Executing content fetch for \(chapter.number)")
+        return try await repository.getChapterContents(chapter: chapter)
     }
 }
