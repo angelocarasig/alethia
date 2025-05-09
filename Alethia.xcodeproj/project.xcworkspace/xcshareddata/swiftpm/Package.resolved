@@ -1,5 +1,5 @@
 {
-  "originHash" : "bfa99daa73a367e763552d7f5c68fa4a5dbae3259ed506dd0b189307b5552a4d",
+  "originHash" : "91eb66f778f6ce4c875cc4a16b7f6b72e1dfbe5ca93b29be35f44dc35826bbdd",
   "pins" : [
     {
       "identity" : "devicekit",
@@ -53,6 +53,15 @@
       "state" : {
         "revision" : "807f73ce09a9b9723f12385e592b4e0aaebd3336",
         "version" : "1.3.0"
+      }
+    },
+    {
+      "identity" : "swiftuimaterialtabs",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SwiftKickMobile/SwiftUIMaterialTabs",
+      "state" : {
+        "revision" : "782f083f96ed30f4dacfaff8575d5c2005017cd6",
+        "version" : "2.0.6"
       }
     }
   ],

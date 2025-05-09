@@ -20,7 +20,7 @@ final class DetailsViewModel: ObservableObject {
         self.details!.manga.inLibrary &&
         self.details!.origins.contains { entry.fetchUrl?.decodeUri.contains($0.slug.decodeUri) ?? false }
     }
-
+    
     private var cancellables = Set<AnyCancellable>()
     private let getMangaDetailUseCase: GetMangaDetailUseCase
     private let toggleMangaInLibraryUseCase: ToggleMangaInLibraryUseCase
@@ -64,6 +64,8 @@ final class DetailsViewModel: ObservableObject {
     }
     
     func pickOption(option: Detail) {
+        // TODO: Related to when multiple matches are found by title for a manga
+        // Should only occur in sources tab - 
         // should update the entry object with the selected option's mangaId and re-bind for proper observation
         self.entry = Entry(
             mangaId: option.manga.id!,

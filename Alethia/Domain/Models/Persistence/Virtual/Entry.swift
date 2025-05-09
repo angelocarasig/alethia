@@ -23,7 +23,6 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
     // MARK: Public API
     var id: Int64 { mangaId ?? 0 }
 
-
     var transitionId: String {
         "\(sourceId ?? 0)-\(fetchUrl ?? title)"
     }

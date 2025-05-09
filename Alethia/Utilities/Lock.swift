@@ -7,6 +7,8 @@
 
 import Foundation
 
+/// This should be used for one-time boolean-type variables that won't be 'unlocked' again ideally
+/// While it can be used in replace of a regular bool it will eventually get confusing
 enum Lock: Equatable, ExpressibleByBooleanLiteral {
     case locked
     case unlocked

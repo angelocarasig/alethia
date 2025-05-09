@@ -11,7 +11,7 @@ struct TrackingView: View {
     @EnvironmentObject var vm: DetailsViewModel
     
     var details: Detail {
-        vm.details!
+        vm.details.unsafelyUnwrapped
     }
     
     // TODO: 

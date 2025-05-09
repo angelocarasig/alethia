@@ -12,7 +12,7 @@ struct SourcesView: View {
     @EnvironmentObject var vm: DetailsViewModel
     
     var details: Detail {
-        vm.details!
+        vm.details.unsafelyUnwrapped
     }
     
     var body: some View {

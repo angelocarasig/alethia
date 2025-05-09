@@ -19,6 +19,7 @@ struct Origin: Codable, Identifiable {
     var referer: String
     var classification: Classification
     var status: PublishStatus
+    var createdAt: Date
     var priority: Int = .max
 }
 
@@ -53,6 +54,7 @@ extension Origin: TableRecord {
         static let referer = Column(Origin.CodingKeys.referer)
         static let classification = Column(Origin.CodingKeys.classification)
         static let status = Column(Origin.CodingKeys.status)
+        static let createdAt = Column(Origin.CodingKeys.createdAt)
         static let priority = Column(Origin.CodingKeys.priority)
     }
 }
@@ -72,6 +74,7 @@ extension Origin: DatabaseModel {
             t.column(Columns.referer.name, .text).notNull()
             t.column(Columns.classification.name, .text).notNull()
             t.column(Columns.status.name, .text).notNull()
+            t.column(Columns.createdAt.name, .date).notNull()
             t.column(Columns.priority.name, .integer).notNull()
             
             t.column(Columns.mangaId.name, .integer)

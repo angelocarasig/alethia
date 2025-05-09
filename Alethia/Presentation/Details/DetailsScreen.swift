@@ -87,33 +87,10 @@ private struct DetailContentView: View {
             GeometryReader { geometry in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
-                        Spacer().frame(height: geometry.size.height / 3)
+                        Spacer().frame(height: geometry.size.height / 5)
                         
                         if let details = vm.details {
-                            HeaderView(
-                                title: details.manga.title,
-                                authors: details.authors
-                            )
-                            
-                            ActionButtonsView()
-                            
-                            SynopsisView(synopsis: details.manga.synopsis)
-                            
-                            TagsView(tags: details.tags)
-                            
-                            Divider()
-                            
-                            TrackingView()
-                            
-                            Divider()
-                            
-                            SourcesView()
-                            
-                            Divider()
-                            
-                            CollectionsView()
-                            
-                            ChapterListView()
+                            LoadedDetails(details: details)
                         }
                         else {
                             PlaceholderView(geometry: geometry)
@@ -128,5 +105,40 @@ private struct DetailContentView: View {
             
             ContinueReadingView()
         }
+    }
+    
+    @ViewBuilder
+    private func LoadedDetails(details: Detail) -> some View {
+        HeaderView()
+        
+        ActionButtonsView()
+        
+        SynopsisView(synopsis: details.manga.synopsis)
+        
+        TagsView(tags: details.tags)
+        
+        Divider()
+        
+        TrackingView()
+        
+        Divider()
+        
+        SourcesView()
+        
+        Divider()
+        
+        CollectionsView()
+        
+        Divider()
+        
+        MetadataView()
+        
+        Divider()
+        
+        AlternativeTitlesView()
+        
+        Divider()
+        
+        ChapterListView()
     }
 }

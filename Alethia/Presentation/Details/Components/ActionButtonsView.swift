@@ -23,7 +23,7 @@ struct ActionButtonsView: View {
     @EnvironmentObject var vm: DetailsViewModel
     
     var details: Detail {
-        vm.details!
+        vm.details.unsafelyUnwrapped
     }
     
     var body: some View {
@@ -84,6 +84,7 @@ private struct QuickButtonsView: View {
     }
     
     private var options: [Option] = [
+        Option(title: "Edit Details", systemImage: "pencil", action: {}),
         Option(title: "Refresh Chapters", systemImage: "arrow.clockwise", action: {}),
         Option(title: "Refresh Metadata", systemImage: "rectangle.and.text.magnifyingglass", action: {}),
         Option(title: "Merge Wizard", systemImage: "plus.rectangle.fill.on.rectangle.fill", action: {}),

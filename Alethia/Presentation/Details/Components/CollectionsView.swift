@@ -11,11 +11,21 @@ struct CollectionsView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
     var details: Detail {
-        vm.details!
+        vm.details.unsafelyUnwrapped
     }
     
+    let columns = [
+        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: 16),
+    ]
+    
     let collections: [Collection] = [
-        Collection(name: "123"),
+        Collection(name: """
+            a really really really really really really really really really really 
+            really really really really really really really really really really 
+            really really really really really really really really really really 
+            long name
+        """),
         Collection(name: "1234"),
         Collection(name: "1235"),
         Collection(name: "1236")
@@ -36,15 +46,17 @@ struct CollectionsView: View {
             }
             .buttonStyle(.plain)
             
-            VStack(spacing: 12) {
+            LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(collections, id: \.name) { collection in
                     HStack(spacing: 8) {
                         Image(systemName: "square.grid.2x2.fill")
                         
                         Text(collection.name)
+                            .lineLimit(4)
                             .font(.subheadline)
                             .fontWeight(.semibold)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(12)
                     .background(.tint.opacity(0.5))
                     .cornerRadius(8)

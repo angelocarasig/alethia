@@ -12,7 +12,7 @@ struct ChapterListView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
     var details: Detail {
-        vm.details!
+        vm.details.unsafelyUnwrapped
     }
     
     var body: some View {
@@ -24,7 +24,7 @@ struct ChapterListView: View {
                 chapter in
                 NavigationLink(
                     destination: ReaderScreen(
-                        chapters: vm.details!.chapters,
+                        chapters: vm.details.unsafelyUnwrapped.chapters,
                         currentChapterIndex: index
                     )
                 ) {
@@ -40,7 +40,7 @@ private struct ChapterHeaderView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
     var details: Detail {
-        vm.details!
+        vm.details.unsafelyUnwrapped
     }
     
     var body: some View {

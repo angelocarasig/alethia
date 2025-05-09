@@ -36,8 +36,12 @@ final class MangaLocalDataSource {
                     }
                 }()
                 
-                request = request.order(
-                    filters.sortDirection == .ascending
+                // XOR on title sort type
+                let useAscending =
+                    (filters.sortDirection == .ascending)
+                    != (filters.sortType == .title)
+
+                request = request.order(useAscending
                     ? sortColumn.asc
                     : sortColumn.desc
                 )
@@ -148,7 +152,7 @@ final class MangaLocalDataSource {
 private extension MangaLocalDataSource {
     // Post fetch retrieve
     private func fetchDetailWithChapters(db: Database, manga: Manga) throws -> Detail? {
-        let titles = try manga.titles.fetchAll(db)
+        let titles = try manga.titles.order(Title.Columns.title).fetchAll(db)
         let covers = try manga.covers.fetchAll(db)
         let authors = try manga.authors.fetchAll(db)
         let tags = try manga.tags.fetchAll(db)
@@ -312,7 +316,8 @@ private extension MangaLocalDataSource {
             url: payload.origin.url,
             referer: payload.origin.referer,
             classification: Classification(rawValue: payload.origin.classification) ?? .Unknown,
-            status: PublishStatus(rawValue: payload.origin.status) ?? .Unknown
+            status: PublishStatus(rawValue: payload.origin.status) ?? .Unknown,
+            createdAt: Date.javascriptDate(payload.origin.creation)
         ).insertAndFetch(db)
         
         // Insert chapters
