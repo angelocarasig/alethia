@@ -8,9 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		176C40592DCB380A00B521AD /* Flow in Frameworks */ = {isa = PBXBuildFile; productRef = 176C40582DCB380A00B521AD /* Flow */; };
-		176C43132DCC421D00B521AD /* DeviceKit in Frameworks */ = {isa = PBXBuildFile; productRef = 176C43122DCC421D00B521AD /* DeviceKit */; };
 		17951B7B2DCCA80500528C58 /* SwiftUIIntrospect in Frameworks */ = {isa = PBXBuildFile; productRef = 17951B7A2DCCA80500528C58 /* SwiftUIIntrospect */; };
-		17951BA42DCD9DBD00528C58 /* SwiftUIMaterialTabs in Frameworks */ = {isa = PBXBuildFile; productRef = 17951BA32DCD9DBD00528C58 /* SwiftUIMaterialTabs */; };
 		179E8D752DA6A3DE00F43EBC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 179E8D742DA6A3DE00F43EBC /* GRDB */; };
 		17EAA3D32DB3141E00CB9EE5 /* ScrollViewLoader in Frameworks */ = {isa = PBXBuildFile; productRef = 17EAA3D22DB3141E00CB9EE5 /* ScrollViewLoader */; };
 		17EAA3E02DB3281F00CB9EE5 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 17EAA3DF2DB3281F00CB9EE5 /* Kingfisher */; };
@@ -56,9 +54,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				17951BA42DCD9DBD00528C58 /* SwiftUIMaterialTabs in Frameworks */,
 				176C40592DCB380A00B521AD /* Flow in Frameworks */,
-				176C43132DCC421D00B521AD /* DeviceKit in Frameworks */,
 				17EAA3E02DB3281F00CB9EE5 /* Kingfisher in Frameworks */,
 				17951B7B2DCCA80500528C58 /* SwiftUIIntrospect in Frameworks */,
 				17EAA3D32DB3141E00CB9EE5 /* ScrollViewLoader in Frameworks */,
@@ -74,7 +70,6 @@
 			children = (
 				17D458D02DA6A34700CF3BA4 /* Alethia */,
 				179E90802DA7DC6E00F43EBC /* AlethiaTests */,
-				17EAA3DE2DB3281F00CB9EE5 /* Frameworks */,
 				17D458CF2DA6A34700CF3BA4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -86,13 +81,6 @@
 				179E907F2DA7DC6E00F43EBC /* AlethiaTests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		17EAA3DE2DB3281F00CB9EE5 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -142,9 +130,7 @@
 				17EAA3D22DB3141E00CB9EE5 /* ScrollViewLoader */,
 				17EAA3DF2DB3281F00CB9EE5 /* Kingfisher */,
 				176C40582DCB380A00B521AD /* Flow */,
-				176C43122DCC421D00B521AD /* DeviceKit */,
 				17951B7A2DCCA80500528C58 /* SwiftUIIntrospect */,
-				17951BA32DCD9DBD00528C58 /* SwiftUIMaterialTabs */,
 			);
 			productName = Alethia;
 			productReference = 17D458CE2DA6A34700CF3BA4 /* Alethia.app */;
@@ -183,9 +169,7 @@
 				17EAA3D12DB3141E00CB9EE5 /* XCRemoteSwiftPackageReference "ScrollViewLoader" */,
 				17EAA3DD2DB3280E00CB9EE5 /* XCRemoteSwiftPackageReference "Kingfisher" */,
 				176C40572DCB37DF00B521AD /* XCRemoteSwiftPackageReference "SwiftUI-Flow" */,
-				176C43112DCC421D00B521AD /* XCRemoteSwiftPackageReference "DeviceKit" */,
 				17951B792DCCA80500528C58 /* XCRemoteSwiftPackageReference "swiftui-introspect" */,
-				17951BA22DCD9DBD00528C58 /* XCRemoteSwiftPackageReference "SwiftUIMaterialTabs" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 17D458CF2DA6A34700CF3BA4 /* Products */;
@@ -407,6 +391,7 @@
 				DEVELOPMENT_TEAM = V2NAC76HWU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -441,6 +426,7 @@
 				DEVELOPMENT_TEAM = V2NAC76HWU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -505,28 +491,12 @@
 				minimumVersion = 3.0.2;
 			};
 		};
-		176C43112DCC421D00B521AD /* XCRemoteSwiftPackageReference "DeviceKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/devicekit/DeviceKit.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.6.0;
-			};
-		};
 		17951B792DCCA80500528C58 /* XCRemoteSwiftPackageReference "swiftui-introspect" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/siteline/swiftui-introspect";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 1.3.0;
-			};
-		};
-		17951BA22DCD9DBD00528C58 /* XCRemoteSwiftPackageReference "SwiftUIMaterialTabs" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/SwiftKickMobile/SwiftUIMaterialTabs";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.0.6;
 			};
 		};
 		179E8D732DA6A3DE00F43EBC /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
@@ -561,20 +531,10 @@
 			package = 176C40572DCB37DF00B521AD /* XCRemoteSwiftPackageReference "SwiftUI-Flow" */;
 			productName = Flow;
 		};
-		176C43122DCC421D00B521AD /* DeviceKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 176C43112DCC421D00B521AD /* XCRemoteSwiftPackageReference "DeviceKit" */;
-			productName = DeviceKit;
-		};
 		17951B7A2DCCA80500528C58 /* SwiftUIIntrospect */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 17951B792DCCA80500528C58 /* XCRemoteSwiftPackageReference "swiftui-introspect" */;
 			productName = SwiftUIIntrospect;
-		};
-		17951BA32DCD9DBD00528C58 /* SwiftUIMaterialTabs */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 17951BA22DCD9DBD00528C58 /* XCRemoteSwiftPackageReference "SwiftUIMaterialTabs" */;
-			productName = SwiftUIMaterialTabs;
 		};
 		179E8D742DA6A3DE00F43EBC /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;

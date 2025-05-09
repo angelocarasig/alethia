@@ -27,7 +27,7 @@ struct Chapter: Codable, Identifiable {
     }
     
     func toString() -> String {
-        return "Chapter \(self.number.toString())"
+        return "Chapter \(self.number.toString()) \(title.isEmpty ? "" : " - \(title)")"
     }
 }
 

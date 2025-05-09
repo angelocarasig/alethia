@@ -95,6 +95,8 @@ private struct PreviousChapter: View {
     // Once triggered it shouldn't be called again
     @State private var hasTriggeredLoad: Lock = .unlocked
     
+    // TODO:
+    let offsetThreshold: CGFloat = 150
     let chapter: ChapterExtended
     var onWillLoadPrevious: (() -> Void)? = nil
     var onDidLoadPrevious: (() -> Void)? = nil
@@ -115,13 +117,17 @@ private struct PreviousChapter: View {
             Spacer()
             
             VStack(spacing: 8) {
-                Text(chapter.chapter.toString())
+                Text("Now Reading")
                     .font(.title)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
-                Text("Currently Reading")
+                Text(chapter.chapter.toString())
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                
+                Text(chapter.scanlator.name)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -138,17 +144,18 @@ private struct PreviousChapter: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Previous Chapter")
-                                .font(.headline)
+                                .font(.title2)
+                                .fontWeight(.semibold)
                                 .foregroundColor(.primary)
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(previousChapter.chapter.toString())
-                                    .font(.body)
+                                    .font(.headline)
                                     .foregroundColor(.primary)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.leading)
                                 
-                                Text("Published by: \(previousChapter.scanlator.name)")
+                                Text(previousChapter.scanlator.name)
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                             }
@@ -160,6 +167,7 @@ private struct PreviousChapter: View {
                             .font(.title)
                             .foregroundStyle(.secondary)
                     }
+                    .padding(10)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
@@ -198,7 +206,7 @@ private struct PreviousChapter: View {
         )
         .onPreferenceChange(ViewOffsetKey.self) { offset in
             print("Offset: \(offset)")
-            if offset > 50, !hasTriggeredLoad, let index = chapterIndex {
+            if offset > offsetThreshold, !hasTriggeredLoad, let index = chapterIndex {
                 hasTriggeredLoad = .locked
                 
                 onWillLoadPrevious?() // track position in scrollview
@@ -212,7 +220,7 @@ private struct PreviousChapter: View {
             }
         }
         .padding()
-        .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
+        //        .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
     }
 }
 
@@ -238,13 +246,17 @@ private struct NextChapter: View {
             Spacer()
             
             VStack(spacing: 8) {
-                Text(chapter.chapter.toString())
+                Text("End of Chapter")
                     .font(.title)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
                 
-                Text("Currently Reading")
+                Text(chapter.chapter.toString())
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                
+                Text(chapter.scanlator.name)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -261,17 +273,18 @@ private struct NextChapter: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Next Chapter")
-                                .font(.headline)
+                                .font(.title2)
+                                .fontWeight(.semibold)
                                 .foregroundColor(.primary)
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(nextChapter.chapter.toString())
-                                    .font(.body)
+                                    .font(.headline)
                                     .foregroundColor(.primary)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.leading)
                                 
-                                Text("Published by: \(nextChapter.scanlator.name)")
+                                Text(nextChapter.scanlator.name)
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                             }
@@ -283,6 +296,7 @@ private struct NextChapter: View {
                             .font(.title)
                             .foregroundStyle(.secondary)
                     }
+                    .padding(10)
                 }
                 .onAppear {
                     Task {
@@ -322,7 +336,6 @@ private struct NextChapter: View {
             Spacer()
         }
         .padding()
-        .frame(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
     }
 }
 

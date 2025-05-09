@@ -11,6 +11,8 @@ import Kingfisher
 struct HeaderView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
+    @State private var imageSize: CGSize = .zero
+    
     var cover: Cover? {
         vm.details?.covers.first(where: { $0.active })
     }
@@ -23,22 +25,42 @@ struct HeaderView: View {
         vm.details?.authors ?? []
     }
     
-    let cellWidth: CGFloat = 125
-    var cellHeight: CGFloat {
-        cellWidth * 22 / 17
+    let maxWidth: CGFloat = 200
+    let maxHeight: CGFloat = 200
+    
+    // used for image calculation
+    private var displaySize: CGSize {
+        guard imageSize.width > 0 else {
+            return CGSize(width: maxWidth, height: maxHeight)
+        }
+        let aspect = imageSize.width / imageSize.height
+        
+        // start by fitting to maxWidth
+        var width = maxWidth
+        var height = width / aspect
+        
+        // if that exceeds maxHeight, fit to maxHeight instead
+        if height > maxHeight {
+            height = maxHeight
+            width = height * aspect
+        }
+        
+        return CGSize(width: width, height: height)
     }
     
     var body: some View {
         VStack(alignment: .leading) {
             KFImage(URL(string: cover?.url ?? ""))
-                .setProcessor(DownsamplingImageProcessor(size: CGSize(width: cellWidth * 2.5, height: cellHeight * 2.5)))
+                .setProcessor(DownsamplingImageProcessor(size: displaySize))
+                .onSuccess { result in
+                    imageSize = result.image.size
+                }
                 .placeholder { Color.tint.shimmer() }
                 .resizable()
-                .fade(duration: 0.25)   
-                .scaledToFill()
-                .frame(width: cellWidth, height: cellHeight)
-                .cornerRadius(8)
-                .clipped()
+                .frame(width: displaySize.width, height: displaySize.height)
+                .clipShape(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                )
             
             Text(title)
                 .font(.title2)
@@ -50,4 +72,3 @@ struct HeaderView: View {
         }
     }
 }
-
