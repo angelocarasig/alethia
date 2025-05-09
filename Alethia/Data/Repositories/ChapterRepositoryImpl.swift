@@ -19,7 +19,6 @@ final class ChapterRepositoryImpl {
 
 extension ChapterRepositoryImpl: ChapterRepository {
     func getChapterContents(chapter: Chapter) async throws -> [String] {
-        // TODO: For now just return remote contents
         return try await remote.getChapterContents(chapter: chapter)
     }
 }

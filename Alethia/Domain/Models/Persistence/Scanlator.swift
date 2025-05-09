@@ -70,6 +70,7 @@ extension Scanlator: DatabaseModel {
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
         // Nothing for now
+        
         // TODO: Create unique index (no duplicate priority values per mangaId)
     }
 }

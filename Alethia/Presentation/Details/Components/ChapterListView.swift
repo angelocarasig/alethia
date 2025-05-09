@@ -24,6 +24,7 @@ struct ChapterListView: View {
                 chapter in
                 NavigationLink(
                     destination: ReaderScreen(
+                        title: vm.details.unsafelyUnwrapped.manga.title,
                         chapters: vm.details.unsafelyUnwrapped.chapters,
                         currentChapterIndex: index
                     )
@@ -41,6 +42,12 @@ private struct ChapterHeaderView: View {
     
     var details: Detail {
         vm.details.unsafelyUnwrapped
+    }
+    
+    var targetChapter: ChapterExtended? {
+        details.chapters
+            .sorted { $0.chapter.number < $1.chapter.number }
+            .first(where: { !$0.chapter.read })
     }
     
     var body: some View {
@@ -63,6 +70,16 @@ private struct ChapterHeaderView: View {
             
             HStack {
                 NavigationLink {
+                    if let chapter = targetChapter, let index = vm.details?.chapters.firstIndex(of: chapter) {
+                        ReaderScreen(
+                            title: vm.details.unsafelyUnwrapped.manga.title,
+                            chapters: vm.details.unsafelyUnwrapped.chapters,
+                            currentChapterIndex: index
+                        )
+                    }
+                    else {
+                        EmptyView()
+                    }
                     
                 } label: {
                     Text("Continue Reading")

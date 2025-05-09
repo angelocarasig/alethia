@@ -13,9 +13,10 @@ struct ReaderScreen: View {
     
     @State private var position: ScrollPosition = .init(id: 0, anchor: .top)
     
-    init(chapters: [ChapterExtended], currentChapterIndex: Int) {
+    init(title: String, chapters: [ChapterExtended], currentChapterIndex: Int) {
         _vm = StateObject(
             wrappedValue: ReaderViewModel(
+                title: title,
                 chapters: chapters,
                 currentChapterIndex: currentChapterIndex
             )
@@ -28,9 +29,16 @@ struct ReaderScreen: View {
                 VerticalReader()
             }
         }
+        .onTapGesture {
+            withAnimation {
+                vm.showOverlay.toggle()
+            }
+        }
+        .overlay(ReaderOverlay())
         .environmentObject(vm)
         .edgesIgnoringSafeArea(.top)
         .toolbar(.hidden, for: .tabBar)
+        .statusBarHidden(!vm.showOverlay)
         .navigationBarBackButtonHidden()
     }
 }

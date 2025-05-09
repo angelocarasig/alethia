@@ -20,13 +20,15 @@ struct Page: Identifiable, Equatable, Hashable {
     let isFirstPage: Bool
     let isLastPage:  Bool
     
-    func getReferer(chapters: [ChapterExtended]) -> String {
-        return chapters[chapterIndex].origin.referer
+    func getUnderlyingChapter(chapters: [ChapterExtended]) -> ChapterExtended {
+        return chapters[chapterIndex]
     }
 }
 
 @MainActor
 final class ReaderViewModel: ObservableObject {
+    @Published var showOverlay: Bool = false
+    @Published var scrolledFromSlider: Bool = false
     @Published private(set) var chapterLoaded: Bool = false
     @Published private(set) var pages: [Page] = []
     @Published var currentPage: Page? = nil {
@@ -37,12 +39,18 @@ final class ReaderViewModel: ObservableObject {
     
     @Published private(set) var errorMessage: String? = nil
     
+    var activeChapter: ChapterExtended? {
+        currentPage?.getUnderlyingChapter(chapters: chapters)
+    }
+    
+    private(set) var mangaTitle: String
     private(set) var chapters: [ChapterExtended]
     
     private var prefetcher: ImagePrefetcher? = nil
     private var getChapterContentsUseCase: GetChapterContentsUseCase
     
-    init(chapters: [ChapterExtended], currentChapterIndex: Int) {
+    init(title: String, chapters: [ChapterExtended], currentChapterIndex: Int) {
+        self.mangaTitle = title
         self.chapters = chapters
         
         self.getChapterContentsUseCase = DependencyInjector.shared.makeGetChapterContentsUseCase()
@@ -138,5 +146,28 @@ final class ReaderViewModel: ObservableObject {
                 isLastPage:  idx == total - 1
             )
         }
+    }
+}
+
+// MARK: Controls for slider buttons
+
+extension ReaderViewModel {
+    private var pagesInActiveChapter: [Page] {
+        guard let idx = currentPage?.chapterIndex else { return [] }
+        return pages.filter { $0.chapterIndex == idx }
+    }
+    
+    /// Jump to the first page in the current chapter
+    func goToFirstPageInChapter() {
+        guard let first = pagesInActiveChapter.first else { return }
+        scrolledFromSlider = true
+        currentPage = first
+    }
+    
+    /// Jump to the last page in the current chapter
+    func goToLastPageInChapter() {
+        guard let last = pagesInActiveChapter.last else { return }
+        scrolledFromSlider = true
+        currentPage = last
     }
 }

@@ -51,7 +51,6 @@ struct HeaderView: View {
     var body: some View {
         VStack(alignment: .leading) {
             KFImage(URL(string: cover?.url ?? ""))
-                .setProcessor(DownsamplingImageProcessor(size: displaySize))
                 .onSuccess { result in
                     imageSize = result.image.size
                 }
