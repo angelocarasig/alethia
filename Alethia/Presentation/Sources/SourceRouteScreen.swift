@@ -28,7 +28,7 @@ struct SourceRouteScreen: View {
             }
             
             LazyVGrid(columns: columns) {
-                ForEach(vm.items, id: \.self) { entry in
+                ForEach(vm.items, id: \.id) { entry in
                     SourceCardView(
                         namespace: namespace,
                         entry: entry

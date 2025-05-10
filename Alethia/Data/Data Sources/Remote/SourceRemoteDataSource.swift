@@ -42,6 +42,48 @@ final class SourceRemoteDataSource {
         return payload
     }
     
+    func searchSource(source: Source, query: String, page: Int) async throws -> [Entry] {
+        let (host, url): (Host, URL) = try await DatabaseProvider.shared.reader.read { db in
+            guard let host = try Host.filter(id: source.hostId).fetchOne(db),
+                  let requestUrl: URL = URL.appendingPaths(
+                      host.baseUrl,
+                      source.path,
+                      "search"
+                  )
+            else { throw ApplicationError.internalError }
+            
+            guard var urlComponents = URLComponents(string: requestUrl.absoluteString) else { throw NetworkError.missingURL }
+            
+            urlComponents.queryItems = [
+                URLQueryItem(name: "query", value: query),
+                URLQueryItem(name: "page", value: String(page)),
+            ]
+            
+            guard let url = urlComponents.url else { throw NetworkError.missingURL }
+            
+            return (host, url)
+        }
+        
+        print("Searching URL \(url.absoluteString)")
+        
+        let dto: [EntryDTO] = try await networkService.request(url: url)
+        
+        return dto.map { item in
+            Entry(
+                mangaId: nil,
+                sourceId: source.id,
+                title: item.title,
+                cover: item.cover,
+                fetchUrl: URL.appendingPaths(
+                    host.baseUrl,
+                    source.path,
+                    "manga",
+                    item.slug
+                )!.absoluteString
+            )
+        }
+    }
+    
     func getSourceRouteContent(sourceRouteId: Int64, page: Int) async throws -> [Entry] {
         let sourceFetching: SourceFetching = try await DatabaseProvider.shared.reader.read { db in
             guard let route = try SourceRoute.filter(id: sourceRouteId).fetchOne(db),

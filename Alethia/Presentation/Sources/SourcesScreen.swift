@@ -51,7 +51,7 @@ struct SourcesScreen: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 16) {
-                        Button(action: {}) {
+                        NavigationLink(destination: SearchHomeView()) {
                             Image(systemName: "magnifyingglass")
                         }
                         .disabled(vm.sources.isEmpty)

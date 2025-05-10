@@ -268,5 +268,6 @@ extension ReaderViewModel {
             options: [.cacheMemoryOnly, .backgroundDecode],
             progressBlock: nil
         )
+        prefetcher?.start()
     }
 }

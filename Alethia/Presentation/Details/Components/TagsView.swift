@@ -24,7 +24,6 @@ struct TagsView: View {
                 }
             }
         }
-        // Negate padding
-        .padding(.trailing, -8)
+        .listRowInsets(EdgeInsets())
     }
 }

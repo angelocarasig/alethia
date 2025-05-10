@@ -64,7 +64,7 @@ struct EntryView: View {
             Text(item.title)
                 .font(.system(size: 14))
                 .fontWeight(.medium)
-                .lineLimit(lineLimit)
+                .lineLimit(lineLimit, reservesSpace: true)
                 .multilineTextAlignment(.leading)
                 .truncationMode(.tail)
                 .foregroundStyle(.text)
@@ -72,5 +72,6 @@ struct EntryView: View {
             Spacer()
         }
         .padding(.horizontal, 4)
+        .padding(.bottom, 2)
     }
 }

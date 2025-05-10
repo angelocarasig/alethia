@@ -47,6 +47,10 @@ extension SourcesRepositoryImpl: SourcesRepository {
         try local.toggleSourceDisabled(sourceId: sourceId, newValue: newValue)
     }
     
+    func searchSource(source: Source, query: String, page: Int) async throws -> [Entry] {
+        return try await remote.searchSource(source: source, query: query, page: page)
+    }
+    
     func getSourceRouteContent(sourceRouteId: Int64, page: Int) async throws -> [Entry] {
         return try await remote.getSourceRouteContent(sourceRouteId: sourceRouteId, page: page)
     }

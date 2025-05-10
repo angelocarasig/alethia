@@ -81,6 +81,10 @@ extension DependencyInjector {
         return ToggleSourceDisabledUseCaseImpl(repository: sourcesRepository)
     }
     
+    func makeSearchSourceUseCase() -> SearchSourceUseCase {
+        return SearchSourceUseCaseImpl(repository: sourcesRepository)
+    }
+    
     func makeGetSourceRouteContentUseCase() -> GetSourceRouteContentUseCase {
         return GetSourceRouteContentUseCaseImpl(repository: sourcesRepository)
     }

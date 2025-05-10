@@ -99,7 +99,7 @@ private struct ChapterHeaderView: View {
                         .foregroundStyle(.text)
                         .frame(width: 44, height: 44)
                         .background(Color.tint)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .clipShape(.rect(cornerRadius: 8))
                 }
             }
             .frame(height: 44)

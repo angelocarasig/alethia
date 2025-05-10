@@ -7,27 +7,47 @@
 
 import SwiftUI
 import Combine
+import Kingfisher
 
 struct SourceHomeScreen: View {
+    @State private var headerEntries: [Entry] = []
+    
     var source: Source
     
+    // TODO: Convert to use-case
     var routes: [SourceRoute] {
         (try? DatabaseProvider.shared.reader.read { db in
             try source.routes.fetchAll(db)
         }) ?? []
     }
     
+    var images: [String] {
+        headerEntries
+            .filter { $0.cover != nil }
+            .map { $0.cover! }
+    }
+    
     var body: some View {
         ScrollView {
+            SourceHeaderView(source: source, images: images)
+
             ForEach(routes) { route in
-                RowView(route: route)
+                RowView(
+                    route: route,
+                    onRandom: { entry in
+                        headerEntries.append(entry)
+                    }
+                )
             }
+            .offset(y: -69)
         }
-        .navigationTitle(source.name)
+        .navigationBarTitle(source.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .edgesIgnoringSafeArea(.top)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 16) {
-                    Button(action: {}) {
+                    NavigationLink(destination: SearchSourceView(source: source)) {
                         Image(systemName: "magnifyingglass")
                     }
                     
@@ -43,8 +63,10 @@ struct SourceHomeScreen: View {
 private struct RowView: View {
     @Namespace private var namespace
     @StateObject private var vm = ViewModel()
+    @State private var didSend: Lock = .unlocked
     
     var route: SourceRoute
+    let onRandom: (Entry) -> Void
     
     var body: some View {
         VStack(alignment: .leading) {
@@ -58,6 +80,11 @@ private struct RowView: View {
             }
         }
         .padding(.horizontal, 10)
+        .onReceive(vm.$items) { items in
+            guard !items.isEmpty, !didSend else { return }
+            didSend = .locked
+            onRandom(items.randomElement()!)
+        }
         .task {
             guard vm.firstLoad else { return }
             await vm.load(with: route.id!)
@@ -73,8 +100,8 @@ private struct RowView: View {
                     .fontWeight(.semibold)
                 Image(systemName: "arrow.right")
             }
-            .foregroundStyle(.text)
         }
+        .buttonStyle(.plain)
     }
     
     @ViewBuilder
@@ -203,7 +230,6 @@ private final class ViewModel: ObservableObject {
             .execute(entries: raw)
             .receive(on: RunLoop.main)
             .sink { [weak self] updated in
-                print("Item 1: \(updated[0])")
                 self?.items = updated
             }
             .store(in: &cancellables)

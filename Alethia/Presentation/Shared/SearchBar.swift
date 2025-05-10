@@ -9,7 +9,18 @@ import SwiftUI
 
 struct SearchBar: View {
     @Binding var searchText: String
-    var placeholder: String = "Search";
+    var placeholder: String
+    var onXTapped: (() -> Void)?
+    
+    init(
+        searchText: Binding<String>,
+        placeholder: String = "Search",
+        onXTapped: (() -> Void)? = nil
+    ) {
+        self._searchText = searchText
+        self.placeholder = placeholder
+        self.onXTapped = onXTapped
+    }
     
     var body: some View {
         HStack {
@@ -23,9 +34,13 @@ struct SearchBar: View {
                 .accessibilityLabel("Search collections")
             
             if !searchText.isEmpty {
-                Button(action: {
-                    searchText = ""
-                }) {
+                Button {
+                    if let onXTapped = onXTapped {
+                        onXTapped()
+                    } else {
+                        searchText = ""
+                    }
+                } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.gray)
                         .font(.system(size: 17))

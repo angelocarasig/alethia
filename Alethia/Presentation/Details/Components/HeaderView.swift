@@ -57,9 +57,7 @@ struct HeaderView: View {
                 .placeholder { Color.tint.shimmer() }
                 .resizable()
                 .frame(width: displaySize.width, height: displaySize.height)
-                .clipShape(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                )
+                .clipShape(.rect(cornerRadius: 8, style: .continuous))
             
             Text(title)
                 .font(.title2)

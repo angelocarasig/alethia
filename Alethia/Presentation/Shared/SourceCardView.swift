@@ -10,12 +10,13 @@ import SwiftUI
 struct SourceCardView: View {
     let namespace: Namespace.ID
     let entry: Entry
+    
     var body: some View {
         NavigationLink {
             DetailsScreen(entry: entry)
                 .navigationTransition(.zoom(sourceID: entry.transitionId, in: namespace))
         } label: {
-            EntryView(item: entry)
+            EntryView(item: entry, lineLimit: 2)
                 .matchedTransitionSource(id: entry.transitionId, in: namespace)
         }
     }
