@@ -8,8 +8,6 @@
 import SwiftUI
 import Combine
 
-enum TransitionDirection { case previous, next }
-
 private struct ViewOffsetKey: PreferenceKey {
     static var defaultValue: CGFloat = .infinity
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
@@ -17,7 +15,7 @@ private struct ViewOffsetKey: PreferenceKey {
     }
 }
 
-struct ChapterTransitionView: View {
+struct VerticalChapterTransition: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var vm: ReaderViewModel
     let direction: TransitionDirection
@@ -72,7 +70,6 @@ struct ChapterTransitionView: View {
             }
             .onAppear {
                 offsetCancellable = offsetSubject
-//                    .debounce(for: .milliseconds(10), scheduler: RunLoop.current)
                     .sink { offset in
                         print("Offset for \(direction): \(offset)")
                         guard let idx = chapterIndex, hasTriggeredLoad == .unlocked else { return }

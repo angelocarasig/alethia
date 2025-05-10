@@ -44,6 +44,7 @@ struct ContinueReadingView: View {
     private func ChaptersExisting(chapter: ChapterExtended, index: Int) -> some View {
         NavigationLink(destination: ReaderScreen(
             title: vm.details.unsafelyUnwrapped.manga.title,
+            orientation: vm.details.unsafelyUnwrapped.manga.orientation,
             chapters: vm.details.unsafelyUnwrapped.chapters,
             currentChapterIndex: index
         )) {

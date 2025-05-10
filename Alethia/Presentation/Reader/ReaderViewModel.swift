@@ -9,34 +9,20 @@ import Foundation
 import SwiftUI
 import Kingfisher
 
-struct Page: Identifiable, Equatable, Hashable {
-    var id: String { "\(chapterNumber)-\(pageNumber)"}
-    
-    let url: String
-    let chapterIndex: Int
-    let chapterNumber: Double
-    let pageNumber: Int
-    
-    let isFirstPage: Bool
-    let isLastPage:  Bool
-    
-    func getUnderlyingChapter(chapters: [ChapterExtended]) -> ChapterExtended {
-        return chapters[chapterIndex]
-    }
-}
-
 @MainActor
 final class ReaderViewModel: ObservableObject {
-    @Published var showOverlay: Bool = false
-    @Published var scrolledFromSlider: Bool = false
-    @Published private(set) var chapterLoaded: Bool = false
+    // Pages
     @Published private(set) var pages: [Page] = []
-    @Published var currentPage: Page? = nil {
-        didSet {
-            prefetch()
-        }
-    }
+    @Published var currentPage: Page? = nil { didSet { prefetch() }}
     
+    // Overlay
+    @Published private(set) var showNotificationBanner: String? = nil
+    @Published var showOverlay: Bool = false
+    @Published var onHorizontalPageTransition: Bool = false
+    @Published var scrolledFromSlider: Bool = false
+    
+    // Handling
+    @Published private(set) var chapterLoaded: Lock = .unlocked
     @Published private(set) var errorMessage: String? = nil
     
     var activeChapter: ChapterExtended? {
@@ -44,14 +30,23 @@ final class ReaderViewModel: ObservableObject {
     }
     
     private(set) var mangaTitle: String
+    private(set) var orientation: Orientation
     private(set) var chapters: [ChapterExtended]
     
+    private var initialChapterIndex: Int
     private var prefetcher: ImagePrefetcher? = nil
     private var getChapterContentsUseCase: GetChapterContentsUseCase
     
-    init(title: String, chapters: [ChapterExtended], currentChapterIndex: Int) {
+    init(
+        title: String,
+        orientation: Orientation,
+        chapters: [ChapterExtended],
+        currentChapterIndex: Int
+    ) {
         self.mangaTitle = title
+        self.orientation = orientation
         self.chapters = chapters
+        self.initialChapterIndex = currentChapterIndex
         
         self.getChapterContentsUseCase = DependencyInjector.shared.makeGetChapterContentsUseCase()
         
@@ -60,7 +55,10 @@ final class ReaderViewModel: ObservableObject {
             await loadChapter(at: currentChapterIndex)
         }
     }
-    
+}
+
+// MARK: Data fetching
+extension ReaderViewModel {
     func loadChapter(at index: Int) async {
         if pages.contains(where: { $0.chapterIndex == index }) {
             return
@@ -83,7 +81,7 @@ final class ReaderViewModel: ObservableObject {
                     pages = newPages
                 }
                 
-                chapterLoaded = true
+                chapterLoaded = .locked
             }
         } catch {
             withAnimation { @MainActor in
@@ -107,7 +105,90 @@ final class ReaderViewModel: ObservableObject {
         return index < chapters.count - 1
     }
     
-    func prefetch() -> Void {
+    private func makePages(from urls: [String], index: Int) -> [Page] {
+        let total = urls.count
+        return urls.enumerated().map { idx, url in
+            Page(
+                url: url,
+                chapterIndex: index,
+                chapterNumber: chapters[index].chapter.number,
+                pageNumber: idx + 1,
+                isFirstPage: idx == 0,
+                isLastPage:  idx == total - 1
+            )
+        }
+    }
+}
+
+
+// MARK: Controls for slider buttons
+extension ReaderViewModel {
+    private var pagesInActiveChapter: [Page] {
+        guard let idx = currentPage?.chapterIndex else { return [] }
+        return pages.filter { $0.chapterIndex == idx }
+    }
+    
+    /// Jump to the first page in the current chapter
+    func goToFirstPageInChapter() {
+        guard let first = pagesInActiveChapter.first else { return }
+        scrolledFromSlider = true
+        currentPage = first
+    }
+    
+    /// Jump to the last page in the current chapter
+    func goToLastPageInChapter() {
+        guard let last = pagesInActiveChapter.last else { return }
+        scrolledFromSlider = true
+        currentPage = last
+    }
+}
+
+// MARK: Utils
+extension ReaderViewModel {
+    @MainActor
+    func toggleReaderDirection() -> Void {
+        chapterLoaded = .unlocked
+        
+        orientation.cycle()
+        
+        let modifiedOrientation: String = {
+            switch orientation {
+            case .Infinite:    return "Infinite Scrolling"
+            case .Vertical:    return "Vertically Paginated"
+            case .LeftToRight: return "Left → Right"
+            case .RightToLeft: return "Right → Left"
+            }
+        }()
+        
+        showNotificationBanner(message: modifiedOrientation)
+        
+        pages.removeAll()
+        let targetIndex = currentPage?.chapterIndex ?? initialChapterIndex
+        
+        Task.detached { [weak self] in
+            guard let self = self else { return }
+
+            await self.loadChapter(at: targetIndex)
+        }
+    }
+    
+    private func showNotificationBanner(message: String) {
+        withAnimation {
+            showNotificationBanner = message
+        }
+        
+        // schedule the hide after 1.5 second
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            await MainActor.run {
+                withAnimation {
+                    showNotificationBanner = nil
+                }
+            }
+        }
+    }
+    
+    private func prefetch() -> Void {
         guard   let currentPage = currentPage,
                 !pages.isEmpty
         else { return }
@@ -132,42 +213,5 @@ final class ReaderViewModel: ObservableObject {
             options: [.cacheMemoryOnly, .backgroundDecode],
             progressBlock: nil
         )
-    }
-    
-    private func makePages(from urls: [String], index: Int) -> [Page] {
-        let total = urls.count
-        return urls.enumerated().map { idx, url in
-            Page(
-                url: url,
-                chapterIndex: index,
-                chapterNumber: chapters[index].chapter.number,
-                pageNumber: idx + 1,
-                isFirstPage: idx == 0,
-                isLastPage:  idx == total - 1
-            )
-        }
-    }
-}
-
-// MARK: Controls for slider buttons
-
-extension ReaderViewModel {
-    private var pagesInActiveChapter: [Page] {
-        guard let idx = currentPage?.chapterIndex else { return [] }
-        return pages.filter { $0.chapterIndex == idx }
-    }
-    
-    /// Jump to the first page in the current chapter
-    func goToFirstPageInChapter() {
-        guard let first = pagesInActiveChapter.first else { return }
-        scrolledFromSlider = true
-        currentPage = first
-    }
-    
-    /// Jump to the last page in the current chapter
-    func goToLastPageInChapter() {
-        guard let last = pagesInActiveChapter.last else { return }
-        scrolledFromSlider = true
-        currentPage = last
     }
 }

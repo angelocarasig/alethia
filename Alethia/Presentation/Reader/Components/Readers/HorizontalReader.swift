@@ -1,15 +1,15 @@
 //
-//  VerticalReaderView.swift
+//  HorizontalReader.swift
 //  Alethia
 //
-//  Created by Angelo Carasig on 8/5/2025.
+//  Created by Angelo Carasig on 10/5/2025.
 //
 
 import SwiftUI
 import SwiftUIIntrospect
 
-struct VerticalReader: View {
-    @EnvironmentObject private var vm: ReaderViewModel
+struct HorizontalReader: View {
+    @EnvironmentObject var vm: ReaderViewModel
     
     @State private var scrollViewRef: UIScrollView?
     @State private var scrollPosition: String?
@@ -17,13 +17,13 @@ struct VerticalReader: View {
     
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 0) {
                     ForEach(vm.pages) { page in
                         let correspondingChapter = page.getUnderlyingChapter(chapters: vm.chapters)
                         
                         if page.isFirstPage {
-                            ChapterTransitionView(
+                            HorizontalChapterTransition(
                                 direction: .previous,
                                 chapter: correspondingChapter,
                                 onWillLoad: { onWillLoad(page: page, isPrevious: true) },
@@ -37,11 +37,12 @@ struct VerticalReader: View {
                             index: page.id,
                             referer: correspondingChapter.origin.referer
                         )
+                        .containerRelativeFrame(.horizontal)
                         .onAppear { vm.currentPage = page }
                         .id("page-\(page.id)")
                         
                         if page.isLastPage {
-                            ChapterTransitionView(
+                            HorizontalChapterTransition(
                                 direction: .next,
                                 chapter: correspondingChapter,
                                 onWillLoad: { onWillLoad(page: page, isPrevious: false) },
@@ -53,6 +54,7 @@ struct VerticalReader: View {
                 }
                 .scrollTargetLayout()
             }
+            .scrollTargetBehavior(.paging)
             .onChange(of: vm.currentPage) {
                 onSliderScroll(proxy: proxy)
             }

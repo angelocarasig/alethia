@@ -19,10 +19,17 @@ struct ReaderOverlay: View {
         vm.pages.filter { $0.chapterIndex == vm.currentPage?.chapterIndex }.count
     }
     
+    var shouldDisplay: Bool {
+        vm.showOverlay &&               // from tap gesture
+        vm.chapterLoaded.boolValue &&   // chapter loaded
+        !vm.onHorizontalPageTransition  // should not be on a horizontal reader page transition
+    }
+    
     var body: some View {
-        if vm.showOverlay {
+        if shouldDisplay {
             VStack {
                 TopSection()
+                TopIslandButtons()
                 
                 Spacer()
                 
@@ -61,18 +68,47 @@ struct ReaderOverlay: View {
     }
     
     @ViewBuilder
+    private func TopIslandButtons() -> some View {
+        HStack {
+            Button {
+                vm.toggleReaderDirection()
+            } label: {
+                Image(systemName: vm.orientation.image)
+                    .foregroundColor(.white)
+                    .font(.system(size: 24))
+                    .frame(width: 50, height: 50)
+                    .background(Color.black.opacity(0.5))
+                    .clipShape(.circle)
+            }
+            
+            Spacer()
+            
+            NavigationLink(destination: EmptyView()) {
+                Image(systemName: "gearshape.fill")
+                    .foregroundColor(.white)
+                    .font(.system(size: 24))
+                    .frame(width: 50, height: 50)
+                    .background(Color.black.opacity(0.5))
+                    .clipShape(.circle)
+            }
+        }
+        .padding(.horizontal, 15)
+    }
+    
+    @ViewBuilder
     private func BottomSection() -> some View {
         VStack {
             HStack {
                 Button(action: vm.goToFirstPageInChapter) {
                     Image(systemName: "chevron.left")
                 }
+                .buttonStyle(.plain)
                 .padding(.horizontal, 15)
                 
                 if totalPages > 1 {
                     Slider(
                         value: Binding<Double>(
-                            get: { Double(vm.currentPage?.pageNumber ?? -1) },
+                            get: { Double(vm.currentPage?.pageNumber ?? .min) },
                             set: { newValue in
                                 vm.scrolledFromSlider = true
                                 vm.currentPage = vm.pages.first(where: { $0.pageNumber == Int(newValue) })
@@ -89,6 +125,7 @@ struct ReaderOverlay: View {
                 Button(action: vm.goToLastPageInChapter) {
                     Image(systemName: "chevron.right")
                 }
+                .buttonStyle(.plain)
                 .padding(.horizontal, 15)
             }
             

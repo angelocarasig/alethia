@@ -25,6 +25,7 @@ struct ChapterListView: View {
                 NavigationLink(
                     destination: ReaderScreen(
                         title: vm.details.unsafelyUnwrapped.manga.title,
+                        orientation: vm.details.unsafelyUnwrapped.manga.orientation,
                         chapters: vm.details.unsafelyUnwrapped.chapters,
                         currentChapterIndex: index
                     )
@@ -73,6 +74,7 @@ private struct ChapterHeaderView: View {
                     if let chapter = targetChapter, let index = vm.details?.chapters.firstIndex(of: chapter) {
                         ReaderScreen(
                             title: vm.details.unsafelyUnwrapped.manga.title,
+                            orientation: vm.details.unsafelyUnwrapped.manga.orientation,
                             chapters: vm.details.unsafelyUnwrapped.chapters,
                             currentChapterIndex: index
                         )

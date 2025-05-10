@@ -13,10 +13,16 @@ struct ReaderScreen: View {
     
     @State private var position: ScrollPosition = .init(id: 0, anchor: .top)
     
-    init(title: String, chapters: [ChapterExtended], currentChapterIndex: Int) {
+    init(
+        title: String,
+        orientation: Orientation,
+        chapters: [ChapterExtended],
+        currentChapterIndex: Int
+    ) {
         _vm = StateObject(
             wrappedValue: ReaderViewModel(
                 title: title,
+                orientation: orientation,
                 chapters: chapters,
                 currentChapterIndex: currentChapterIndex
             )
@@ -25,20 +31,43 @@ struct ReaderScreen: View {
     
     var body: some View {
         VStack {
-            if vm.chapterLoaded {
-                VerticalReader()
+            if vm.chapterLoaded.boolValue {
+                switch vm.orientation {
+                case .Infinite, .Vertical:
+                    VerticalReader()
+                case .LeftToRight, .RightToLeft:
+                    HorizontalReader()
+                }
+            }
+            else if vm.errorMessage != nil {
+                Text("Error: \(vm.errorMessage!)")
+            }
+            else {
+                Text("Loading Chapter...")
             }
         }
         .onTapGesture {
+            guard vm.chapterLoaded.boolValue else { return }
+            
             withAnimation {
                 vm.showOverlay.toggle()
             }
         }
-        .overlay(ReaderOverlay())
+        .animation(.easeInOut, value: vm.chapterLoaded)
+        .overlay(Overlay())
         .environmentObject(vm)
         .edgesIgnoringSafeArea(.top)
         .toolbar(.hidden, for: .tabBar)
-        .statusBarHidden(!vm.showOverlay)
+        .statusBarHidden(!vm.showOverlay && vm.chapterLoaded.boolValue)
         .navigationBarBackButtonHidden()
+    }
+    
+    @ViewBuilder
+    private func Overlay() -> some View {
+        ZStack {
+            ReaderOverlay()
+            
+            ReaderNotificationBanner(message: vm.showNotificationBanner)
+        }
     }
 }
