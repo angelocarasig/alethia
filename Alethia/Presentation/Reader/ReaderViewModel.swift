@@ -36,6 +36,8 @@ final class ReaderViewModel: ObservableObject {
     private var initialChapterIndex: Int
     private var prefetcher: ImagePrefetcher? = nil
     private var getChapterContentsUseCase: GetChapterContentsUseCase
+    private var updateChapterProgressUseCase: UpdateChapterProgressUseCase
+    private var markChapterReadUseCase: MarkChapterReadUseCase
     
     init(
         title: String,
@@ -49,6 +51,8 @@ final class ReaderViewModel: ObservableObject {
         self.initialChapterIndex = currentChapterIndex
         
         self.getChapterContentsUseCase = DependencyInjector.shared.makeGetChapterContentsUseCase()
+        self.updateChapterProgressUseCase = DependencyInjector.shared.makeUpdateChapterProgressUseCase()
+        self.markChapterReadUseCase = DependencyInjector.shared.makeMarkChapterReadUseCase()
         
         Task {
             print("Loading Chapter from INIT")
@@ -71,13 +75,21 @@ extension ReaderViewModel {
             let newPages = makePages(from: urls, index: index)
             
             await MainActor.run {
+                // MARK: Initial Load
                 if pages.isEmpty {
                     pages = newPages
-                } else if let first = pages.first, index > first.chapterIndex {
+                }
+                // MARK: Previous Chapter
+                else if let first = pages.first, index > first.chapterIndex {
                     pages.insert(contentsOf: newPages, at: 0)
-                } else if let last = pages.last, index < last.chapterIndex {
+                }
+                // MARK: Next Chapter
+                else if let last = pages.last, index < last.chapterIndex {
+                    try? onNextChapterLoaded()
+                    
                     pages.append(contentsOf: newPages)
-                } else {
+                }
+                else {
                     pages = newPages
                 }
                 
@@ -89,7 +101,6 @@ extension ReaderViewModel {
             }
         }
     }
-    
     
     func canLoadPrevious(chapter: ChapterExtended) -> Bool {
         guard let index = chapters.firstIndex(where: { $0.chapter.id == chapter.chapter.id }) else {
@@ -120,7 +131,6 @@ extension ReaderViewModel {
     }
 }
 
-
 // MARK: Controls for slider buttons
 extension ReaderViewModel {
     private var pagesInActiveChapter: [Page] {
@@ -128,18 +138,63 @@ extension ReaderViewModel {
         return pages.filter { $0.chapterIndex == idx }
     }
     
-    /// Jump to the first page in the current chapter
     func goToFirstPageInChapter() {
         guard let first = pagesInActiveChapter.first else { return }
         scrolledFromSlider = true
         currentPage = first
     }
     
-    /// Jump to the last page in the current chapter
     func goToLastPageInChapter() {
         guard let last = pagesInActiveChapter.last else { return }
         scrolledFromSlider = true
         currentPage = last
+    }
+}
+
+// MARK: Chapter Progression
+extension ReaderViewModel {
+    func onReaderClose() {
+        guard
+            let activeChapter = activeChapter,
+            let currentPage = currentPage,
+            
+                // If chapter progress is already completed don't update
+            // let user manually mark it as unread before updating progress again
+                activeChapter.chapter.progress < 1.0
+        else { return }
+        
+        let pagesInChapter = pagesInActiveChapter
+        let total = pagesInChapter.count
+        
+        guard total > 0 else { return }
+        
+        // MARK: Calculating progress of current chapter...
+        let progress = Double(currentPage.pageNumber) / Double(total)
+        
+        do {
+            try updateChapterProgressUseCase.execute(
+                chapter: activeChapter.chapter,
+                newProgress: progress
+            )
+        } catch {
+            print("Failed to update progress:", error)
+        }
+        
+        // if we're at the end, mark it read
+        if progress >= 1.0 {
+            do {
+                try markChapterReadUseCase.execute(chapter: activeChapter.chapter)
+            } catch {
+                print("Failed to mark chapter read:", error)
+            }
+        }
+    }
+    
+    private func onNextChapterLoaded() throws -> Void {
+        if let activeChapter = activeChapter {
+            // TODO: Handle if error thrown
+            try markChapterReadUseCase.execute(chapter: activeChapter.chapter)
+        }
     }
 }
 
@@ -167,7 +222,7 @@ extension ReaderViewModel {
         
         Task.detached { [weak self] in
             guard let self = self else { return }
-
+            
             await self.loadChapter(at: targetIndex)
         }
     }

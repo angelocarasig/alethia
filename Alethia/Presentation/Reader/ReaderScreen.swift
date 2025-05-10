@@ -46,28 +46,33 @@ struct ReaderScreen: View {
                 Text("Loading Chapter...")
             }
         }
-        .onTapGesture {
-            guard vm.chapterLoaded.boolValue else { return }
-            
-            withAnimation {
-                vm.showOverlay.toggle()
-            }
-        }
+        .onTapGesture { onTapGesture() }
+        .onDisappear { vm.onReaderClose() }
         .animation(.easeInOut, value: vm.chapterLoaded)
         .overlay(Overlay())
-        .environmentObject(vm)
         .edgesIgnoringSafeArea(.top)
         .toolbar(.hidden, for: .tabBar)
         .statusBarHidden(!vm.showOverlay && vm.chapterLoaded.boolValue)
         .navigationBarBackButtonHidden()
+        .environmentObject(vm)
     }
-    
+}
+
+// MARK: Related
+private extension ReaderScreen {
     @ViewBuilder
     private func Overlay() -> some View {
         ZStack {
             ReaderOverlay()
-            
             ReaderNotificationBanner(message: vm.showNotificationBanner)
+        }
+    }
+    
+    private func onTapGesture() -> Void {
+        guard vm.chapterLoaded.boolValue else { return }
+        
+        withAnimation {
+            vm.showOverlay.toggle()
         }
     }
 }
