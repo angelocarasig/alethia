@@ -14,6 +14,63 @@ final class MangaLocalDataSource {
                     .entry
                     .filter(Manga.Columns.inLibrary)
                 
+                // MARK: Date filter
+                
+                switch filters.addedAt {
+                case .none:
+                    break
+                case .before(let date):
+                    request = request.filter(Manga.Columns.addedAt <= date)
+                
+                case .after(let date):
+                    request = request.filter(Manga.Columns.addedAt >= date)
+                
+                case .between(let start, let end):
+                    request = request
+                        .filter(Manga.Columns.addedAt >= start)
+                        .filter(Manga.Columns.addedAt <= end)
+                }
+                
+                switch filters.updatedAt {
+                case .none:
+                    break
+                case .before(let date):
+                    request = request.filter(Manga.Columns.addedAt <= date)
+                
+                case .after(let date):
+                    request = request.filter(Manga.Columns.addedAt >= date)
+                
+                case .between(let start, let end):
+                    request = request
+                        .filter(Manga.Columns.addedAt >= start)
+                        .filter(Manga.Columns.addedAt <= end)
+                }
+                
+                if !filters.publishStatus.isEmpty {
+                    // Subquery to get the status from the origin with lowest priority
+                    let statusSubquery = Origin
+                        .filter(Origin.Columns.mangaId == Manga.Columns.id)
+                        .order(Origin.Columns.priority.asc)
+                        .limit(1)
+                        .select(Origin.Columns.status)
+                    
+                    // Filter by statuses
+                    request = request.filter(filters.publishStatus.contains(statusSubquery))
+                }
+                
+                if !filters.classification.isEmpty {
+                    // Subquery to get the classification from the origin with lowest priority
+                    let classificationSubquery = Origin
+                        .filter(Origin.Columns.mangaId == Manga.Columns.id)
+                        .order(Origin.Columns.priority.asc)
+                        .limit(1)
+                        .select(Origin.Columns.classification)
+                    
+                    // Filter by statuses
+                    request = request.filter(filters.classification.contains(classificationSubquery))
+                }
+                
+                // MARK: Query string filter
                 if !search.isEmpty {
                     let titleExists = Title
                         .filter(
@@ -27,6 +84,7 @@ final class MangaLocalDataSource {
                     )
                 }
                 
+                // MARK: Sort order
                 let sortColumn: Column = {
                     switch filters.sortType {
                         case .title:   return Manga.Columns.title

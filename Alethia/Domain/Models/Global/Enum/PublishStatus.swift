@@ -7,8 +7,9 @@
 
 import Foundation
 import SwiftUI
+import GRDB
 
-enum PublishStatus: String, Codable, CaseIterable {
+enum PublishStatus: String, Codable, CaseIterable, SQLExpressible {
     case Unknown
     case Ongoing
     case Completed
@@ -22,6 +23,16 @@ enum PublishStatus: String, Codable, CaseIterable {
         case .Hiatus:       .orange
         case .Cancelled:    .red
         case .Unknown:      .gray
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .Ongoing:      return "play.circle.fill"
+        case .Completed:    return "checkmark.circle.fill"
+        case .Hiatus:       return "pause.circle.fill"
+        case .Cancelled:    return "xmark.circle.fill"
+        case .Unknown:      return "questionmark.circle.fill"
         }
     }
 }

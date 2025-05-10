@@ -53,3 +53,48 @@ final class LibraryViewModel: ObservableObject {
         
     }
 }
+
+// MARK: Filter Controls
+extension LibraryViewModel {
+    func togglePublishStatus(status: PublishStatus) -> Void {
+        if let index = filters.publishStatus.firstIndex(of: status) {
+            _ = withAnimation {
+                filters.publishStatus.remove(at: index)
+            }
+        }
+        else {
+            withAnimation {
+                filters.publishStatus.append(status)
+            }
+        }
+    }
+    
+    func toggleClassification(classification: Classification) -> Void {
+        if let index = filters.classification.firstIndex(of: classification) {
+            _ = withAnimation {
+                filters.classification.remove(at: index)
+            }
+        }
+        else {
+            withAnimation {
+                filters.classification.append(classification)
+            }
+        }
+    }
+    
+    func clearFilter(for target: LibraryFilterTarget) -> Void {
+        withAnimation {
+            switch target {
+            case .addedAt:
+                filters.addedAt = .none
+            case .updatedAt:
+                filters.updatedAt = .none
+            case .metadata:
+                filters.publishStatus.removeAll()
+                filters.classification.removeAll()
+            case .tags:
+                filters.tags.removeAll()
+            }
+        }
+    }
+}

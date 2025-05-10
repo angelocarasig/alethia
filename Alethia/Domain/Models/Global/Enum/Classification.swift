@@ -7,8 +7,9 @@
 
 import Foundation
 import SwiftUI
+import GRDB
 
-enum Classification: String, Codable, CaseIterable {
+enum Classification: String, Codable, CaseIterable, SQLExpressible {
     case Unknown
     case Safe
     case Suggestive
@@ -20,6 +21,15 @@ enum Classification: String, Codable, CaseIterable {
         case .Suggestive:   .orange
         case .Explicit:     .red
         case .Unknown:      .gray
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .Safe:         return "shield.checkerboard"
+        case .Suggestive:   return "eye.fill"
+        case .Explicit:     return "exclamationmark.triangle.fill"
+        case .Unknown:      return "questionmark.circle.fill"
         }
     }
 }

@@ -30,20 +30,19 @@ struct LibraryFilters {
     
     // MARK: Content Type
     var publishStatus: [PublishStatus] = []
-    var contentRating: [Classification] = []
+    var classification: [Classification] = []
     
     enum FilterType {
         // excludes basic + sorting
-        case date, tag(includes: Bool), contentType
+        case date
+        case tag(includes: Bool)
+        case metadata
         
         var color: Color {
             switch self {
-            case .date:
-                return .appOrange
-            case .tag(let includes):
-                return includes ? .appGreen : .appRed
-            case .contentType:
-                return .yellow
+            case .date:                 return .appOrange
+            case .metadata:             return .appOrange
+            case .tag(let includes):    return includes ? .appGreen : .appRed
             }
         }
     }
@@ -73,27 +72,28 @@ struct LibraryFilters {
             filters.append(ActiveFilter(name: "Added At", type: .date))
         }
         
-        if !tags.isEmpty {
-            filters.append(
-                contentsOf: tags.map {
-                    ActiveFilter(
-                        name: $0.tag.name,
-                        type: .tag(includes: $0.inclusionType == .include)
-                    )
-                })
-        }
-
+        filters.append(contentsOf: tags.map {
+            ActiveFilter(name: $0.tag.name, type: .tag(includes: $0.inclusionType == .include))
+        })
+        
+        filters.append(contentsOf: publishStatus.map {
+            ActiveFilter(name: $0.rawValue, type: .metadata)
+        })
+        
+        filters.append(contentsOf: classification.map {
+            ActiveFilter(name: $0.rawValue, type: .metadata)
+        })
+        
         return filters
     }
     
     // Checks if default filters are applied
     var isEmpty: Bool {
-        return
-            addedAt == .none &&
-            updatedAt == .none &&
-            tags.isEmpty &&
-            publishStatus.isEmpty &&
-            contentRating.isEmpty
+        return  addedAt == .none &&
+        updatedAt == .none &&
+        tags.isEmpty &&
+        publishStatus.isEmpty &&
+        classification.isEmpty
     }
     
     mutating func reset() {
@@ -103,6 +103,6 @@ struct LibraryFilters {
         updatedAt = .none
         tags = []
         publishStatus = []
-        contentRating = []
+        classification = []
     }
 }
