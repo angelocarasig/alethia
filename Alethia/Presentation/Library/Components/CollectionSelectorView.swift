@@ -37,7 +37,7 @@ struct CollectionSelectorView: View {
         VStack {
             let isSelected = vm.activeCollection == nil
             
-            Text("Default")
+            Text("Default (\(vm.items.count))")
                 .font(.headline)
                 .fontWeight(isSelected ? .semibold : .regular)
                 .foregroundColor(isSelected ? .text : .secondary)

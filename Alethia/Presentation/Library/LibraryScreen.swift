@@ -27,6 +27,7 @@ struct LibraryScreen: View {
                             vm.showFilters = true
                         }) {
                             Image(systemName: "line.horizontal.3.decrease")
+                                .overlay(ActiveFiltersOverlay())
                         }
                         NavigationLink(destination: Text("Hi")) {
                             Image(systemName: "gearshape")
@@ -40,6 +41,18 @@ struct LibraryScreen: View {
             }
         }
         .environmentObject(vm)
+    }
+    
+    @ViewBuilder
+    private func ActiveFiltersOverlay() -> some View {
+        if !vm.filters.activeFilters.isEmpty {
+            Text("\(vm.filters.activeFilters.count)")
+                .font(.caption)
+                .foregroundColor(.white)
+                .padding(6)
+                .background(Circle().fill(Color.red))
+                .offset(x: 10, y: -10)
+        }
     }
 }
 

@@ -10,7 +10,7 @@ import Flow
 
 struct LibraryFilterView: View {
     @EnvironmentObject private var vm: LibraryViewModel
-    
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
@@ -18,21 +18,18 @@ struct LibraryFilterView: View {
                     Text("Filters")
                         .font(.title2)
                         .fontWeight(.semibold)
-                    
                     Spacer()
-                    
-                    Button("Reset to Default") {
-                        vm.filters.reset()
-                    }
-                    .disabled(vm.filters.isEmpty)
+                    Text("Reset to Default")
+                        .foregroundColor(vm.filters.isEmpty ? .secondary : .primary)
+                        .onTapGesture { vm.filters.reset() }
+                        .disabled(vm.filters.isEmpty)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.bottom, 6)
-                
+
                 HStack(spacing: 8) {
                     Text("Sorting By")
                         .foregroundColor(.secondary)
-                    
                     Text(vm.filters.sortType.rawValue)
                         .fontWeight(.medium)
                         .padding(.horizontal, 10)
@@ -40,11 +37,9 @@ struct LibraryFilterView: View {
                         .background(Color.appBlue)
                         .foregroundColor(.text)
                         .cornerRadius(15)
-                    
                     Text("•")
                         .fontWeight(.medium)
                         .foregroundColor(.secondary)
-                    
                     Text(vm.filters.sortDirection.rawValue)
                         .fontWeight(.medium)
                         .padding(.horizontal, 10)
@@ -55,7 +50,7 @@ struct LibraryFilterView: View {
                 }
                 .font(.subheadline)
                 .padding(.bottom, 6)
-                
+
                 HStack(spacing: 8) {
                     Text("Active Filters")
                         .foregroundColor(.secondary)
@@ -68,7 +63,6 @@ struct LibraryFilterView: View {
                             .foregroundColor(.text)
                             .cornerRadius(15)
                     }
-                    
                     HFlow {
                         ForEach(vm.filters.activeFilters, id: \.id) { filter in
                             Text(filter.name)
@@ -83,7 +77,7 @@ struct LibraryFilterView: View {
                 }
                 .font(.subheadline)
             }
-            
+
             Divider().padding(.vertical, 8)
             VStack(spacing: 12) {
                 SortOptions()
@@ -95,10 +89,7 @@ struct LibraryFilterView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
     }
-}
 
-// MARK: Sort Options
-extension LibraryFilterView {
     @ViewBuilder
     private func SortOptions() -> some View {
         VStack {
@@ -106,79 +97,56 @@ extension LibraryFilterView {
                 .font(.title3)
                 .fontWeight(.semibold)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            
             ForEach(LibrarySortType.allCases) { sortType in
                 let isActive = vm.filters.sortType == sortType
-                
-                Button {
+                HStack {
+                    Text(sortType.rawValue)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    Spacer()
+                    if isActive {
+                        Image(systemName: "arrow.up")
+                            .rotationEffect(.degrees(vm.filters.sortDirection == .ascending ? 0 : 180))
+                            .animation(.easeInOut, value: vm.filters.sortDirection)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .foregroundColor(.text)
+                .background(isActive ? Color.appBlue : Color.tint)
+                .cornerRadius(15)
+                .contentShape(Rectangle())
+                .onTapGesture {
                     withAnimation {
                         if isActive {
                             vm.filters.sortDirection.toggle()
-                        }
-                        else {
+                        } else {
                             vm.filters.sortType = sortType
                         }
                     }
-                } label: {
-                    HStack {
-                        Text(sortType.rawValue)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        
-                        Spacer()
-                        
-                        if isActive {
-                            Image(systemName: "arrow.up")
-                                .rotationEffect(.degrees(vm.filters.sortDirection == .ascending ? 0 : 180))
-                                .animation(.easeInOut, value: vm.filters.sortDirection)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .foregroundColor(.text)
-                    .background(isActive ? Color.appBlue : Color.tint)
-                    .cornerRadius(15)
                 }
             }
         }
     }
-}
 
-// MARK: Filter Options
-extension LibraryFilterView {
     @ViewBuilder
     private func FilterOptions() -> some View {
-        //        TagSearchFilterView()
-        //
-        //        Divider()
-        //
         AddedDateFilter()
-        
         Divider()
-        
         UpdatedDateFilter()
-
         Divider()
-
         ContentTypeFilterView()
-        //
-        //        Divider()
-        //
-        //        TrackingFilterView()
     }
-}
 
-// MARK: Dates
-extension LibraryFilterView {
     @ViewBuilder
     private func AddedDateFilter() -> some View {
         DateFilter(
             title: "Added At",
-            onClear: { vm.clearFilter(for: .addedAt)},
+            onClear: { vm.clearFilter(for: .addedAt) },
             date: $vm.filters.addedAt
         )
     }
-    
+
     @ViewBuilder
     private func UpdatedDateFilter() -> some View {
         DateFilter(
@@ -187,25 +155,32 @@ extension LibraryFilterView {
             date: $vm.filters.updatedAt
         )
     }
-    
+
     @ViewBuilder
     private func DateFilter(title: String, onClear: @escaping () -> Void, date: Binding<LibraryDate>) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            HeaderView(title: title, onClear: onClear)
-            
+            HStack {
+                Text(title)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                Spacer()
+                Text("Clear")
+                    .onTapGesture(perform: onClear)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             Picker("Date", selection: date) {
                 ForEach(LibraryDate.allCases, id: \.self) { option in
                     Text(option.displayText).tag(option)
                 }
             }
             .pickerStyle(.segmented)
-            
+
             Group {
                 switch date.wrappedValue {
                 case .none:
                     Text("No Date Filter Applied")
                         .foregroundStyle(.secondary)
-                    
                 case .before(let boundDate):
                     DatePicker(
                         "Before Date",
@@ -215,7 +190,6 @@ extension LibraryFilterView {
                         ),
                         displayedComponents: [.date]
                     )
-                    
                 case .after(let boundDate):
                     DatePicker(
                         "After Date",
@@ -225,7 +199,6 @@ extension LibraryFilterView {
                         ),
                         displayedComponents: [.date]
                     )
-                    
                 case .between(let start, let end):
                     VStack(spacing: 8) {
                         DatePicker(
@@ -252,95 +225,71 @@ extension LibraryFilterView {
             .padding(.top, 8)
         }
     }
-}
 
-// MARK: Metadata
-extension LibraryFilterView {
     @ViewBuilder
     private func ContentTypeFilterView() -> some View {
         let columns = [
             GridItem(.flexible(), spacing: 16),
-            GridItem(.flexible(), spacing: 16),
+            GridItem(.flexible(), spacing: 16)
         ]
-        
         VStack {
-            HeaderView(title: "Content Type", onClear: { vm.clearFilter(for: .metadata) })
-            
+            HStack {
+                Text("Metadata")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                Spacer()
+                Text("Clear")
+                    .onTapGesture { vm.clearFilter(for: .metadata) }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             Text("STATUS")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            
-            // Statuses
+
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(PublishStatus.allCases, id: \.rawValue) { status in
-                    Button {
-                        vm.togglePublishStatus(status: status)
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: status.icon)
-                            
-                            Text(status.rawValue)
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(12)
-                        .background(vm.filters.publishStatus.contains(status) ? status.color : .tint.opacity(0.5))
-                        .cornerRadius(8)
+                    HStack(spacing: 8) {
+                        Image(systemName: status.icon)
+                        Text(status.rawValue)
+                            .font(.headline)
+                            .fontWeight(.semibold)
                     }
-                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(12)
+                    .background(vm.filters.publishStatus.contains(status) ? status.color : .tint.opacity(0.5))
+                    .cornerRadius(8)
+                    .contentShape(Rectangle())
+                    .onTapGesture { vm.togglePublishStatus(status: status) }
                 }
             }
-            
+
             Spacer().frame(height: 25)
-            
+
             Text("CLASSIFICATION")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            
-            // Classifications
+
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(Classification.allCases, id: \.rawValue) { classification in
-                    Button {
-                        vm.toggleClassification(classification: classification)
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: classification.icon)
-                            
-                            Text(classification.rawValue)
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(12)
-                        .background(vm.filters.classification.contains(classification) ? classification.color : .tint.opacity(0.5))
-                        .cornerRadius(8)
+                    HStack(spacing: 8) {
+                        Image(systemName: classification.icon)
+                        Text(classification.rawValue)
+                            .font(.headline)
+                            .fontWeight(.semibold)
                     }
-                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(12)
+                    .background(vm.filters.classification.contains(classification) ? classification.color : .tint.opacity(0.5))
+                    .cornerRadius(8)
+                    .contentShape(Rectangle())
+                    .onTapGesture { vm.toggleClassification(classification: classification) }
                 }
             }
         }
-    }
-}
-
-extension LibraryFilterView {
-    @ViewBuilder
-    private func HeaderView(title: String, onClear: @escaping () -> Void) -> some View {
-        HStack {
-            Text(title)
-                .font(.title3)
-                .fontWeight(.semibold)
-                
-            Spacer()
-            
-            Button("Clear") {
-                onClear()
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
