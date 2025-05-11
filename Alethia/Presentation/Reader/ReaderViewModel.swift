@@ -177,7 +177,7 @@ extension ReaderViewModel {
                 newProgress: progress
             )
         } catch {
-            print("Failed to update progress:", error)
+            self.errorMessage = "Failed to update chapter progression - \(error.localizedDescription)"
         }
         
         // if we're at the end, mark it read
@@ -185,7 +185,7 @@ extension ReaderViewModel {
             do {
                 try markChapterReadUseCase.execute(chapter: activeChapter.chapter)
             } catch {
-                print("Failed to mark chapter read:", error)
+                self.errorMessage = "Failed to update chapter progression - \(error.localizedDescription)"
             }
         }
     }

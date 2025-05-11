@@ -35,7 +35,7 @@ final class SourceLocalDataSource {
         let hostId: Int64 = try await DatabaseProvider.shared.writer.write { db in
             let host = Host(name: payload.name, baseUrl: payload.baseUrl)
             let inserted = try host.insertAndFetch(db)
-            guard let id = inserted.id else { throw ApplicationError.internalError }
+            guard let id = inserted.id else { throw DatabaseError.internalError("Host-retrieved ID failed - Could not be found.") }
             return id
         }
         
@@ -46,7 +46,7 @@ final class SourceLocalDataSource {
                 let iconPath = folderURL.appendingPathComponent("\(source.path).png")
                 
                 guard FileManager.default.fileExists(atPath: iconPath.path) else {
-                    throw ApplicationError.internalError
+                    throw FilesystemError.fileAlreadyExists(iconPath.path)
                 }
                 
                 var dbSource = Source(
@@ -57,7 +57,7 @@ final class SourceLocalDataSource {
                 )
                 
                 dbSource = try dbSource.insertAndFetch(db)
-                guard let sourceId = dbSource.id else { throw ApplicationError.internalError }
+                guard let sourceId = dbSource.id else { throw SourceError.notFound }
                 
                 for routeDTO in source.paths {
                     let route = SourceRoute(

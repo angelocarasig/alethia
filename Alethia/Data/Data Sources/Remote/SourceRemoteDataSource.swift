@@ -16,16 +16,22 @@ final class SourceRemoteDataSource {
     }
     
     func testHost(url: String) async throws -> NewHostPayload {
-        guard let request = URL(string: url) else { throw NetworkError.invalidURL(url: url) }
+        guard let request = URL(string: url) else {
+            throw ApplicationError.urlBuildingFailed("Could not build URL from string: \(url)")
+        }
         
         let host: HostDTO = try await networkService.request(url: request)
         
         var payload: NewHostPayload = NewHostPayload(name: host.name, baseUrl: request.absoluteString)
         
         for source in host.sources {
-            guard let sourceURL = URL.appendingPaths(request.absoluteString, source.path),
-                  let iconURL = URL.appendingPaths(request.absoluteString, "icons", source.icon)
-            else { throw NetworkError.invalidURL(url: url) }
+            guard let sourceURL = URL.appendingPaths(request.absoluteString, source.path) else {
+                throw ApplicationError.urlBuildingFailed("Could not build URL parts: \(request.absoluteString) | \(source.path)")
+            }
+            
+            guard let iconURL = URL.appendingPaths(request.absoluteString, "icons", source.icon) else {
+                throw ApplicationError.urlBuildingFailed("Could not build URL parts: \(request.absoluteString) | icons | \(source.icon)")
+            }
             
             let routeResponse: [SourceRouteDTO] = try await networkService.request(url: sourceURL)
             
@@ -44,27 +50,29 @@ final class SourceRemoteDataSource {
     
     func searchSource(source: Source, query: String, page: Int) async throws -> [Entry] {
         let (host, url): (Host, URL) = try await DatabaseProvider.shared.reader.read { db in
-            guard let host = try Host.filter(id: source.hostId).fetchOne(db),
-                  let requestUrl: URL = URL.appendingPaths(
-                      host.baseUrl,
-                      source.path,
-                      "search"
-                  )
-            else { throw ApplicationError.internalError }
+            guard let host = try Host.filter(id: source.hostId).fetchOne(db) else {
+                throw HostError.notFound
+            }
             
-            guard var urlComponents = URLComponents(string: requestUrl.absoluteString) else { throw NetworkError.missingURL }
+            guard let requestUrl: URL = URL.appendingPaths(
+                host.baseUrl,
+                source.path,
+                "search"
+            )
+            else { throw ApplicationError.urlBuildingFailed("Could not build URL parts: \(host.baseUrl) | \(source.path) | search") }
+            
+            // this part shouldn't fail ever ideally
+            guard var urlComponents = URLComponents(string: requestUrl.absoluteString) else { throw ApplicationError.internalError }
             
             urlComponents.queryItems = [
                 URLQueryItem(name: "query", value: query),
                 URLQueryItem(name: "page", value: String(page)),
             ]
             
-            guard let url = urlComponents.url else { throw NetworkError.missingURL }
+            guard let url = urlComponents.url else { throw ApplicationError.internalError }
             
             return (host, url)
         }
-        
-        print("Searching URL \(url.absoluteString)")
         
         let dto: [EntryDTO] = try await networkService.request(url: url)
         
@@ -86,20 +94,28 @@ final class SourceRemoteDataSource {
     
     func getSourceRouteContent(sourceRouteId: Int64, page: Int) async throws -> [Entry] {
         let sourceFetching: SourceFetching = try await DatabaseProvider.shared.reader.read { db in
-            guard let route = try SourceRoute.filter(id: sourceRouteId).fetchOne(db),
-                  let source = try Source.filter(id: route.sourceId).fetchOne(db),
-                  let host = try Host.filter(id: source.hostId).fetchOne(db)
-            else { throw ApplicationError.internalError }
+            guard let route = try SourceRoute.filter(id: sourceRouteId).fetchOne(db) else {
+                throw SourceError.routeNotFound(id: sourceRouteId)
+            }
+            
+            guard let source = try Source.filter(id: route.sourceId).fetchOne(db) else {
+                throw SourceError.notFound
+            }
+            
+            guard let host = try Host.filter(id: source.hostId).fetchOne(db) else {
+                throw HostError.notFound
+            }
             
             return SourceFetching(host: host, source: source, route: route)
         }
         
-        guard var urlComponents = URLComponents(string: sourceFetching.fetchUrl) else { throw NetworkError.missingURL }
+        // Should not happen ever, ideally
+        guard var urlComponents = URLComponents(string: sourceFetching.fetchUrl) else { throw ApplicationError.internalError }
         
         urlComponents.queryItems = [URLQueryItem(name: "page", value: String(page))]
         
         guard let url = urlComponents.url else {
-            throw NetworkError.missingURL
+            throw ApplicationError.internalError
         }
         
         let dto: [EntryDTO] = try await networkService.request(url: url)

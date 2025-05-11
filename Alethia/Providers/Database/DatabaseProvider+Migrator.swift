@@ -30,7 +30,7 @@ extension DatabaseProvider {
             return migrator
         }
         catch {
-            fatalError("Failed to create migrator: \(error)")
+            fatalError(DatabaseError.migratorSetupFailed(error).localizedDescription)
         }
     }
 }

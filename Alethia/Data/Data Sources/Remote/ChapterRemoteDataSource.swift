@@ -12,16 +12,28 @@ final class ChapterRemoteDataSource {
         let ns = NetworkService()
         
         let url: URL = try await DatabaseProvider.shared.reader.read { db in
-            guard let origin = try Origin.filter(id: chapter.originId).fetchOne(db),
-                  let source = try Source.filter(id: origin.sourceId).fetchOne(db),
-                  let host = try Host.filter(id: source.hostId).fetchOne(db),
-                  let url = URL.appendingPaths(
-                    host.baseUrl,
-                    source.path,
-                    "chapter",
-                    chapter.slug
-                )
-            else { throw ApplicationError.internalError }
+            guard let origin = try Origin.filter(id: chapter.originId).fetchOne(db) else {
+                throw OriginError.notFound
+            }
+            
+            guard let source = try Source.filter(id: origin.sourceId).fetchOne(db) else {
+                throw SourceError.notFound
+            }
+            
+            guard let host = try Host.filter(id: source.hostId).fetchOne(db) else {
+                throw HostError.notFound
+            }
+            
+            guard let url = URL.appendingPaths(
+                host.baseUrl,
+                source.path,
+                "chapter",
+                chapter.slug
+            )
+            else {
+                let reason = "Failed to append URL paths: \(host.baseUrl), \(source.path), chapter, \(chapter.slug)"
+                throw ApplicationError.urlBuildingFailed(reason)
+            }
             
             return url
         }

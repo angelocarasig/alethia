@@ -10,6 +10,7 @@ import Foundation
 enum ApplicationError: LocalizedError {
     case operationCancelled
     case internalError
+    case urlBuildingFailed(String)
     
     var errorDescription: String? {
         switch self {
@@ -17,6 +18,8 @@ enum ApplicationError: LocalizedError {
             return "The given operation was cancelled."
         case .internalError:
             return "An internal error occurred."
+        case .urlBuildingFailed(let reason):
+            return "Tried to build URL but failed: \(reason)"
         }
     }
 }

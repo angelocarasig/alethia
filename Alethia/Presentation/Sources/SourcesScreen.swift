@@ -272,7 +272,6 @@ private final class SourcesViewModel: ObservableObject {
                 withAnimation {
                     self?.sources = sources
                 }
-                print("Received \(sources.count) sources")
             }
             .store(in: &cancellables)
     }

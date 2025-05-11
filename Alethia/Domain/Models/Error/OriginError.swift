@@ -1,19 +1,19 @@
 //
-//  MangaError.swift
+//  OriginError.swift
 //  Alethia
 //
-//  Created by Angelo Carasig on 11/4/2025.
+//  Created by Angelo Carasig on 11/5/2025.
 //
 
 import Foundation
 
-enum MangaError: LocalizedError {
+enum OriginError: LocalizedError {
     case notFound
     
     var errorDescription: String? {
         switch self {
         case .notFound:
-            return "Manga could not be found."
+            return "Origin could not be found."
         }
     }
 }

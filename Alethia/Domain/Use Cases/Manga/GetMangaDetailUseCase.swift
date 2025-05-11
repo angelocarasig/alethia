@@ -8,11 +8,6 @@
 import Foundation
 import Combine
 
-/**
- Fetches manga detail metadata based on the provided entry
- - Parameter entry: entry object of the manga to be retrieving
- - Returns: observer to the detail struct
- */
 protocol GetMangaDetailUseCase {
     func execute(entry: Entry) -> AnyPublisher<[Detail], Error>
 }

@@ -9,11 +9,14 @@ import Foundation
 
 enum HostError: LocalizedError {
     case duplicateHost
+    case notFound
     
     var errorDescription: String? {
         switch self {
         case .duplicateHost:
-            return "Host already exists"
+            return "Host already exists."
+        case .notFound:
+            return "Host could not be found."
         }
     }
 }

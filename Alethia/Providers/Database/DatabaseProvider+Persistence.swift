@@ -37,7 +37,7 @@ extension DatabaseProvider {
             return database
         }
         catch {
-            fatalError("Error initializing database: \(error)")
+            fatalError(DatabaseError.initializationFailed(error).localizedDescription)
         }
     }
 }

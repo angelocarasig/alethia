@@ -18,7 +18,9 @@ final class MangaRemoteDataSource {
     func fetchMangaDetail(entry: Entry) async throws -> DetailDTO {
         guard let fetchUrl = entry.fetchUrl,
               let url = URL(string: fetchUrl)
-        else { throw NetworkError.missingURL }
+        else {
+            let reason = "Entry titled: \(entry.title) does not have a valid fetch URL: '\(entry.fetchUrl ?? "")'"
+            throw ApplicationError.urlBuildingFailed(reason) }
         
         return try await networkService.request(url: url)
     }

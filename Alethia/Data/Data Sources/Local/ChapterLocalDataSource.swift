@@ -17,7 +17,7 @@ final class ChapterLocalDataSource {
         
         try DatabaseProvider.shared.writer.write { db in
             guard var targetChapter = try Chapter.fetchOne(db, key: chapter.id) else {
-                throw ApplicationError.internalError
+                throw ChapterError.notFound
             }
             
             targetChapter.progress = newProgress
@@ -29,7 +29,7 @@ final class ChapterLocalDataSource {
     func markChapterRead(chapter: Chapter) throws -> Void {
         try DatabaseProvider.shared.writer.write { db in
             guard var targetChapter = try Chapter.fetchOne(db, key: chapter.id) else {
-                throw ApplicationError.internalError
+                throw ChapterError.notFound
             }
             
             targetChapter.progress = 1.0

@@ -122,15 +122,6 @@ extension Manga: FetchableRecord { }
 
 extension Manga: PersistableRecord { }
 
-extension Manga {
-    static func new() -> Manga {
-        Manga(
-            title: randomString(length: 10),
-            synopsis: randomString(length: 10)
-        )
-    }
-}
-
 extension Manga: DatabaseModel {
     static var version: Version = Version(1, 0, 0)
     
