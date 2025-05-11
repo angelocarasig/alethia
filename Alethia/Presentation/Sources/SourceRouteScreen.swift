@@ -64,6 +64,9 @@ struct SourceRouteScreen: View {
                 }
             }
         }
+        .task {
+            await vm.load(with: route.id!)
+        }
         .navigationTitle(route.name)
     }
     
