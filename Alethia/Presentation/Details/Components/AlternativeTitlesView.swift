@@ -11,7 +11,7 @@ struct AlternativeTitlesView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
     var titles: [Title] {
-        vm.details.unsafelyUnwrapped.titles
+        vm.details?.titles ?? []
     }
     
     @State private var isExpanded: Bool = false
@@ -29,12 +29,12 @@ struct AlternativeTitlesView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
             Text("Alternative Titles")
                 .font(.title2)
                 .fontWeight(.bold)
             
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
                 ForEach(isExpanded ? titles : Array(titles.prefix(5)), id: \.self.id) { title in
                     Text(title.title)
                         .font(.subheadline)

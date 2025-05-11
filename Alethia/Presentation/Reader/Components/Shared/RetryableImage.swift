@@ -169,11 +169,11 @@ private struct ReaderImageRetry: View {
         } label: {
             Text("Retry")
                 .font(.system(size: 16))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
+                .padding(.horizontal, Constants.Padding.screen)
+                .padding(.vertical, Constants.Padding.regular)
                 .background(Color.appRed)
                 .foregroundColor(.white)
-                .cornerRadius(8)
+                .cornerRadius(Constants.Corner.Radius.regular)
         }
     }
 }

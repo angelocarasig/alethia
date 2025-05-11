@@ -37,7 +37,7 @@ struct ContinueReadingView: View {
             }
         }
         .redacted(reason: details == nil ? .placeholder : [])
-        .padding(16)
+        .padding(Constants.Padding.screen)
     }
     
     @ViewBuilder
@@ -48,12 +48,12 @@ struct ContinueReadingView: View {
             chapters: vm.details.unsafelyUnwrapped.chapters,
             currentChapterIndex: index
         )) {
-            HStack(spacing: 12) {
+            HStack(spacing: Constants.Spacing.large) {
                 Image(systemName: "play.fill")
                     .foregroundColor(.white)
                     .font(.system(size: 18, weight: .bold))
                 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
                     Text(index == vm.details.unsafelyUnwrapped.chapters.count - 1 ? "Start" : "Continue")
                         .font(.headline)
                         .fontWeight(.semibold)
@@ -64,14 +64,14 @@ struct ContinueReadingView: View {
                         .foregroundColor(.white.opacity(0.8))
                 }
             }
-            .padding(.vertical, 10)
-            .padding(.horizontal, 20)
+            .padding(.vertical, Constants.Padding.regular)
+            .padding(.horizontal, Constants.Padding.screen)
             .background(
                 ZStack {
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: Constants.Corner.Radius.button)
                         .fill(Color.appBlue.opacity(0.9))
                     
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: Constants.Corner.Radius.button)
                         .stroke(Color.appBlue, lineWidth: 1)
                 }
             )
@@ -81,12 +81,12 @@ struct ContinueReadingView: View {
     
     @ViewBuilder
     private func AllChaptersRead() -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Constants.Spacing.regular) {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundColor(.green)
                 .font(.system(size: 18, weight: .bold))
             
-            VStack(alignment: .center, spacing: 2) {
+            VStack(alignment: .center, spacing: Constants.Spacing.minimal) {
                 Text("All Chapters")
                 Text("Read")
             }
@@ -94,10 +94,10 @@ struct ContinueReadingView: View {
             .foregroundColor(.secondary)
                 
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 16)
+        .padding(.vertical, Constants.Padding.regular)
+        .padding(.horizontal, Constants.Padding.screen)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: Constants.Corner.Radius.button)
                 .fill(.ultraThinMaterial)
         )
     }

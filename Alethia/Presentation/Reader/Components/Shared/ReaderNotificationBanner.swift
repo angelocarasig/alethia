@@ -16,8 +16,8 @@ struct ReaderNotificationBanner: View {
                 .font(.headline)
                 .fontWeight(.bold)
                 .frame(width: 200)
-                .padding(.horizontal, 32)
-                .padding(.vertical, 16)
+                .padding(.horizontal, Constants.Padding.screen * 2)
+                .padding(.vertical, Constants.Padding.screen)
                 .background(.ultraThinMaterial, in: .capsule)
                 .transition(.opacity)
         }

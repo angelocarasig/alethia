@@ -8,7 +8,11 @@
 import SwiftUI
 
 struct SynopsisView: View {
-    let synopsis: String
+    @EnvironmentObject private var vm: DetailsViewModel
+    
+    var synopsis: String {
+        vm.details?.manga.synopsis ?? "No Description"
+    }
     
     @State private var isExpanded: Bool = false
     @State private var truncated: Bool = false

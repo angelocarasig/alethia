@@ -48,7 +48,7 @@ struct BackgroundGradientView: View {
                 startPoint: .top,
                 endPoint: .center
             )
-            .frame(height: BACKGROUND_GRADIENT_BREAKPOINT * 2)
+            .frame(height: BACKGROUND_GRADIENT_BREAKPOINT * 1.5)
             
             Color.background.frame(maxWidth: .infinity, maxHeight: .infinity)
         }

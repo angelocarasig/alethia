@@ -56,6 +56,14 @@ extension DetailsViewModel {
         return nil
     }
     
+    var inLibrary: Bool {
+        details?.manga.inLibrary ?? false
+    }
+    
+    var chapters: [ChapterExtended] {
+        details?.chapters ?? []
+    }
+    
     var stateIdentifier: String {
         switch state {
         case .loading: return "loading"

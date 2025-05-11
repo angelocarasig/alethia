@@ -9,31 +9,27 @@ import SwiftUI
 
 private extension Button {
     func actionButton(_ isActive: Bool) -> some View {
-        self.padding(.horizontal, 4)
+        self.padding(.horizontal, Constants.Padding.minimal)
             .lineLimit(1)
             .fontWeight(.medium)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .foregroundColor(isActive ? .background : .text)
             .background(isActive ? .text : .tint, in: .rect(cornerRadius: 12, style: .continuous))
-            .cornerRadius(12)
+            .cornerRadius(Constants.Corner.Radius.button)
     }
 }
 
 struct ActionButtonsView: View {
     @EnvironmentObject var vm: DetailsViewModel
     
-    var details: Detail {
-        vm.details.unsafelyUnwrapped
-    }
-    
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Constants.Spacing.large) {
             Button {
                 vm.toggleInLibrary()
             } label: {
                 LibraryButton()
             }
-            .actionButton(details.manga.inLibrary)
+            .actionButton(vm.details?.manga.inLibrary ?? false)
             
             Button {
                 print("TODO: Adding Origin!")
@@ -42,7 +38,8 @@ struct ActionButtonsView: View {
             }
             .actionButton(vm.sourcePresent)
             .disabled(
-                !details.manga.inLibrary
+                vm.details != nil &&
+                !vm.details!.manga.inLibrary
                 // TODO: new way to figure out source
                 // vm.entry.fetchUrl == nil
             )
@@ -50,14 +47,14 @@ struct ActionButtonsView: View {
             QuickButtonsView()
         }
         .frame(height: 45)
-        .animation(.easeInOut(duration: 0.3), value: details.manga.inLibrary)
+        .animation(.easeInOut(duration: 0.3), value: vm.details?.manga.inLibrary)
     }
     
     @ViewBuilder
     private func LibraryButton() -> some View {
         HStack {
-            Image(systemName: details.manga.inLibrary ? "heart.fill" : "plus")
-            Text(details.manga.inLibrary ? "In Library" : "Add to Library")
+            Image(systemName: vm.inLibrary ? "heart.fill" : "plus")
+            Text(vm.inLibrary ? "In Library" : "Add to Library")
         }
     }
     
@@ -65,7 +62,10 @@ struct ActionButtonsView: View {
     private func OriginButton() -> some View {
         HStack {
             Image(systemName: "plus.square.dashed")
-            Text(details.manga.inLibrary ? "\(details.origins.count) Source\((details.origins.count == 1) ? "" : "s")" : "Add Source")
+            Text(vm.inLibrary ?
+                 "^[\(vm.details?.origins.count ?? 0) Source](inflected: true)" :
+                    "Add Source"
+            )
         }
     }
 }
@@ -111,8 +111,11 @@ private struct QuickButtonsView: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
                 .foregroundColor(.background)
-                .background(.text, in: .rect(cornerRadius: 12, style: .continuous))
-                .cornerRadius(12)
+                .background(.text,in: .rect(
+                    cornerRadius: Constants.Corner.Radius.button,
+                    style: .continuous
+                )
+                )
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -128,9 +131,6 @@ private struct QuickButtonsView: View {
                 }
             }
         }
-        //        .sheet(isPresented: $vm.showMergeExistingSheet) {
-        //            ExistingMergeSheet(vm: vm)
-        //        }
         .alert("Are you sure?", isPresented: $showConfirmation) {
             Button("Confirm", role: .destructive) { confirmationData?.action() }
             Button("Cancel", role: .cancel) { }

@@ -47,7 +47,7 @@ struct SourceHomeScreen: View {
         .edgesIgnoringSafeArea(.top)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 16) {
+                HStack(spacing: Constants.Spacing.toolbar) {
                     NavigationLink(destination: SearchSourceView(source: source)) {
                         Image(systemName: "magnifyingglass")
                     }
@@ -112,10 +112,11 @@ private struct RowView: View {
             EmptyContent()
         } else {
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 4) {
+                LazyHStack(spacing: Constants.Spacing.minimal) {
                     ForEach(content, id: \.self) { entry in
                         SourceCardView(namespace: namespace, source: source, entry: entry)
                             .frame(width: 150)
+                            .id(entry.id)
                     }
                 }
             }
@@ -140,7 +141,7 @@ private struct RowView: View {
                         
                         Spacer()
                     }
-                    .padding(.horizontal, 4)
+                    .padding(.horizontal, Constants.Padding.minimal)
                     .cornerRadius(6)
                     .frame(width: 150)
                 }
@@ -150,7 +151,7 @@ private struct RowView: View {
     
     @ViewBuilder
     private func EmptyContent() -> some View {
-        VStack(alignment: .center, spacing: 12) {
+        VStack(alignment: .center, spacing: Constants.Spacing.large) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundColor(.red)
                 .font(.largeTitle)
@@ -170,8 +171,8 @@ private struct RowView: View {
             }) {
                 Text("Retry")
                     .fontWeight(.semibold)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, Constants.Padding.regular)
+                    .padding(.vertical, Constants.Padding.minimal)
             }
             .buttonStyle(.borderedProminent)
             .tint(.blue)
@@ -179,7 +180,7 @@ private struct RowView: View {
         .frame(maxWidth: .infinity, alignment: .center)
         .padding()
         .background(Color.tint)
-        .cornerRadius(8)
+        .cornerRadius(Constants.Corner.Radius.regular)
         .padding(.horizontal)
     }
 }

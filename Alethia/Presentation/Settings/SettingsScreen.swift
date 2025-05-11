@@ -14,18 +14,18 @@ struct SettingsScreen: View {
                 Section {
                     NavigationLink(destination: EmptyView()) {
                         Image(systemName: "gear")
-                            .padding(4)
+                            .padding(Constants.Padding.minimal)
                             .background(Color.secondary)
-                            .cornerRadius(8)
+                            .cornerRadius(Constants.Corner.Radius.regular)
                         
                         Text("General")
                     }
                     
                     NavigationLink(destination: SettingsSourcesView()) {
                         Image(systemName: "leaf.arrow.circlepath")
-                            .padding(4)
+                            .padding(Constants.Padding.minimal)
                             .background(Color.blue)
-                            .cornerRadius(8)
+                            .cornerRadius(Constants.Corner.Radius.regular)
                         
                         Text("Sources")
                     }

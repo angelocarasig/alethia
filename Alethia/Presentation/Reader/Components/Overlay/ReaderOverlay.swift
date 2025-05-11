@@ -64,7 +64,7 @@ struct ReaderOverlay: View {
         .frame(maxWidth: .infinity)
         .padding()
         .background(.bar)
-        .padding(.top, 50)
+        .padding(.top, 50) // Top offset
     }
     
     @ViewBuilder
@@ -92,7 +92,7 @@ struct ReaderOverlay: View {
                     .clipShape(.circle)
             }
         }
-        .padding(.horizontal, 15)
+        .padding(.horizontal, Constants.Padding.screen)
     }
     
     @ViewBuilder
@@ -103,7 +103,7 @@ struct ReaderOverlay: View {
                     Image(systemName: "chevron.left")
                 }
                 .buttonStyle(.plain)
-                .padding(.horizontal, 15)
+                .padding(.horizontal, Constants.Padding.screen)
                 
                 if totalPages > 1 {
                     Slider(
@@ -126,17 +126,17 @@ struct ReaderOverlay: View {
                     Image(systemName: "chevron.right")
                 }
                 .buttonStyle(.plain)
-                .padding(.horizontal, 15)
+                .padding(.horizontal, Constants.Padding.screen)
             }
             
             Text("Page \(vm.currentPage?.pageNumber ?? -1) of \(totalPages)")
                 .font(.headline)
                 .fontWeight(.medium)
         }
-        .padding(8)
+        .padding(Constants.Padding.regular)
         .frame(maxWidth: .infinity)
         .background(.bar)
-        .cornerRadius(20)
+        .cornerRadius(Constants.Corner.Radius.panel)
         .padding()
     }
 }

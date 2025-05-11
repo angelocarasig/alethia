@@ -11,15 +11,11 @@ import Kingfisher
 struct ChapterListView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
-    var details: Detail {
-        vm.details.unsafelyUnwrapped
-    }
-    
     var body: some View {
         LazyVStack {
             ChapterHeaderView()
             
-            ForEach(Array(details.chapters.enumerated()), id: \.element.chapter.id) {
+            ForEach(Array(vm.chapters.enumerated()), id: \.element.chapter.id) {
                 index,
                 chapter in
                 NavigationLink(
@@ -34,6 +30,10 @@ struct ChapterListView: View {
                         .id("\(chapter.chapter.title)-\(chapter.chapter.progress)")
                 }
                 .buttonStyle(.plain)
+                
+                if index < vm.chapters.count - 1 {
+                    Divider()
+                }
             }
         }
     }
@@ -42,25 +42,21 @@ struct ChapterListView: View {
 private struct ChapterHeaderView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
-    var details: Detail {
-        vm.details.unsafelyUnwrapped
-    }
-    
     var targetChapter: ChapterExtended? {
-        details.chapters
+        vm.chapters
             .sorted { $0.chapter.number < $1.chapter.number }
             .first(where: { !$0.chapter.read })
     }
     
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Constants.Spacing.large) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
                     Text("Chapters")
                         .font(.title2)
                         .fontWeight(.bold)
                     
-                    Text("\(details.chapters.count) chapters")
+                    Text("\(vm.chapters.count) chapters")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -100,7 +96,7 @@ private struct ChapterHeaderView: View {
                         .foregroundStyle(.text)
                         .frame(width: 44, height: 44)
                         .background(Color.tint)
-                        .clipShape(.rect(cornerRadius: 8))
+                        .clipShape(.rect(cornerRadius: Constants.Corner.Radius.regular))
                 }
             }
             .frame(height: 44)
@@ -159,7 +155,10 @@ private struct CircleButton: View {
     private var buttonContent: some View {
         Image(systemName: icon)
             .font(.system(size: 16, weight: .semibold))
-            .frame(width: 40, height: 40)
+            .frame(
+                width: Constants.Icon.Size.regular,
+                height: Constants.Icon.Size.regular
+            )
             .background(isActive ? Color.accentColor : Color.tint)
             .foregroundStyle(.text)
             .clipShape(Circle())
@@ -174,19 +173,20 @@ private struct ChapterRow: View {
         item.chapter.progress >= 1.0
     }
     
-    private let iconSize: CGFloat = 40
-    
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Constants.Spacing.regular) {
             KFImage(URL(fileURLWithPath: item.source?.icon ?? ""))
                 .placeholder { Color.tint.shimmer() }
                 .resizable()
                 .scaledToFit()
-                .frame(width: iconSize, height: iconSize)
-                .cornerRadius(8)
-                .padding(.trailing, 8)
+                .frame(
+                    width: Constants.Icon.Size.regular,
+                    height: Constants.Icon.Size.regular
+                )
+                .cornerRadius(Constants.Corner.Radius.regular)
+                .padding(.trailing, Constants.Padding.regular)
             
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
                 HStack {
                     Text("Chapter \(item.chapter.number.toString())")
                     Text("•").foregroundColor(.secondary)
@@ -196,20 +196,20 @@ private struct ChapterRow: View {
                         Text("NEW")
                             .font(.caption)
                             .foregroundStyle(.white)
-                            .padding(.vertical, 3)
-                            .padding(.horizontal, 6)
+                            .padding(.vertical, Constants.Padding.minimal)
+                            .padding(.horizontal, Constants.Padding.regular)
                             .background(Color.appRed)
-                            .cornerRadius(8)
+                            .cornerRadius(Constants.Corner.Radius.regular)
                     }
                     
                     if read {
                         Text("Read")
                             .font(.caption)
                             .foregroundStyle(.white)
-                            .padding(.vertical, 3)
-                            .padding(.horizontal, 6)
+                            .padding(.vertical, Constants.Padding.minimal)
+                            .padding(.horizontal, Constants.Padding.regular)
                             .background(Color.appOrange)
-                            .cornerRadius(8)
+                            .cornerRadius(Constants.Corner.Radius.regular)
                     }
                 }
                 .font(.subheadline)
@@ -237,7 +237,7 @@ private struct ChapterRow: View {
             Spacer()
             DownloadButton()
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, Constants.Padding.regular)
         .overlay {
             if read {
                 ZStack(alignment: .topTrailing) {

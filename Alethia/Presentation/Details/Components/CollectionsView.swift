@@ -10,13 +10,9 @@ import SwiftUI
 struct CollectionsView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
-    var details: Detail {
-        vm.details.unsafelyUnwrapped
-    }
-    
     let columns = [
-        GridItem(.flexible(), spacing: 16),
-        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: Constants.Spacing.large),
+        GridItem(.flexible(), spacing: Constants.Spacing.large),
     ]
     
     let collections: [Collection] = [
@@ -32,7 +28,7 @@ struct CollectionsView: View {
     ]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
             NavigationLink(destination: ManageCollectionsView()) {
                 HStack {
                     Text("Collections")
@@ -46,24 +42,26 @@ struct CollectionsView: View {
             }
             .buttonStyle(.plain)
             
-            LazyVGrid(columns: columns, spacing: 12) {
+            LazyVGrid(columns: columns, spacing: Constants.Spacing.regular) {
                 ForEach(collections, id: \.name) { collection in
-                    HStack(spacing: 8) {
+                    HStack(spacing: Constants.Spacing.regular) {
                         Image(systemName: "square.grid.2x2.fill")
                         
                         Text(collection.name)
-                            .lineLimit(4)
                             .font(.subheadline)
                             .fontWeight(.semibold)
+                            .lineLimit(3)
+                            .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(12)
+                    .padding(Constants.Padding.regular)
+                    .padding(.vertical, Constants.Padding.regular)
                     .background(.tint.opacity(0.5))
-                    .cornerRadius(8)
+                    .cornerRadius(Constants.Corner.Radius.regular)
                 }
             }
         }
-        .opacity(details.manga.inLibrary ? 1 : 0.5)
+        .opacity(vm.inLibrary ? 1 : 0.5)
     }
 }
 

@@ -42,7 +42,7 @@ struct SearchHomeView: View {
             
             Spacer()
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, Constants.Padding.regular)
         .navigationTitle("Search")
         .task { vm.bind() }
     }
@@ -79,7 +79,7 @@ private extension SearchHomeView {
                                     
                                     Spacer()
                                 }
-                                .padding(.horizontal, 4)
+                                .padding(.horizontal, Constants.Padding.minimal)
                                 .frame(width: 150)
                             }
                         }
@@ -122,7 +122,7 @@ private extension SearchHomeView {
                     .resizable()
                     .scaledToFit()
                     .frame(width: iconSize, height: iconSize)
-                    .padding(.trailing, 8)
+                    .padding(.trailing, Constants.Padding.regular)
                 
                 Text(source.name)
                     .font(.title)
@@ -131,8 +131,7 @@ private extension SearchHomeView {
                 Image(systemName: "arrow.right")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
+            .padding(.vertical, Constants.Padding.regular)
         }
         .buttonStyle(.plain)
     }
@@ -160,10 +159,11 @@ private extension SearchHomeView {
         }
         else {
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 4) {
+                LazyHStack(spacing: Constants.Spacing.minimal) {
                     ForEach(entries, id: \.id) { entry in
                         SourceCardView(namespace: namespace, source: source, entry: entry)
                             .frame(width: 150)
+                            .id(entry.id)
                     }
                 }
             }

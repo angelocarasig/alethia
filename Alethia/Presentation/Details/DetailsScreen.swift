@@ -56,7 +56,7 @@ extension DetailsScreen {
                 Text("Multiple entries were found when matching by name. Please select the one you'd like to use.")
             }
             
-            LazyVStack(spacing: 12) {
+            LazyVStack(spacing: Constants.Spacing.large) {
                 ForEach(options, id: \.manga.id) { option in
                     Button {
                         vm.requestConfirmation(for: option)
@@ -71,7 +71,7 @@ extension DetailsScreen {
                 }
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Constants.Padding.screen)
     }
 }
 
@@ -98,7 +98,7 @@ extension DetailsScreen {
         ContentUnavailableView {
             Label("An Error Occurred", systemImage: "exclamationmark.triangle.fill")
         } description: {
-            VStack(spacing: 12) {
+            VStack(spacing: Constants.Spacing.large) {
                 Text("Something went wrong loading details of \(vm.entry.title)...")
                     .font(.headline)
                     .fontWeight(.regular)
@@ -109,7 +109,7 @@ extension DetailsScreen {
                     .fontWeight(.regular)
                     .foregroundStyle(.secondary)
             }
-            .padding(.top, 8)
+            .padding(.top, Constants.Padding.regular)
         } actions: {
             Button("Retry", action: { vm.loadDetails() })
                 .buttonStyle(.automatic)
@@ -176,9 +176,9 @@ extension DetailsScreen {
                             .shimmer()
                     }
                 }
-                .padding(.top, 8)
+                .padding(.top, Constants.Padding.regular)
             }
-            .cornerRadius(8)
+            .cornerRadius(Constants.Corner.Radius.regular)
             .frame(maxWidth: .infinity)
             
             Spacer().frame(height: 1000)
@@ -201,7 +201,7 @@ extension DetailsScreen {
                     .fade(duration: 0.25)
                     .scaledToFill()
                     .frame(width: cellWidth, height: cellHeight)
-                    .cornerRadius(6)
+                    .cornerRadius(Constants.Corner.Radius.regular)
                     .clipped()
             }
             .aspectRatio(11/16, contentMode: .fit)
@@ -219,11 +219,11 @@ extension DetailsScreen {
                     if (option.manga.inLibrary) {
                         Text("In Library")
                             .font(.caption)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
+                            .padding(.horizontal, Constants.Padding.regular)
+                            .padding(.vertical, Constants.Padding.minimal)
                             .background(Color.appBlue.opacity(0.85))
                             .foregroundColor(.text.opacity(0.75))
-                            .cornerRadius(15)
+                            .cornerRadius(Constants.Corner.Radius.button)
                     }
                 }
                 
@@ -237,15 +237,15 @@ extension DetailsScreen {
                     .foregroundStyle(.secondary)
                 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: Constants.Spacing.minimal) {
                         ForEach(option.tags) { tag in
                             Text(tag.name)
                                 .font(.caption)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
+                                .padding(.horizontal, Constants.Padding.regular)
+                                .padding(.vertical, Constants.Padding.minimal)
                                 .background(Color.tint)
                                 .foregroundColor(.text.opacity(0.75))
-                                .cornerRadius(15)
+                                .cornerRadius(Constants.Corner.Radius.button)
                         }
                     }
                 }
@@ -279,7 +279,7 @@ extension DetailsScreen {
                         }
                         .animation(.easeInOut, value: vm.details != nil)
                         .frame(maxHeight: .infinity)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, 12) // looks best
                         .background(BackgroundGradientView())
                     }
                     .refreshable {
@@ -297,9 +297,9 @@ extension DetailsScreen {
             
             ActionButtonsView()
             
-            SynopsisView(synopsis: details.manga.synopsis)
+            SynopsisView()
             
-            TagsView(tags: details.tags)
+            TagsView()
             
             Divider()
             

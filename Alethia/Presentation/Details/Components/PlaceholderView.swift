@@ -64,9 +64,9 @@ struct PlaceholderView: View {
                             .shimmer()
                     }
                 }
-                .padding(.top, 8)
+                .padding(.top, Constants.Padding.regular)
             }
-            .cornerRadius(8)
+            .cornerRadius(Constants.Corner.Radius.regular)
             .frame(maxWidth: .infinity)
             
             Spacer().frame(height: 1000)

@@ -20,68 +20,71 @@ struct LibraryFilterView: View {
                         .fontWeight(.semibold)
                     Spacer()
                     Text("Reset to Default")
-                        .foregroundColor(vm.filters.isEmpty ? .secondary : .primary)
+                        .foregroundColor(vm.filters.isEmpty ? .secondary : .accentColor)
                         .onTapGesture { vm.filters.reset() }
                         .disabled(vm.filters.isEmpty)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 6)
+                .padding(.bottom, Constants.Padding.regular)
 
-                HStack(spacing: 8) {
+                HStack(spacing: Constants.Spacing.regular) {
                     Text("Sorting By")
                         .foregroundColor(.secondary)
                     Text(vm.filters.sortType.rawValue)
                         .fontWeight(.medium)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .padding(.horizontal, Constants.Padding.regular)
+                        .padding(.vertical, Constants.Padding.minimal)
                         .background(Color.appBlue)
                         .foregroundColor(.text)
-                        .cornerRadius(15)
+                        .cornerRadius(Constants.Corner.Radius.button)
                     Text("•")
                         .fontWeight(.medium)
                         .foregroundColor(.secondary)
                     Text(vm.filters.sortDirection.rawValue)
                         .fontWeight(.medium)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .padding(.horizontal, Constants.Padding.regular)
+                        .padding(.vertical, Constants.Padding.minimal)
                         .background(Color.appBlue)
                         .foregroundColor(.text)
-                        .cornerRadius(15)
+                        .cornerRadius(Constants.Corner.Radius.button)
                 }
                 .font(.subheadline)
-                .padding(.bottom, 6)
+                .padding(.bottom, Constants.Padding.regular)
 
-                HStack(spacing: 8) {
+                HStack(spacing: Constants.Spacing.regular) {
                     Text("Active Filters")
                         .foregroundColor(.secondary)
                     if vm.filters.isEmpty {
                         Text("None")
                             .fontWeight(.medium)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
+                            .padding(.horizontal, Constants.Padding.regular)
+                            .padding(.vertical, Constants.Padding.minimal)
                             .background(Color.tint)
                             .foregroundColor(.text)
-                            .cornerRadius(15)
+                            .cornerRadius(Constants.Corner.Radius.button)
                     }
                     HFlow {
                         ForEach(vm.filters.activeFilters, id: \.id) { filter in
                             Text(filter.name)
                                 .fontWeight(.medium)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
+                                .padding(.horizontal, Constants.Padding.regular)
+                                .padding(.vertical, Constants.Padding.minimal)
                                 .background(filter.color)
                                 .foregroundColor(.text)
-                                .cornerRadius(15)
+                                .cornerRadius(Constants.Corner.Radius.button)
                         }
                     }
                 }
                 .font(.subheadline)
             }
 
-            Divider().padding(.vertical, 8)
-            VStack(spacing: 12) {
+            Divider().padding(.vertical, Constants.Padding.regular)
+            
+            VStack(spacing: Constants.Spacing.large) {
                 SortOptions()
-                Divider().padding(.vertical, 8)
+                
+                Divider().padding(.vertical, Constants.Padding.regular)
+                
                 FilterOptions()
             }
             Spacer()
@@ -114,7 +117,7 @@ struct LibraryFilterView: View {
                 .padding()
                 .foregroundColor(.text)
                 .background(isActive ? Color.appBlue : Color.tint)
-                .cornerRadius(15)
+                .cornerRadius(Constants.Corner.Radius.button)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     withAnimation {
@@ -142,6 +145,7 @@ struct LibraryFilterView: View {
     private func AddedDateFilter() -> some View {
         DateFilter(
             title: "Added At",
+            canClear: vm.filters.addedAt != .none,
             onClear: { vm.clearFilter(for: .addedAt) },
             date: $vm.filters.addedAt
         )
@@ -151,20 +155,22 @@ struct LibraryFilterView: View {
     private func UpdatedDateFilter() -> some View {
         DateFilter(
             title: "Last Updated",
+            canClear: vm.filters.updatedAt != .none,
             onClear: { vm.clearFilter(for: .updatedAt) },
             date: $vm.filters.updatedAt
         )
     }
 
     @ViewBuilder
-    private func DateFilter(title: String, onClear: @escaping () -> Void, date: Binding<LibraryDate>) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private func DateFilter(title: String, canClear: Bool, onClear: @escaping () -> Void, date: Binding<LibraryDate>) -> some View {
+        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
             HStack {
                 Text(title)
                     .font(.title3)
                     .fontWeight(.semibold)
                 Spacer()
                 Text("Clear")
+                    .foregroundStyle(canClear ? Color.accentColor : Color.secondary)
                     .onTapGesture(perform: onClear)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -200,7 +206,7 @@ struct LibraryFilterView: View {
                         displayedComponents: [.date]
                     )
                 case .between(let start, let end):
-                    VStack(spacing: 8) {
+                    VStack(spacing: Constants.Spacing.regular) {
                         DatePicker(
                             "Start Date",
                             selection: Binding(
@@ -222,7 +228,7 @@ struct LibraryFilterView: View {
             }
             .font(.subheadline)
             .fontWeight(.semibold)
-            .padding(.top, 8)
+            .padding(.top, Constants.Padding.regular)
         }
     }
 
@@ -239,6 +245,7 @@ struct LibraryFilterView: View {
                     .fontWeight(.semibold)
                 Spacer()
                 Text("Clear")
+                    .foregroundStyle(vm.filters.isPresent(.metadata) ? Color.accentColor : Color.secondary)
                     .onTapGesture { vm.clearFilter(for: .metadata) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -249,18 +256,18 @@ struct LibraryFilterView: View {
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            LazyVGrid(columns: columns, spacing: 12) {
+            LazyVGrid(columns: columns, spacing: Constants.Spacing.large) {
                 ForEach(PublishStatus.allCases, id: \.rawValue) { status in
-                    HStack(spacing: 8) {
+                    HStack(spacing: Constants.Spacing.regular) {
                         Image(systemName: status.icon)
                         Text(status.rawValue)
                             .font(.headline)
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(12)
+                    .padding(Constants.Padding.screen)
                     .background(vm.filters.publishStatus.contains(status) ? status.color : .tint.opacity(0.5))
-                    .cornerRadius(8)
+                    .cornerRadius(Constants.Corner.Radius.regular)
                     .contentShape(Rectangle())
                     .onTapGesture { vm.togglePublishStatus(status: status) }
                 }
@@ -274,18 +281,18 @@ struct LibraryFilterView: View {
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            LazyVGrid(columns: columns, spacing: 12) {
+            LazyVGrid(columns: columns, spacing: Constants.Spacing.large) {
                 ForEach(Classification.allCases, id: \.rawValue) { classification in
-                    HStack(spacing: 8) {
+                    HStack(spacing: Constants.Spacing.regular) {
                         Image(systemName: classification.icon)
                         Text(classification.rawValue)
                             .font(.headline)
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(12)
+                    .padding(Constants.Padding.screen)
                     .background(vm.filters.classification.contains(classification) ? classification.color : .tint.opacity(0.5))
-                    .cornerRadius(8)
+                    .cornerRadius(Constants.Corner.Radius.regular)
                     .contentShape(Rectangle())
                     .onTapGesture { vm.toggleClassification(classification: classification) }
                 }

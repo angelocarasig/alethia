@@ -10,14 +10,27 @@ import Kingfisher
 
 struct EntryView: View {
     let item: Entry
+    let downsample: Bool
     let lineLimit: Int
     
     init(
         item: Entry,
-        lineLimit: Int? = 1
+        downsample: Bool = false,
+        lineLimit: Int = 1
     ) {
         self.item = item
-        self.lineLimit = lineLimit ?? 1
+        self.downsample = downsample
+        self.lineLimit = lineLimit
+    }
+    
+    var processors: [any ImageProcessor] {
+        var imageProcessors: [any ImageProcessor] = []
+        
+        if downsample {
+            imageProcessors.append(DownsamplingImageProcessor(size: .init(width: 350, height: 400)))
+        }
+        
+        return imageProcessors
     }
     
     var body: some View {
@@ -28,31 +41,32 @@ struct EntryView: View {
                 let match = item.match
                 
                 KFImage(URL(string: item.cover ?? ""))
+                    .setProcessors(processors)
                     .placeholder { Color.tint.shimmer() }
                     .resizable()
                     .fade(duration: 0.25)
                     .scaledToFill()
                     .frame(width: cellWidth, height: cellHeight)
-                    .cornerRadius(6)
+                    .cornerRadius(Constants.Corner.Radius.card)
                     .clipped()
                     .overlay {
                         if match != .none {
                             ZStack(alignment: .topTrailing) {
                                 Color.black.opacity(0.5)
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .cornerRadius(6)
+                                    .cornerRadius(Constants.Corner.Radius.card)
                                 
                                 if match == .exact {
                                     Image(systemName: "checkmark.circle.fill")
                                         .font(.system(size: 18))
                                         .foregroundColor(.green)
-                                        .padding(10)
+                                        .padding(Constants.Padding.regular)
                                 }
                                 else if match == .partial {
                                     Image(systemName: "circle.bottomhalf.filled.inverse")
                                         .font(.system(size: 18))
                                         .foregroundColor(.appYellow)
-                                        .padding(10)
+                                        .padding(Constants.Padding.regular)
                                 }
                             }
                         }
@@ -70,7 +84,6 @@ struct EntryView: View {
             
             Spacer()
         }
-        .padding(.horizontal, 4)
-        .padding(.bottom, 2)
+        .padding(.horizontal, Constants.Padding.minimal)
     }
 }

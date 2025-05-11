@@ -17,49 +17,59 @@ struct SourceRouteScreen: View {
     var route: SourceRoute
     
     let columns = [
-        GridItem(.flexible(), spacing: 4),
-        GridItem(.flexible(), spacing: 4),
-        GridItem(.flexible(), spacing: 4)
+        GridItem(.flexible(), spacing: Constants.Spacing.minimal),
+        GridItem(.flexible(), spacing: Constants.Spacing.minimal),
+        GridItem(.flexible(), spacing: Constants.Spacing.minimal)
     ]
     
     var body: some View {
-        ScrollView() {
-            if vm.items.count == 0 && vm.loading {
+        ZStack {
+            if vm.items.isEmpty && vm.loading {
                 SkeletonGridView()
-            }
-            
-            LazyVGrid(columns: columns) {
-                ForEach(vm.items, id: \.id) { entry in
-                    SourceCardView(
-                        namespace: namespace,
-                        source: source,
-                        entry: entry
+            } else {
+                VStack {
+                    CollectionViewGrid(
+                        data: vm.items,
+                        content: { entry in
+                            SourceCardView(
+                                namespace: namespace,
+                                source: source,
+                                entry: entry
+                            )
+                        },
+                        columns: 3,
+                        spacing: Constants.Spacing.minimal,
+                        contentInsets: NSDirectionalEdgeInsets(
+                            top: 8, leading: 8, bottom: 8, trailing: 8
+                        ),
+                        onReachedBottom: {
+                            guard !vm.loading, !vm.noMoreContent else { return }
+                            vm.page += 1
+                            Task { await vm.load(with: route.id!) }
+                        },
+                        onItemTapped: { entry in
+                            // Handle item tap
+                            print("Tapped: \(entry.title)")
+                        }
                     )
+                    
+                    // Next-page loader
+                    if vm.loading && !vm.items.isEmpty {
+                        ProgressView()
+                            .padding()
+                    }
+                    
+                    if vm.noMoreContent {
+                        Text("No More Results")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .padding()
+                    }
+                }
+                .refreshable {
+                    await vm.refresh(with: route.id!)
                 }
             }
-            
-            if vm.loading && !vm.items.isEmpty {
-                ProgressView()
-                    .padding()
-            }
-            
-            if vm.noMoreContent {
-                Text("No More Content.")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-            }
-        }
-        .onPullToRefresh {
-            await vm.refresh(with: route.id!)
-        }
-        .task {
-            guard vm.firstLoad else { return }
-            await vm.load(with: route.id!)
-        }
-        .shouldLoadMore(bottomDistance: .absolute(50), waitForHeightChange: .always) {
-            guard !vm.loading && !vm.noMoreContent && !vm.refreshing else { return }
-            vm.page += 1
-            await vm.load(with: route.id!)
         }
         .navigationTitle(route.name)
     }
@@ -84,8 +94,8 @@ struct SourceRouteScreen: View {
                             .frame(height: 14)
                             .frame(maxWidth: 100)
                     }
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 4)
+                    .padding(.vertical, Constants.Padding.regular)
+                    .padding(.horizontal, Constants.Padding.minimal)
                 }
             }
         }
@@ -99,7 +109,7 @@ private final class ViewModel: ObservableObject {
     @Published var refreshing: Bool = false
     @Published var firstLoad: Bool = true
     @Published var noMoreContent: Bool = false
-
+    
     /**
      Seperating raw with the `matched` objects which if not done:
      - Lose the original entries (can't reapply match logic)
@@ -108,23 +118,23 @@ private final class ViewModel: ObservableObject {
     private var raw: [Entry] = []
     private var cancellables = Set<AnyCancellable>()
     private var currentTask: Task<Void, Never>?
-
+    
     private let getSourceRouteContentUseCase: GetSourceRouteContentUseCase
     private let observeMatchEntriesUseCase: ObserveMatchEntriesUseCase
-
+    
     init() {
         self.getSourceRouteContentUseCase = DependencyInjector.shared.makeGetSourceRouteContentUseCase()
         self.observeMatchEntriesUseCase = DependencyInjector.shared.makeObserveMatchEntriesUseCase()
     }
-
+    
     deinit {
         currentTask?.cancel()
     }
-
+    
     @MainActor
     func load(with id: Int64) async {
         currentTask?.cancel()
-
+        
         currentTask = Task {
             defer {
                 if !Task.isCancelled {
@@ -135,36 +145,36 @@ private final class ViewModel: ObservableObject {
                 }
                 currentTask = nil
             }
-
+            
             do {
                 withAnimation(.easeInOut) {
                     loading = true
                 }
-
+                
                 print("Fetching for page: \(page)")
                 let newEntries = try await getSourceRouteContentUseCase.execute(sourceRouteId: id, page: page)
-
+                
                 try Task.checkCancellation()
-
+                
                 if newEntries.isEmpty {
                     noMoreContent = true
                     return
                 }
-
+                
                 raw.append(contentsOf: newEntries)
                 bind()
             } catch {
                 print("Error: \(error)")
             }
         }
-
+        
         await currentTask?.value
     }
-
+    
     @MainActor
     func refresh(with id: Int64) async {
         currentTask?.cancel()
-
+        
         withAnimation(.easeInOut) {
             page = 0
             refreshing = true
@@ -173,19 +183,19 @@ private final class ViewModel: ObservableObject {
             noMoreContent = false
             firstLoad = true
         }
-
+        
         await load(with: id)
-
+        
         withAnimation(.easeInOut) {
             refreshing = false
         }
     }
-
+    
     private func bind() {
         guard !raw.isEmpty else { return }
-
+        
         cancellables.removeAll()
-
+        
         observeMatchEntriesUseCase
             .execute(entries: raw)
             .receive(on: RunLoop.main)

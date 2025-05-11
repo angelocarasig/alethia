@@ -35,7 +35,7 @@ struct SettingsSourcesView: View {
                 Text(host.name)
                 Spacer()
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, Constants.Padding.minimal)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
                     vm.delete(host)
@@ -55,7 +55,7 @@ struct SettingsSourcesView: View {
                 Text(host.name)
                 Spacer()
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, Constants.Padding.minimal)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
                     vm.delete(host)

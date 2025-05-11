@@ -106,7 +106,7 @@ struct HorizontalChapterTransition: View {
     private func ContentView() -> some View {
         VStack(spacing: 20) {
             Spacer()
-            VStack(spacing: 8) {
+            VStack(spacing: Constants.Spacing.regular) {
                 Text(titleText)
                     .font(.title)
                     .fontWeight(.bold)
@@ -131,12 +131,12 @@ struct HorizontalChapterTransition: View {
                     }
                 } label: {
                     HStack {
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
                             Text(buttonText)
                                 .font(.title2)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.primary)
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
                                 Text(target.chapter.toString())
                                     .font(.headline)
                                     .foregroundColor(.primary)
@@ -152,12 +152,12 @@ struct HorizontalChapterTransition: View {
                             .font(.title)
                             .foregroundStyle(.secondary)
                     }
-                    .padding(10)
+                    .padding(Constants.Padding.screen)
                 }
                 .frame(maxWidth: .infinity, alignment: .trailing)
                 .padding()
                 .background(Color.tint.opacity(0.3))
-                .cornerRadius(12)
+                .cornerRadius(Constants.Corner.Radius.button)
                 .padding(.horizontal)
             } else {
                 Text(missingText)
@@ -175,7 +175,7 @@ struct HorizontalChapterTransition: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical)
                     .background(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: Constants.Corner.Radius.button)
                             .fill(Color.blue.opacity(0.1))
                     )
             }

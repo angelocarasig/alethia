@@ -64,7 +64,10 @@ struct SourceHeaderView: View {
                     .placeholder { Color.tint.shimmer() }
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 75, height: 75)
+                    .frame(
+                        width: Constants.Icon.Size.large,
+                        height: Constants.Icon.Size.large
+                    )
                     .clipShape(.circle)
                 
                 Text(source.name)

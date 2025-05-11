@@ -87,6 +87,17 @@ struct LibraryFilters {
         return filters
     }
     
+    func isPresent(_ filterType: FilterType) -> Bool {
+        switch filterType {
+        case .date:
+            return addedAt != .none || updatedAt != .none
+        case .metadata:
+            return !publishStatus.isEmpty || !classification.isEmpty
+        case .tag:
+            return !tags.isEmpty
+        }
+    }
+    
     // Checks if default filters are applied
     var isEmpty: Bool {
         return  addedAt == .none &&

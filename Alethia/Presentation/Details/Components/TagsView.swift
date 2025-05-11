@@ -8,7 +8,11 @@
 import SwiftUI
 
 struct TagsView: View {
-    let tags: [Tag]
+    @EnvironmentObject private var vm: DetailsViewModel
+    
+    var tags: [Tag] {
+        vm.details?.tags ?? []
+    }
     
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -16,11 +20,11 @@ struct TagsView: View {
                 ForEach(tags.map { $0.name }.sorted(), id: \.self) { tag in
                     Text(tag)
                         .font(.caption)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .foregroundStyle(.text.opacity(0.75))
+                        .padding(.horizontal, Constants.Padding.regular)
+                        .padding(.vertical, Constants.Padding.minimal)
                         .background(Color.tint)
-                        .foregroundColor(.text.opacity(0.75))
-                        .cornerRadius(15)
+                        .cornerRadius(Constants.Corner.Radius.button)
                 }
             }
         }

@@ -17,8 +17,12 @@ struct SourceCardView: View {
             DetailsScreen(entry: entry, source: source)
                 .navigationTransition(.zoom(sourceID: entry.transitionId, in: namespace))
         } label: {
-            EntryView(item: entry, lineLimit: 2)
-                .matchedTransitionSource(id: entry.transitionId, in: namespace)
+            EntryView(
+                item: entry,
+                downsample: true,
+                lineLimit: 2
+            )
+            .matchedTransitionSource(id: entry.transitionId, in: namespace)
         }
     }
 }

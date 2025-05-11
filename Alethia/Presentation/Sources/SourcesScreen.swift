@@ -50,7 +50,7 @@ struct SourcesScreen: View {
             .environmentObject(vm)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 16) {
+                    HStack(spacing: Constants.Spacing.toolbar) {
                         NavigationLink(destination: SearchHomeView()) {
                             Image(systemName: "magnifyingglass")
                         }
@@ -175,8 +175,8 @@ private struct AddSourceSheet: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: iconSize, height: iconSize)
-                .cornerRadius(8)
-                .padding(.trailing, 8)
+                .cornerRadius(Constants.Corner.Radius.regular)
+                .padding(.trailing, Constants.Padding.regular)
             
             Text(source.name)
                 .font(.headline)
@@ -187,10 +187,7 @@ private struct AddSourceSheet: View {
 
 private struct SourceRow: View {
     @EnvironmentObject private var vm: SourcesViewModel
-    
     let source: Source
-    
-    let iconSize: CGFloat = 40
     
     var body: some View {
         NavigationLink(destination: SourceHomeScreen(source: source)) {
@@ -199,9 +196,12 @@ private struct SourceRow: View {
                     .placeholder { Color.tint.shimmer() }
                     .resizable()
                     .scaledToFit()
-                    .frame(width: iconSize, height: iconSize)
-                    .cornerRadius(8)
-                    .padding(.trailing, 8)
+                    .frame(
+                        width: Constants.Icon.Size.regular,
+                        height: Constants.Icon.Size.regular
+                    )
+                    .cornerRadius(Constants.Corner.Radius.regular)
+                    .padding(.trailing, Constants.Padding.regular)
                 
                 VStack(alignment: .leading) {
                     Text(source.name)

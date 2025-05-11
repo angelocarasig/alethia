@@ -10,20 +10,16 @@ import SwiftUI
 struct MetadataView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
-    var details: Detail {
-        vm.details.unsafelyUnwrapped
-    }
-    
-    var origin: Origin {
-        details.origins.min(by: { $0.priority < $1.priority })!
+    var origin: Origin? {
+        (vm.details?.origins ?? []).min(by: { $0.priority < $1.priority })
     }
     
     var createdAt: Date {
-        origin.createdAt
+        origin?.createdAt ?? .distantPast
     }
     
     var updatedAt: Date {
-        details.manga.updatedAt
+        vm.details?.manga.updatedAt ?? .distantPast
     }
     
     var body: some View {
@@ -32,55 +28,59 @@ struct MetadataView: View {
             .fontWeight(.bold)
         
         HStack {
-            VStack(alignment: .leading, spacing: 10) {
-                VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+                VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
                     Text("Content Rating")
                         .font(.headline)
                     
-                    Text(origin.classification.rawValue)
+                    let classification = origin?.classification ?? .Unknown
+                    
+                    Text(classification.rawValue)
                         .font(.subheadline)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(origin.classification.color)
-                        .cornerRadius(8)
+                        .padding(.horizontal, Constants.Padding.regular)
+                        .padding(.vertical, Constants.Padding.minimal)
+                        .background(classification.color)
+                        .cornerRadius(Constants.Corner.Radius.regular)
                 }
                 
                 Spacer()
                 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
                     Text("Date Created")
                         .font(.headline)
                     
                     HStack {
                         Image(systemName: "calendar")
-                        Text(origin.createdAt.toRelativeString())
+                        Text(createdAt.toRelativeString())
                             .font(.subheadline)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, Constants.Padding.regular)
+                    .padding(.vertical, Constants.Padding.minimal)
                     .background(.tint.opacity(0.5))
-                    .cornerRadius(8)
+                    .cornerRadius(Constants.Corner.Radius.regular)
                 }
             }
             
             Spacer()
             
-            VStack(alignment: .trailing, spacing: 10) {
-                VStack(alignment: .trailing, spacing: 4) {
+            VStack(alignment: .trailing, spacing: Constants.Spacing.regular) {
+                VStack(alignment: .trailing, spacing: Constants.Spacing.regular) {
                     Text("Publish Status")
                         .font(.headline)
                     
-                    Text(origin.status.rawValue)
+                    let status = origin?.status ?? .Unknown
+                    
+                    Text(status.rawValue)
                         .font(.subheadline)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(origin.status.color)
-                        .cornerRadius(8)
+                        .padding(.horizontal, Constants.Padding.regular)
+                        .padding(.vertical, Constants.Padding.minimal)
+                        .background(status.color)
+                        .cornerRadius(Constants.Corner.Radius.regular)
                 }
                 
                 Spacer()
                 
-                VStack(alignment: .trailing, spacing: 4) {
+                VStack(alignment: .trailing, spacing: Constants.Spacing.regular) {
                     Text("Last Updated")
                         .font(.headline)
                     
@@ -89,13 +89,12 @@ struct MetadataView: View {
                         Text(updatedAt.toRelativeString())
                             .font(.subheadline)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, Constants.Padding.regular)
+                    .padding(.vertical, Constants.Padding.minimal)
                     .background(.tint.opacity(0.5))
-                    .cornerRadius(8)
+                    .cornerRadius(Constants.Corner.Radius.regular)
                 }
             }
         }
     }
 }
-

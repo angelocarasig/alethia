@@ -22,7 +22,7 @@ struct LibraryScreen: View {
             .navigationTitle("Library")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 16) {
+                    HStack(spacing: Constants.Spacing.toolbar) {
                         Button(action: {
                             vm.showFilters = true
                         }) {
@@ -49,7 +49,7 @@ struct LibraryScreen: View {
             Text("\(vm.filters.activeFilters.count)")
                 .font(.caption)
                 .foregroundColor(.white)
-                .padding(6)
+                .padding(Constants.Padding.regular)
                 .background(Circle().fill(Color.red))
                 .offset(x: 10, y: -10)
         }
@@ -60,26 +60,14 @@ private struct ContentView: View {
     @EnvironmentObject private var vm: LibraryViewModel
     @Namespace private var namespace
     
-    private let columns = [
-        GridItem(.flexible(), spacing: 4),
-        GridItem(.flexible(), spacing: 4),
-        GridItem(.flexible(), spacing: 4)
-    ]
-    
     var body: some View {
-        ScrollView {
-            Spacer().frame(height: 12)
-            
-            LazyVGrid(columns: columns) {
-                ForEach(vm.items) { CardView($0) }
-            }
-            .padding(.horizontal, 8)
-        }
-        .onPullToRefresh {
-            vm.refreshCollection()
-        }
-        .padding(.horizontal, 8)
-        .frame(maxWidth: .infinity)
+        CollectionViewGrid(
+            data: vm.items,
+            content: { CardView($0) },
+            columns: 3,
+            spacing: Constants.Spacing.minimal
+        )
+        .padding(.horizontal, Constants.Padding.regular)
     }
     
     @ViewBuilder
@@ -110,10 +98,10 @@ private struct UnreadBadgeModifier: ViewModifier {
                 Text(unreadAmount)
                     .font(.caption)
                     .foregroundColor(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.red)
-                    .clipShape(Capsule())
+                    .padding(.horizontal, Constants.Padding.regular)
+                    .padding(.vertical, Constants.Padding.minimal)
+                    .background(.red)
+                    .clipShape(.capsule)
                     .offset(y: -12)
             }
         }

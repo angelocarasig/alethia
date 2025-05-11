@@ -11,14 +11,12 @@ import Kingfisher
 struct SourcesView: View {
     @EnvironmentObject var vm: DetailsViewModel
     
-    var details: Detail {
-        vm.details.unsafelyUnwrapped
+    var origins: [Origin] {
+        (vm.details?.origins ?? []).sorted { $0.priority < $1.priority }
     }
     
     var body: some View {
-        let origins = details.origins.sorted { $0.priority < $1.priority }
-        
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
             NavigationLink(destination: SourceDetailView()) {
                 HStack {
                     Text("Sources")
@@ -31,34 +29,37 @@ struct SourcesView: View {
                 }
             }
             .buttonStyle(.plain)
-            .disabled(!details.manga.inLibrary)
+            .disabled(!vm.inLibrary)
             
-            VStack(spacing: 20) {
+            VStack(spacing: Constants.Spacing.large) {
                 ForEach(origins, id: \.id) { origin in
                     SourceRow(origin)
                         .disabled(origin.sourceId == nil)
                 }
             }
         }
-        .opacity(details.manga.inLibrary ? 1 : 0.5)
+        .opacity(vm.inLibrary ? 1 : 0.5)
     }
     
     @ViewBuilder
     private func SourceRow(_ origin: Origin) -> some View {
         let sourceDisabled = origin.sourceId == nil
         
-        HStack(spacing: 12) {
+        HStack(spacing: Constants.Spacing.large) {
             KFImage(URL(fileURLWithPath: ""))
                 .placeholder {
                     Color.gray.opacity(0.3)
                 }
                 .resizable()
                 .aspectRatio(contentMode: .fill)
-                .frame(width: 48, height: 48)
-                .cornerRadius(12)
+                .frame(
+                    width: Constants.Icon.Size.regular,
+                    height: Constants.Icon.Size.regular
+                )
+                .cornerRadius(Constants.Corner.Radius.button)
                 .grayscale(sourceDisabled ? 1 : 0)
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
                 // TODO:
                 Text("Some Source")
                     .font(.headline)
@@ -75,15 +76,9 @@ struct SourcesView: View {
             Spacer()
             
             if let originURL = URL(string: origin.url) {
-                HStack(spacing: 16) {
+                HStack(spacing: Constants.Spacing.large) {
                     Button {
                         UIPasteboard.general.string = originURL.absoluteString
-                        //                        let drop = Drop(
-                        //                            title: "Copied to clipboard!",
-                        //                            icon: UIImage(systemName: "checkmark")?.withTintColor(.green, renderingMode: .alwaysOriginal),
-                        //                            position: .top
-                        //                        )
-                        //                        Drops.show(drop)
                     } label: {
                         Image(systemName: "link")
                             .font(.system(size: 20, weight: .medium))
@@ -96,7 +91,7 @@ struct SourcesView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.leading, 8)
+                .padding(.leading, Constants.Padding.regular)
             }
         }
         .opacity(sourceDisabled ? 0.5 : 1.0)
@@ -105,12 +100,6 @@ struct SourcesView: View {
             if let originURL = URL(string: origin.url) {
                 Button {
                     UIPasteboard.general.string = originURL.absoluteString
-                    //                    let drop = Drop(
-                    //                        title: "Copied to clipboard!",
-                    //                        icon: UIImage(systemName: "checkmark")?.withTintColor(.green, renderingMode: .alwaysOriginal),
-                    //                        position: .top
-                    //                    )
-                    //                    Drops.show(drop)
                 } label: {
                     Label("Copy Link", systemImage: "link")
                 }
