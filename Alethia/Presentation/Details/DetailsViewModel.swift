@@ -10,125 +10,173 @@ import SwiftUI
 import Combine
 
 final class DetailsViewModel: ObservableObject {
-    @Published var options: [Detail] = []
+    // MARK: - Published Properties
+    @Published private(set) var state: ViewState = .loading
+    @Published var confirmationRequest: ConfirmationRequest? = nil
     
-    @Published var details: Detail? = nil
-    @Published var error: Error? = nil
-    @Published var loading: Bool = false
-    
-    var sourcePresent: Bool {
-        return self.details != nil &&
-        self.details!.manga.inLibrary &&
-        self.details!.origins.contains { entry.fetchUrl?.decodeUri.contains($0.slug.decodeUri) ?? false }
-    }
-    
+    // MARK: - Properties
+    private(set) var entry: Entry
+    private var context: Source?
+    private var options: [Detail] = []
     private var cancellables = Set<AnyCancellable>()
+    
+    // MARK: - Use Cases
     private let getMangaDetailUseCase: GetMangaDetailUseCase
     private let toggleMangaInLibraryUseCase: ToggleMangaInLibraryUseCase
     
-    var entry: Entry
-    
-    init(entry: Entry) {
+    // MARK: - Initialization
+    init(entry: Entry, context: Source?) {
         self.entry = entry
+        self.context = context
+        
         self.getMangaDetailUseCase = DependencyInjector.shared.makeGetMangaDetailUseCase()
         self.toggleMangaInLibraryUseCase = DependencyInjector.shared.makeToggleMangaInLibraryUseCase()
     }
     
     deinit {
-        for cancellable in cancellables {
-            cancellable.cancel()
+        cancellables.removeAll()
+    }
+}
+
+// MARK: - Computed Properties
+extension DetailsViewModel {
+    var sourcePresent: Bool {
+        guard case let .success(details) = state,
+              details.manga.inLibrary else { return false }
+        
+        return details.origins.contains {
+            entry.fetchUrl?.decodeUri.contains($0.slug.decodeUri) ?? false
         }
     }
     
-    func bind() {
-        loading = true
-        error = nil
-        
-        getMangaDetailUseCase.execute(entry: entry)
-          .receive(on: DispatchQueue.main)
-          .sink { [weak self] completion in
-              if case .failure(let error) = completion {
-                  self?.error = error
-              }
-          } receiveValue: { [weak self] detailArray in
-              guard let self = self else { return }
-              self.loading = false
-
-              if detailArray.count > 1 {
-                  self.details = nil
-                  self.options = detailArray
-              }
-              else if let first = detailArray.first {
-                  self.options = []
-                  
-                  withAnimation {
-                      self.details = first
-                  }
-              }
-              else {
-                  self.options = []
-                  self.details = nil
-              }
-          }
-          .store(in: &cancellables)
+    var details: Detail? {
+        if case let .success(details) = state {
+            return details
+        }
+        return nil
     }
     
-    func pickOption(option: Detail) {
-        // TODO: Related to when multiple matches are found by title for a manga
-        // Should only occur in sources tab - 
-        // should update the entry object with the selected option's mangaId and re-bind for proper observation
+    var stateIdentifier: String {
+        switch state {
+        case .loading: return "loading"
+        case .empty: return "empty"
+        case .error: return "error"
+        case .success: return "success"
+        case .conflict: return "conflict"
+        }
+    }
+}
+
+// MARK: - Data Loading
+extension DetailsViewModel {
+    func loadDetails() {
+        state = .loading
+        
+        getMangaDetailUseCase.execute(entry: entry)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] completion in
+                if case .failure(let error) = completion {
+                    withAnimation {
+                        self?.state = .error(error)
+                    }
+                }
+            } receiveValue: { [weak self] received in
+                guard let self = self else { return }
+                
+                withAnimation {
+                    if received.count > 1 {
+                        self.options = received
+                        self.state = .conflict(received)
+                    } else if let first = received.first {
+                        self.options = []
+                        self.state = .success(first)
+                    } else {
+                        self.options = []
+                        self.state = .empty
+                    }
+                }
+            }
+            .store(in: &cancellables)
+    }
+}
+
+// MARK: - Conflict Resolution
+extension DetailsViewModel {
+    func requestConfirmation(for option: Detail) {
+        withAnimation {
+            confirmationRequest = ConfirmationRequest(
+                title: "Confirm Selection",
+                message: "You will be viewing '\(option.manga.title)'",
+                detail: option
+            )
+        }
+    }
+    
+    func confirmSelection() {
+        guard let request = confirmationRequest,
+              let mangaId = request.detail.manga.id,
+              let source = context,
+              let sourceId = source.id else {
+            withAnimation {
+                confirmationRequest = nil
+                state = .error(ApplicationError.internalError)
+            }
+            return
+        }
+        
         self.entry = Entry(
-            mangaId: option.manga.id!,
-            sourceId: entry.sourceId,
+            mangaId: mangaId,
+            sourceId: sourceId,
             title: entry.title,
             cover: entry.cover,
             fetchUrl: entry.fetchUrl,
             unread: entry.unread
         )
         
-        bind()
+        withAnimation {
+            confirmationRequest = nil
+        }
+        
+        loadDetails()
     }
     
-    func toggleInLibrary() -> Void {
-        do {
-            guard let details = details,
-                  let mangaId = details.manga.id
-            else { return }
-            
-            try toggleMangaInLibraryUseCase.execute(
-                mangaId: mangaId,
-                newValue: !details.manga.inLibrary
-            )
-        }
-        catch {
-            print("Error: \(error)")
+    func cancelConfirmation() {
+        withAnimation {
+            confirmationRequest = nil
         }
     }
 }
 
-// MARK: State
-
+// MARK: - Library Actions
 extension DetailsViewModel {
-    enum State {
+    func toggleInLibrary() {
+        guard case let .success(details) = state,
+              let mangaId = details.manga.id else { return }
+        
+        do {
+            try toggleMangaInLibraryUseCase.execute(
+                mangaId: mangaId,
+                newValue: !details.manga.inLibrary
+            )
+        } catch {
+            print("Error toggling library status: \(error)")
+        }
+    }
+}
+
+// MARK: - View State
+extension DetailsViewModel {
+    enum ViewState {
         case loading
-        case conflict
+        case conflict([Detail])
         case success(Detail)
         case error(Error)
         case empty
     }
     
-    var state: State {
-        if loading {
-            return .loading
-        } else if !options.isEmpty {
-            return .conflict
-        }
-        else if let details {
-            return .success(details)
-        } else if let error {
-            return .error(error)
-        } else {
-            return .empty
-        }
+    struct ConfirmationRequest {
+        let title: String
+        let message: String
+        let detail: Detail
     }
 }

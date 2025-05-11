@@ -41,7 +41,11 @@ struct ActionButtonsView: View {
                 OriginButton()
             }
             .actionButton(vm.sourcePresent)
-            .disabled(!details.manga.inLibrary || vm.entry.fetchUrl == nil)
+            .disabled(
+                !details.manga.inLibrary
+                // TODO: new way to figure out source
+                // vm.entry.fetchUrl == nil
+            )
             
             QuickButtonsView()
         }

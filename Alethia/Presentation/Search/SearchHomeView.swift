@@ -103,7 +103,7 @@ private extension SearchHomeView {
         ScrollView(.vertical) {
             ForEach(results, id: \.source.id) { result in
                 HeaderView(source: result.source)
-                ContentView(entries: result.results)
+                ContentView(source: result.source, entries: result.results)
             }
         }
     }
@@ -138,7 +138,7 @@ private extension SearchHomeView {
     }
     
     @ViewBuilder
-    private func ContentView(entries: [Entry]) -> some View {
+    private func ContentView(source: Source, entries: [Entry]) -> some View {
         if entries.isEmpty {
             VStack(spacing: 16) {
                 Image(systemName: "magnifyingglass.circle.fill")
@@ -162,7 +162,7 @@ private extension SearchHomeView {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 4) {
                     ForEach(entries, id: \.id) { entry in
-                        SourceCardView(namespace: namespace, entry: entry)
+                        SourceCardView(namespace: namespace, source: source, entry: entry)
                             .frame(width: 150)
                     }
                 }

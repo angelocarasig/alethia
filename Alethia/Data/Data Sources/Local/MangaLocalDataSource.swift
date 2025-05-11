@@ -122,23 +122,26 @@ final class MangaLocalDataSource {
             guard let self = self else { return [] }
             
             var details: [Detail] = []
-            
+
             // First: fetch by ID - Exact match should return early
             if let manga = try Manga.fetchOne(db, key: entry.mangaId),
                let detail = try self.fetchDetailWithChapters(db: db, manga: manga) {
                 return [detail]
             }
-            
+
             // Alt: fetch by title
             let titleMatches = try self.findMangasByTitle(db: db, title: entry.title)
-            
+
             for manga in titleMatches where !details.contains(where: { $0.manga.id == manga.id }) {
                 if let detail = try self.fetchDetailWithChapters(db: db, manga: manga) {
                     details.append(detail)
                 }
             }
-            
+
             return details
+            
+//            let manga = try Manga.fetchAll(db)
+//            return try manga.map { try self.fetchDetailWithChapters(db: db, manga: $0)! }
         }
         .publisher(in: database, scheduling: .immediate)
         .catch { _ in Just([]) }

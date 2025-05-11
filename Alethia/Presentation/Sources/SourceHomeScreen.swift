@@ -33,6 +33,7 @@ struct SourceHomeScreen: View {
 
             ForEach(routes) { route in
                 RowView(
+                    source: source,
                     route: route,
                     onRandom: { entry in
                         headerEntries.append(entry)
@@ -65,6 +66,7 @@ private struct RowView: View {
     @StateObject private var vm = ViewModel()
     @State private var didSend: Lock = .unlocked
     
+    var source: Source
     var route: SourceRoute
     let onRandom: (Entry) -> Void
     
@@ -93,7 +95,7 @@ private struct RowView: View {
     
     @ViewBuilder
     private func HeaderView(title: String) -> some View {
-        NavigationLink(destination: SourceRouteScreen(route: route)) {
+        NavigationLink(destination: SourceRouteScreen(source: source, route: route)) {
             HStack {
                 Text(route.name)
                     .font(.title)
@@ -112,7 +114,7 @@ private struct RowView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 4) {
                     ForEach(content, id: \.self) { entry in
-                        SourceCardView(namespace: namespace, entry: entry)
+                        SourceCardView(namespace: namespace, source: source, entry: entry)
                             .frame(width: 150)
                     }
                 }

@@ -9,11 +9,12 @@ import SwiftUI
 
 struct SourceCardView: View {
     let namespace: Namespace.ID
+    let source: Source
     let entry: Entry
     
     var body: some View {
         NavigationLink {
-            DetailsScreen(entry: entry)
+            DetailsScreen(entry: entry, source: source)
                 .navigationTransition(.zoom(sourceID: entry.transitionId, in: namespace))
         } label: {
             EntryView(item: entry, lineLimit: 2)

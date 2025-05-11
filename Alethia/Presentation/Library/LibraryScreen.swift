@@ -85,7 +85,7 @@ private struct ContentView: View {
     @ViewBuilder
     private func CardView(_ entry: Entry) -> some View {
         NavigationLink {
-            DetailsScreen(entry: entry)
+            DetailsScreen(entry: entry, source: nil)
                 .navigationTransition(.zoom(sourceID: entry.transitionId, in: namespace))
         } label: {
             EntryView(item: entry, lineLimit: 2)

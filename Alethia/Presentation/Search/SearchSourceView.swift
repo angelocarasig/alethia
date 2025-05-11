@@ -46,6 +46,7 @@ struct SearchSourceView: View {
                     ForEach(vm.items, id: \.id) { entry in
                         SourceCardView(
                             namespace: namespace,
+                            source: vm.source,
                             entry: entry
                         )
                     }

@@ -55,20 +55,25 @@ struct ContinueReadingView: View {
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(index == vm.details.unsafelyUnwrapped.chapters.count - 1 ? "Start" : "Continue")
-                        .font(.subheadline)
+                        .font(.headline)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                     
                     Text("Chapter \(chapter.chapter.number.toString())")
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.white.opacity(0.8))
                 }
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
             .padding(.horizontal, 20)
             .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.accentColor.opacity(0.85))
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.appBlue.opacity(0.9))
+                    
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.appBlue, lineWidth: 1)
+                }
             )
         }
         .buttonStyle(.plain)

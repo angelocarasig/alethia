@@ -13,6 +13,7 @@ struct SourceRouteScreen: View {
     @Namespace private var namespace
     @StateObject private var vm = ViewModel()
     
+    var source: Source
     var route: SourceRoute
     
     let columns = [
@@ -31,6 +32,7 @@ struct SourceRouteScreen: View {
                 ForEach(vm.items, id: \.id) { entry in
                     SourceCardView(
                         namespace: namespace,
+                        source: source,
                         entry: entry
                     )
                 }

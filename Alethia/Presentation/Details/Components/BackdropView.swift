@@ -8,7 +8,7 @@
 import SwiftUI
 import Kingfisher
 
-fileprivate let BACKGROUND_GRADIENT_BREAKPOINT: CGFloat = 800
+fileprivate let BACKGROUND_GRADIENT_BREAKPOINT: CGFloat = 600
 
 struct BackdropView: View {
     let cover: Cover?
@@ -48,7 +48,7 @@ struct BackgroundGradientView: View {
                 startPoint: .top,
                 endPoint: .center
             )
-            .frame(height: BACKGROUND_GRADIENT_BREAKPOINT)
+            .frame(height: BACKGROUND_GRADIENT_BREAKPOINT * 2)
             
             Color.background.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
