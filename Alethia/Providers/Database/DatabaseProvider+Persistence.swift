@@ -20,6 +20,9 @@ extension DatabaseProvider {
         config.label = "com.alethia.database"
         config.prepareDatabase { db in
             try db.execute(sql: "PRAGMA foreign_keys = ON")
+            
+            // for logs
+            //  db.trace { print($0) }
         }
         
         return config
@@ -36,9 +39,9 @@ extension DatabaseProvider {
                 appropriateFor: nil,
                 create: true
             ).appendingPathComponent("Database", isDirectory: true)
-
+            
             try fileManager.createDirectory(at: dbFolderURL, withIntermediateDirectories: true)
-
+            
             let dbPath = dbFolderURL.appendingPathComponent("alethia.db").path
             let writer = try DatabasePool(path: dbPath, configuration: configuration)
             let database = try DatabaseProvider(writer)

@@ -59,6 +59,13 @@ struct VerticalChapterTransition: View {
     
     var body: some View {
         ContentView()
+            .if(vm.orientation == Orientation.Vertical) { view in
+                view
+                    .frame(
+                        width: UIScreen.main.bounds.width,
+                        height: UIScreen.main.bounds.height
+                    )
+            }
             .background(
                 GeometryReader { geo in
                     Color.clear

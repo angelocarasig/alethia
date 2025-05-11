@@ -18,6 +18,9 @@ struct VerticalReader: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
+                // used for scrolling to top
+                Color.clear.id("top")
+                
                 LazyVStack(spacing: 0) {
                     ForEach(vm.pages) { page in
                         let correspondingChapter = page.getUnderlyingChapter(chapters: vm.chapters)
@@ -37,6 +40,11 @@ struct VerticalReader: View {
                             index: page.id,
                             referer: correspondingChapter.origin.referer
                         )
+                        .containerRelativeFrame(
+                            vm.orientation == Orientation.Vertical ? .vertical : .horizontal,
+                            count: 1,
+                            spacing: 0
+                        )
                         .onAppear { vm.currentPage = page }
                         .id("page-\(page.id)")
                         
@@ -47,11 +55,19 @@ struct VerticalReader: View {
                                 onWillLoad: { onWillLoad(page: page, isPrevious: false) },
                                 onDidLoad: { onDidLoad(proxy: proxy) }
                             )
-                            .id("transition-previous-\(page.id)")
+                            .id("transition-next-\(page.id)")
                         }
                     }
                 }
                 .scrollTargetLayout()
+            }
+            .if(vm.orientation == Orientation.Vertical) { view in
+                view
+                    .defaultScrollAnchor(.center)
+                    .scrollTargetBehavior(.paging)
+            }
+            .onChange(of: vm.orientation) {
+                proxy.scrollTo("top")
             }
             .onChange(of: vm.currentPage) {
                 onSliderScroll(proxy: proxy)

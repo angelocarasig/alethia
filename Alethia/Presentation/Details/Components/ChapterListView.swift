@@ -31,6 +31,7 @@ struct ChapterListView: View {
                     )
                 ) {
                     ChapterRow(item: chapter)
+                        .id("\(chapter.chapter.title)-\(chapter.chapter.progress)")
                 }
                 .buttonStyle(.plain)
             }

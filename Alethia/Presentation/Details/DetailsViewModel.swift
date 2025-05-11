@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 import Combine
 
 final class DetailsViewModel: ObservableObject {
@@ -33,34 +34,43 @@ final class DetailsViewModel: ObservableObject {
         self.toggleMangaInLibraryUseCase = DependencyInjector.shared.makeToggleMangaInLibraryUseCase()
     }
     
+    deinit {
+        for cancellable in cancellables {
+            cancellable.cancel()
+        }
+    }
+    
     func bind() {
         loading = true
         error = nil
         
-        getMangaDetailUseCase.execute(entry: self.entry)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] completion in
-                guard let self = self else { return }
-                self.loading = false
-                
-                if case .failure(let error) = completion {
-                    self.error = error
-                }
-            } receiveValue: { [weak self] detail in
-                self?.options = []
-                
-                // When multiple entries are found the proper one needs to be picked
-                if detail.count > 1 {
-                    self?.options = detail
-                }
-                else if detail.isEmpty {
-                    self?.details = nil
-                }
-                else {
-                    self?.details = detail.first!
-                }
-            }
-            .store(in: &cancellables)
+        getMangaDetailUseCase.execute(entry: entry)
+          .receive(on: DispatchQueue.main)
+          .sink { [weak self] completion in
+              if case .failure(let error) = completion {
+                  self?.error = error
+              }
+          } receiveValue: { [weak self] detailArray in
+              guard let self = self else { return }
+              self.loading = false
+
+              if detailArray.count > 1 {
+                  self.details = nil
+                  self.options = detailArray
+              }
+              else if let first = detailArray.first {
+                  self.options = []
+                  
+                  withAnimation {
+                      self.details = first
+                  }
+              }
+              else {
+                  self.options = []
+                  self.details = nil
+              }
+          }
+          .store(in: &cancellables)
     }
     
     func pickOption(option: Detail) {

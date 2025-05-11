@@ -15,6 +15,8 @@ struct HorizontalReader: View {
     @State private var scrollPosition: String?
     @State private var anchorIDBeforeInsert: String?
     
+    // TODO: RTL Support
+    
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
@@ -48,7 +50,7 @@ struct HorizontalReader: View {
                                 onWillLoad: { onWillLoad(page: page, isPrevious: false) },
                                 onDidLoad: { onDidLoad(proxy: proxy) }
                             )
-                            .id("transition-previous-\(page.id)")
+                            .id("transition-next-\(page.id)")
                         }
                     }
                 }

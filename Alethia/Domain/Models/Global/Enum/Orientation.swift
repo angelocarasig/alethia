@@ -16,9 +16,9 @@ enum Orientation: String, Codable, CaseIterable {
     mutating func cycle() {
         switch self {
         case .LeftToRight:  self = .RightToLeft
-        case .RightToLeft:  self = .Vertical
-        case .Vertical:     self = .Infinite
-        case .Infinite:     self = .LeftToRight
+        case .RightToLeft:  self = .Infinite
+        case .Infinite:     self = .Vertical
+        case .Vertical:     self = .LeftToRight
         }
     }
     

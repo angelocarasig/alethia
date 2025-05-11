@@ -28,7 +28,6 @@ struct EntryView: View {
                 let match = item.match
                 
                 KFImage(URL(string: item.cover ?? ""))
-                    .setProcessor(DownsamplingImageProcessor(size: CGSize(width: cellWidth * 1.5, height: cellHeight * 1.5)))
                     .placeholder { Color.tint.shimmer() }
                     .resizable()
                     .fade(duration: 0.25)

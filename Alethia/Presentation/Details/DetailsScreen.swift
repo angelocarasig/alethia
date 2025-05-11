@@ -41,12 +41,18 @@ struct DetailsScreen: View {
 }
 
 private struct EmptyView: View {
+    @EnvironmentObject private var vm: DetailsViewModel
+    
     var body: some View {
         ContentUnavailableView(
             "No Details Found",
             systemImage: "book.closed",
             description: Text("The provided manga details did not match any records")
         )
+        
+        Button("Retry") {
+            vm.bind()
+        }
     }
 }
 
