@@ -24,7 +24,7 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
     var id: String { fetchUrl ?? title }
 
     var transitionId: String {
-        "\(sourceId ?? 0)-\(fetchUrl ?? title)"
+        title
     }
 
     var mangaId: Int64?
@@ -35,11 +35,11 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
 
     // MARK: Transient state
     var match: EntryMatch = .none
-    var unread: Int?
+    var unread: Int
 
     // MARK: Decoding & GRDB
     private enum CodingKeys: String, CodingKey {
-        case mangaId, sourceId, title, cover, fetchUrl
+        case mangaId, sourceId, title, cover, fetchUrl, unread
     }
 
     enum Columns {
@@ -48,6 +48,7 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
         static let title = Column(CodingKeys.title)
         static let cover = Column(CodingKeys.cover)
         static let fetchUrl = Column(CodingKeys.fetchUrl)
+        static let unread = Column(CodingKeys.unread)
     }
 
     // Custom initializer
@@ -57,7 +58,7 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
         title: String,
         cover: String? = nil,
         fetchUrl: String? = nil,
-        unread: Int? = nil,
+        unread: Int = -1,
         match: EntryMatch? = EntryMatch.none
     ) {
         self.mangaId = mangaId

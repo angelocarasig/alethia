@@ -29,4 +29,8 @@ extension ChapterRepositoryImpl: ChapterRepository {
     func updateChapterProgress(chapter: Chapter, newProgress: Double) throws {
         try local.updateChapterProgress(chapter: chapter, newProgress: newProgress)
     }
+    
+    func markAllChapters(chapters: [Chapter], asRead: Bool) throws {
+        try local.markAllChapters(chapters: chapters, asRead: asRead)
+    }
 }

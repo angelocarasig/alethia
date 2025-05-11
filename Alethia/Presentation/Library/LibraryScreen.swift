@@ -57,59 +57,43 @@ struct LibraryScreen: View {
 }
 
 private struct ContentView: View {
-    @EnvironmentObject private var vm: LibraryViewModel
     @Namespace private var namespace
+    @EnvironmentObject private var vm: LibraryViewModel
     
     var body: some View {
         CollectionViewGrid(
             data: vm.items,
-            content: { CardView($0) },
+            content: { item in
+                CardView(
+                    namespace: namespace,
+                    entry: item
+                )
+            },
             columns: 3,
-            spacing: Constants.Spacing.minimal
+            spacing: Constants.Spacing.minimal,
+            showsScrollIndicator: false
         )
         .padding(.horizontal, Constants.Padding.regular)
     }
+}
+
+private struct CardView: View {
+    let namespace: Namespace.ID
+    let entry: Entry
     
-    @ViewBuilder
-    private func CardView(_ entry: Entry) -> some View {
+    var body: some View {
         NavigationLink {
             DetailsScreen(entry: entry, source: nil)
                 .navigationTransition(.zoom(sourceID: entry.transitionId, in: namespace))
         } label: {
-            EntryView(item: entry, lineLimit: 2)
-                .matchedTransitionSource(id: entry.transitionId, in: namespace)
-                .scrollTargetLayout()
-                .unread(entry.unread ?? 0)
+            EntryView(
+                item: entry,
+                lineLimit: 2,
+                showUnread: true
+            )
+            .matchedTransitionSource(id: entry.transitionId, in: namespace)
         }
-        .padding(.top, 6)
-    }
-}
-
-private struct UnreadBadgeModifier: ViewModifier {
-    let unread: Int
-    
-    func body(content: Content) -> some View {
-        ZStack(alignment: .topTrailing) {
-            content
-            
-            if unread > 0 {
-                let unreadAmount = "\(min(unread, 99))\(unread >= 99 ? "+" : "")"
-                
-                Text(unreadAmount)
-                    .font(.caption)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, Constants.Padding.regular)
-                    .padding(.vertical, Constants.Padding.minimal)
-                    .background(.red)
-                    .clipShape(.capsule)
-                    .offset(y: -12)
-            }
-        }
-    }
-}
-
-private extension View {
-    func unread(_ count: Int) -> some View {
-        self.modifier(UnreadBadgeModifier(unread: count))
+        .unread(entry.unread)
+        .padding(.top, 12)
     }
 }

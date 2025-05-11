@@ -108,4 +108,8 @@ extension DependencyInjector {
     func makeUpdateChapterProgressUseCase() -> UpdateChapterProgressUseCase {
         return UpdateChapterProgressUseCaseImpl(repository: chapterRepository)
     }
+    
+    func makeMarkAllChaptersUseCase() -> MarkAllChaptersUseCase {
+        return MarkAllChaptersUseCaseImpl(repository: chapterRepository)
+    }
 }

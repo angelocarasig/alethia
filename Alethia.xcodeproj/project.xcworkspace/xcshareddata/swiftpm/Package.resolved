@@ -1,5 +1,5 @@
 {
-  "originHash" : "50babf8619b11db1e35d295f302701beb17d3fb12a52c49164835abc7a74adca",
+  "originHash" : "cd1a2d2b20014e57797ac08291e6953c79e32a516b368a8e3f9c8b724d0f3672",
   "pins" : [
     {
       "identity" : "grdb.swift",
@@ -17,15 +17,6 @@
       "state" : {
         "revision" : "7deda23bbdca612076c5c315003d8638a08ed0f1",
         "version" : "8.3.2"
-      }
-    },
-    {
-      "identity" : "scrollviewloader",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/gh123man/ScrollViewLoader.git",
-      "state" : {
-        "revision" : "a8017b65df2f937a850eff79def12e23e961f115",
-        "version" : "1.1.2"
       }
     },
     {

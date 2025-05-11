@@ -67,41 +67,6 @@ extension Manga {
     var collections: QueryInterfaceRequest<Collection> {
         request(for: Manga.collections)
     }
-    
-    static var entry: QueryInterfaceRequest<Entry> {
-        let originSlug = Origin
-            .filter(Origin.Columns.mangaId == Manga.Columns.id)
-            .order(Origin.Columns.priority.asc)
-            .limit(1)
-            .select(Origin.Columns.slug)
-            .sqlSubquery
-        
-        let sourceId = Origin
-            .filter(Origin.Columns.mangaId == Manga.Columns.id)
-            .order(Origin.Columns.priority.asc)
-            .limit(1)
-            .select(Origin.Columns.sourceId)
-            .sqlSubquery
-        
-        // NOTE: For some reason cover needs to be fetched like this
-        let cover = SQL("""
-            (SELECT url FROM cover
-            WHERE cover.mangaId = manga.id
-            AND cover.active = 1
-            ORDER BY id DESC
-            LIMIT 1)
-        """)
-        
-        return Manga
-            .select([
-                Manga.Columns.id    .forKey("mangaId"),
-                Manga.Columns.title .forKey("title"),
-                sourceId            .forKey("sourceId"),
-                originSlug          .forKey("originSlug"),
-                cover               .forKey("cover")
-            ])
-            .asRequest(of: Entry.self)
-    }
 }
 
 extension Manga: TableRecord {
@@ -190,6 +155,68 @@ extension Manga: DatabaseModel {
 }
 
 extension Manga {
+    static var entry: QueryInterfaceRequest<Entry> {
+        let originSlug = Origin
+            .filter(Origin.Columns.mangaId == Manga.Columns.id)
+            .order(Origin.Columns.priority.asc)
+            .limit(1)
+            .select(Origin.Columns.slug)
+            .sqlSubquery
+        
+        let sourceId = Origin
+            .filter(Origin.Columns.mangaId == Manga.Columns.id)
+            .order(Origin.Columns.priority.asc)
+            .limit(1)
+            .select(Origin.Columns.sourceId)
+            .sqlSubquery
+        
+        // NOTE: For some reason cover needs to be fetched like this
+        let cover = SQL("""
+            (SELECT url FROM cover
+            WHERE cover.mangaId = manga.id
+            AND cover.active = 1
+            ORDER BY id DESC
+            LIMIT 1)
+        """)
+        
+        // Simplified unread count query
+        let unreadCount = SQL("""
+            IFNULL((SELECT COUNT(*) FROM (
+                WITH RankedChapters AS (
+                    SELECT 
+                        c.id,
+                        c.number,
+                        c.progress,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY c.number 
+                            ORDER BY o.priority ASC, s.priority ASC
+                        ) as rank
+                    FROM chapter c
+                    JOIN origin o ON c.originId = o.id
+                    JOIN scanlator s ON c.scanlatorId = s.id
+                    WHERE o.mangaId = manga.id
+                    AND (manga.showHalfChapters = 1 OR CAST(c.number AS INTEGER) = c.number)
+                )
+                SELECT id FROM RankedChapters 
+                WHERE rank = 1 AND (progress IS NULL OR progress < 1.0)
+            )), 0)
+        """)
+        
+        // Explicitly cast as INTEGER to ensure it's not null
+        let unreadCountCasted = SQL("CAST(\(unreadCount) AS INTEGER)")
+        
+        return Manga
+            .select([
+                Manga.Columns.id    .forKey("mangaId"),
+                Manga.Columns.title .forKey("title"),
+                sourceId            .forKey("sourceId"),
+                originSlug          .forKey("fetchUrl"),  // Map originSlug to fetchUrl property
+                cover               .forKey("cover"),
+                unreadCountCasted   .forKey("unread")     // Use the casted count
+            ])
+            .asRequest(of: Entry.self)
+    }
+    
     var chapters: QueryInterfaceRequest<ChapterExtended> {
         guard let id = id else {
             fatalError("Manga ID is required to fetch chapters.")

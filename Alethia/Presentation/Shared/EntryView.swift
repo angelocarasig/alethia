@@ -12,15 +12,18 @@ struct EntryView: View {
     let item: Entry
     let downsample: Bool
     let lineLimit: Int
+    let showUnread: Bool
     
     init(
         item: Entry,
         downsample: Bool = false,
-        lineLimit: Int = 1
+        lineLimit: Int = 1,
+        showUnread: Bool = false
     ) {
         self.item = item
         self.downsample = downsample
         self.lineLimit = lineLimit
+        self.showUnread = showUnread
     }
     
     var processors: [any ImageProcessor] {
@@ -38,7 +41,6 @@ struct EntryView: View {
             GeometryReader { geometry in
                 let cellWidth = geometry.size.width
                 let cellHeight = cellWidth * 16 / 11
-                let match = item.match
                 
                 KFImage(URL(string: item.cover ?? ""))
                     .setProcessors(processors)
@@ -49,28 +51,7 @@ struct EntryView: View {
                     .frame(width: cellWidth, height: cellHeight)
                     .cornerRadius(Constants.Corner.Radius.card)
                     .clipped()
-                    .overlay {
-                        if match != .none {
-                            ZStack(alignment: .topTrailing) {
-                                Color.black.opacity(0.5)
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .cornerRadius(Constants.Corner.Radius.card)
-                                
-                                if match == .exact {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.system(size: 18))
-                                        .foregroundColor(.green)
-                                        .padding(Constants.Padding.regular)
-                                }
-                                else if match == .partial {
-                                    Image(systemName: "circle.bottomhalf.filled.inverse")
-                                        .font(.system(size: 18))
-                                        .foregroundColor(.appYellow)
-                                        .padding(Constants.Padding.regular)
-                                }
-                            }
-                        }
-                    }
+                    .overlay(MatchOverlay(match: item.match))
             }
             .aspectRatio(11/16, contentMode: .fit)
             
@@ -85,5 +66,53 @@ struct EntryView: View {
             Spacer()
         }
         .padding(.horizontal, Constants.Padding.minimal)
+    }
+    
+    @ViewBuilder
+    private func MatchOverlay(match: EntryMatch) -> some View {
+        if match != .none {
+            ZStack(alignment: .topTrailing) {
+                Color.black.opacity(0.5)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .cornerRadius(Constants.Corner.Radius.card)
+                
+                if match == .exact {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.green)
+                        .padding(Constants.Padding.regular)
+                }
+                
+                else if match == .partial {
+                    Image(systemName: "circle.bottomhalf.filled.inverse")
+                        .font(.system(size: 18))
+                        .foregroundColor(.appYellow)
+                        .padding(Constants.Padding.regular)
+                }
+            }
+        }
+    }
+}
+
+private struct UnreadBadgeModifier: ViewModifier {
+    let unread: Int
+    
+    func body(content: Content) -> some View {
+        ZStack(alignment: .topTrailing) {
+            content
+            
+            if unread > 0 {
+                let unreadAmount = "\(min(unread, 99))\(unread >= 99 ? "+" : "")"
+                
+                Text(unreadAmount)
+                    .font(.caption)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, Constants.Padding.regular)
+                    .padding(.vertical, Constants.Padding.minimal)
+                    .background(.red)
+                    .clipShape(.capsule)
+                    .offset(y: -12)
+            }
+        }
     }
 }

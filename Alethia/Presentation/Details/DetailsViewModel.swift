@@ -23,6 +23,7 @@ final class DetailsViewModel: ObservableObject {
     // MARK: - Use Cases
     private let getMangaDetailUseCase: GetMangaDetailUseCase
     private let toggleMangaInLibraryUseCase: ToggleMangaInLibraryUseCase
+    private let markAllChaptersUseCase: MarkAllChaptersUseCase
     
     // MARK: - Initialization
     init(entry: Entry, context: Source?) {
@@ -31,6 +32,7 @@ final class DetailsViewModel: ObservableObject {
         
         self.getMangaDetailUseCase = DependencyInjector.shared.makeGetMangaDetailUseCase()
         self.toggleMangaInLibraryUseCase = DependencyInjector.shared.makeToggleMangaInLibraryUseCase()
+        self.markAllChaptersUseCase = DependencyInjector.shared.makeMarkAllChaptersUseCase()
     }
     
     deinit {
@@ -167,7 +169,21 @@ extension DetailsViewModel {
                 newValue: !details.manga.inLibrary
             )
         } catch {
-            print("Error toggling library status: \(error)")
+            state = .error(error)
+        }
+    }
+    
+    func markAllChapters(asRead: Bool) {
+        guard !chapters.isEmpty else { return }
+        
+        do {
+            try markAllChaptersUseCase.execute(
+                chapters: chapters.map { $0.chapter },
+                asRead: asRead
+            )
+        }
+        catch {
+            state = .error(error)
         }
     }
 }

@@ -36,4 +36,16 @@ final class ChapterLocalDataSource {
             try targetChapter.update(db)
         }
     }
+    
+    func markAllChapters(chapters: [Chapter], asRead: Bool) throws -> Void {
+        try DatabaseProvider.shared.writer.write { db in
+            for chapter in chapters {
+                var updatedChapter = chapter
+                
+                updatedChapter.progress = asRead ? 1.0 : 0.0
+                
+                try updatedChapter.update(db)
+            }
+        }
+    }
 }

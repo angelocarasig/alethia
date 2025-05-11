@@ -7,7 +7,6 @@
 
 import SwiftUI
 import Combine
-import ScrollViewLoader
 
 struct SourceRouteScreen: View {
     @Namespace private var namespace
@@ -15,12 +14,6 @@ struct SourceRouteScreen: View {
     
     var source: Source
     var route: SourceRoute
-    
-    let columns = [
-        GridItem(.flexible(), spacing: Constants.Spacing.minimal),
-        GridItem(.flexible(), spacing: Constants.Spacing.minimal),
-        GridItem(.flexible(), spacing: Constants.Spacing.minimal)
-    ]
     
     var body: some View {
         ZStack {
@@ -43,7 +36,7 @@ struct SourceRouteScreen: View {
                             top: 8, leading: 8, bottom: 8, trailing: 8
                         ),
                         onReachedBottom: {
-                            guard !vm.loading, !vm.noMoreContent else { return }
+                            guard !vm.loading, !vm.items.isEmpty, !vm.noMoreContent else { return }
                             vm.page += 1
                             Task { await vm.load(with: route.id!) }
                         },
@@ -77,7 +70,11 @@ struct SourceRouteScreen: View {
     @ViewBuilder
     private func SkeletonGridView() -> some View {
         ScrollView {
-            LazyVGrid(columns: columns) {
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: Constants.Spacing.minimal),
+                GridItem(.flexible(), spacing: Constants.Spacing.minimal),
+                GridItem(.flexible(), spacing: Constants.Spacing.minimal)
+            ]) {
                 ForEach(0..<30, id: \.self) { _ in
                     VStack(alignment: .leading, spacing: 10) {
                         RoundedRectangle(cornerRadius: 6)

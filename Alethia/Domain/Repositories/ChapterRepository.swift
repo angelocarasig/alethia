@@ -14,4 +14,6 @@ protocol ChapterRepository {
     func updateChapterProgress(chapter: Chapter, newProgress: Double) throws -> Void
     
     func markChapterRead(chapter: Chapter) throws -> Void
+    
+    func markAllChapters(chapters: [Chapter], asRead: Bool) throws -> Void
 }

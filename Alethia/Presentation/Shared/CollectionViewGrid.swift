@@ -18,6 +18,9 @@ struct CollectionViewGrid<Data, Cell>: UIViewRepresentable where Data: RandomAcc
     var spacing: CGFloat = Constants.Spacing.minimal
     var contentInsets: NSDirectionalEdgeInsets = .zero
     
+    // UI
+    var showsScrollIndicator: Bool = true
+    
     // Callbacks
     var onReachedBottom: (() -> Void)?
     var onItemTapped: ((Data.Element) -> Void)?
@@ -33,7 +36,7 @@ struct CollectionViewGrid<Data, Cell>: UIViewRepresentable where Data: RandomAcc
         // Create collection view
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
-        collectionView.showsVerticalScrollIndicator = true
+        collectionView.showsVerticalScrollIndicator = showsScrollIndicator
         
         // Register cell
         collectionView.register(HostingCell<Cell>.self, forCellWithReuseIdentifier: cellIdentifier)
@@ -48,6 +51,8 @@ struct CollectionViewGrid<Data, Cell>: UIViewRepresentable where Data: RandomAcc
     func updateUIView(_ collectionView: UICollectionView, context: Context) {
         // Update coordinator
         context.coordinator.parent = self
+        
+        collectionView.showsVerticalScrollIndicator = showsScrollIndicator
         
         // Update data
         collectionView.reloadData()

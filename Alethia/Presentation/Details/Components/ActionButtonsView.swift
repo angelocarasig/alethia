@@ -74,56 +74,82 @@ private struct QuickButtonsView: View {
     @EnvironmentObject var vm: DetailsViewModel
     
     @State private var showConfirmation = false
-    @State private var confirmationData: ConfirmationData? = nil
+    @State private var confirmationAction: ActionType? = nil
     
-    private struct ConfirmationData {
-        let message: String
-        let action: () -> Void
+    private enum ActionType: String, CaseIterable {
+        case editDetails = "Edit Details"
+        case refreshChapters = "Refresh Chapters"
+        case refreshMetadata = "Refresh Metadata"
+        case mergeWizard = "Merge Wizard"
+        case downloadAllChapters = "Download All Chapters"
+        case removeAllDownloads = "Remove All Downloads"
+        case markAllAsRead = "Mark All As Read"
+        case markAllAsUnread = "Mark All As Unread"
+        
+        var systemImage: String {
+            switch self {
+            case .editDetails:          return "pencil"
+            case .refreshChapters:      return "arrow.clockwise"
+            case .refreshMetadata:      return "rectangle.and.text.magnifyingglass"
+            case .mergeWizard:          return "plus.rectangle.fill.on.rectangle.fill"
+            case .downloadAllChapters:  return "arrow.down.circle.fill"
+            case .removeAllDownloads:   return "trash.fill"
+            case .markAllAsRead:        return "checkmark.circle.fill"
+            case .markAllAsUnread:      return "x.circle.fill"
+            }
+        }
+        
+        var requiresConfirmation: Bool {
+            switch self {
+            case .removeAllDownloads, .markAllAsRead, .markAllAsUnread:
+                return true
+            default:
+                return false
+            }
+        }
+        
+        var confirmationMessage: String {
+            switch self {
+            case .markAllAsRead:
+                return "Are you sure you want to mark all chapters as read?"
+            case .markAllAsUnread:
+                return "Are you sure you want to mark all chapters as unread?"
+            default:
+                return "This action cannot be undone."
+            }
+        }
     }
-    
-    private struct Option {
-        var title: String
-        var systemImage: String
-        var action: () -> Void
-    }
-    
-    private var options: [Option] = [
-        Option(title: "Edit Details", systemImage: "pencil", action: {}),
-        Option(title: "Refresh Chapters", systemImage: "arrow.clockwise", action: {}),
-        Option(title: "Refresh Metadata", systemImage: "rectangle.and.text.magnifyingglass", action: {}),
-        Option(title: "Merge Wizard", systemImage: "plus.rectangle.fill.on.rectangle.fill", action: {}),
-        Option(title: "Download All Chapters", systemImage: "arrow.down.circle.fill", action: {}),
-        Option(title: "Remove All Downloads", systemImage: "trash.fill", action: {}),
-        Option(title: "Mark All As Read", systemImage: "checkmark.circle.fill", action: {}),
-        Option(title: "Mark All As Unread", systemImage: "x.circle.fill", action: {})
-    ]
     
     var body: some View {
         Menu {
-            ForEach(options, id: \.title) { option in
-                Button(action: option.action) {
-                    Label(option.title, systemImage: option.systemImage)
-                        .foregroundColor(.background)
+            ForEach(ActionType.allCases, id: \.self) { action in
+                Button {
+                    handleAction(action)
+                } label: {
+                    Label(action.rawValue, systemImage: action.systemImage)
                 }
             }
         } label: {
             Image(systemName: "ellipsis")
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
+                .frame(
+                    width: Constants.Icon.Size.regular,
+                    height: Constants.Icon.Size.regular
+                )
+                .contentShape(.rect)
                 .foregroundColor(.background)
-                .background(.text,in: .rect(
+                .background(.text, in: .rect(
                     cornerRadius: Constants.Corner.Radius.button,
                     style: .continuous
-                )
-                )
+                ))
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    ForEach(options, id: \.title) { option in
-                        Button(action: option.action) {
-                            Label(option.title, systemImage: option.systemImage)
-                                .foregroundColor(.background)
+                    ForEach(ActionType.allCases, id: \.self) { action in
+                        Button {
+                            handleAction(action)
+                        } label: {
+                            Label(action.rawValue, systemImage: action.systemImage)
                         }
                     }
                 } label: {
@@ -131,16 +157,60 @@ private struct QuickButtonsView: View {
                 }
             }
         }
-        .alert("Are you sure?", isPresented: $showConfirmation) {
-            Button("Confirm", role: .destructive) { confirmationData?.action() }
+        .alert("Confirmation", isPresented: $showConfirmation) {
+            Button("Confirm") {
+                executeAction()
+            }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text(confirmationData?.message ?? "This action cannot be undone.")
+            Text(confirmationAction?.confirmationMessage ?? "")
         }
     }
     
-    private func showConfirmationPrompt(message: String, action: @escaping () -> Void) {
-        confirmationData = ConfirmationData(message: message, action: action)
-        showConfirmation = true
+    private func handleAction(_ action: ActionType) {
+        if action.requiresConfirmation {
+            confirmationAction = action
+            showConfirmation = true
+        } else {
+            executeAction(action)
+        }
+    }
+    
+    private func executeAction(_ action: ActionType? = nil) {
+        let actionToExecute = action ?? confirmationAction
+        
+        guard let actionToExecute = actionToExecute else { return }
+        
+        switch actionToExecute {
+        case .editDetails:
+            // Implement edit details action
+            break
+            
+        case .refreshChapters:
+            // Implement refresh chapters action
+            break
+            
+        case .refreshMetadata:
+            // Implement refresh metadata action
+            break
+            
+        case .mergeWizard:
+            // Implement merge wizard action
+            break
+            
+        case .downloadAllChapters:
+            // Implement download all chapters action
+            break
+            
+        case .removeAllDownloads:
+            // Implement remove all downloads action
+            break
+            
+        case .markAllAsRead:
+            vm.markAllChapters(asRead: true)
+            
+        case .markAllAsUnread:
+            vm.markAllChapters(asRead: false)
+        }
     }
 }
