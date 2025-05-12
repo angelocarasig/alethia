@@ -33,7 +33,6 @@ final class MangaLocalDataSource {
     
     func getLibrary(filters: LibraryFilters) -> AnyPublisher<[Entry], Error> {
         let search = filters.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let pattern = "%\(search)%"
         
         return ValueObservation
             .tracking { [weak self] db -> [Entry] in
@@ -59,7 +58,7 @@ final class MangaLocalDataSource {
                 
                 // Apply search filter
                 if !search.isEmpty {
-                    request = self.applySearchFilter(to: request, pattern: pattern)
+                    request = self.applySearchFilter(to: request, search: search)
                 }
                 
                 // Apply sorting
@@ -165,45 +164,74 @@ final class MangaLocalDataSource {
         to request: QueryInterfaceRequest<Entry>,
         statuses: [PublishStatus]
     ) -> QueryInterfaceRequest<Entry> {
-        // Subquery to get the status from the origin with lowest priority
-        let statusSubquery = Origin
-            .filter(Origin.Columns.mangaId == Entry.Columns.mangaId)
-            .order(Origin.Columns.priority.asc)
-            .limit(1)
-            .select(Origin.Columns.status)
+        guard !statuses.isEmpty else { return request }
         
-        // Filter by statuses
-        return request.filter(statuses.contains(statusSubquery))
+        let statusValues = statuses.map { $0.rawValue }
+        let placeholders = statusValues.map { _ in "?" }.joined(separator: ", ")
+        
+        return request.filter(
+            literal: SQL(sql:
+                """
+                mangaId IN (
+                    SELECT DISTINCT o.mangaId
+                    FROM origin o
+                    WHERE o.status IN (\(placeholders))
+                    AND o.priority = (
+                        SELECT MIN(o2.priority)
+                        FROM origin o2
+                        WHERE o2.mangaId = o.mangaId
+                    )
+                )
+                """,
+                arguments: StatementArguments(statusValues)
+            )
+        )
     }
     
     private func applyClassificationFilter(
         to request: QueryInterfaceRequest<Entry>,
         classifications: [Classification]
     ) -> QueryInterfaceRequest<Entry> {
-        // Subquery to get the classification from the origin with lowest priority
-        let classificationSubquery = Origin
-            .filter(Origin.Columns.mangaId == Entry.Columns.mangaId)
-            .order(Origin.Columns.priority.asc)
-            .limit(1)
-            .select(Origin.Columns.classification)
+        guard !classifications.isEmpty else { return request }
         
-        // Filter by classifications
-        return request.filter(classifications.contains(classificationSubquery))
+        let classificationValues = classifications.map { $0.rawValue }
+        let placeholders = classificationValues.map { _ in "?" }.joined(separator: ", ")
+        
+        return request.filter(
+            literal: SQL(sql:
+                """
+                mangaId IN (
+                    SELECT DISTINCT o.mangaId
+                    FROM origin o
+                    WHERE o.classification IN (\(placeholders))
+                    AND o.priority = (
+                        SELECT MIN(o2.priority)
+                        FROM origin o2
+                        WHERE o2.mangaId = o.mangaId
+                    )
+                )
+                """,
+                arguments: StatementArguments(classificationValues)
+            )
+        )
     }
     
     private func applySearchFilter(
         to request: QueryInterfaceRequest<Entry>,
-        pattern: String
+        search: String
     ) -> QueryInterfaceRequest<Entry> {
-        let titleExists = Title
-            .filter(
-                Title.Columns.mangaId == Entry.Columns.mangaId &&
-                Title.Columns.title.like(pattern)
-            )
-            .exists()
-        
+        // For Entry type queries, we need to use a raw SQL filter that checks both
+        // the manga title and alternative titles
         return request.filter(
-            Entry.Columns.title.like(pattern) || titleExists
+            sql: """
+            (INSTR(LOWER(title), LOWER(?)) > 0 OR 
+             EXISTS(
+                SELECT 1 FROM title t 
+                WHERE t.mangaId = manga.id 
+                AND INSTR(LOWER(t.title), LOWER(?)) > 0
+             ))
+            """,
+            arguments: [search, search]
         )
     }
     

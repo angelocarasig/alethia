@@ -44,7 +44,6 @@ struct SearchHomeView: View {
         }
         .padding(.horizontal, Constants.Padding.regular)
         .navigationTitle("Search")
-        .task { vm.bind() }
     }
 }
 
@@ -190,11 +189,14 @@ final class SearchHomeViewModel: ObservableObject {
     
     init(initialSearchValue: String = "") {
         self.search = initialSearchValue
+        
         self.getSourcesUseCase = DependencyInjector.shared.makeGetSourcesUseCase()
         self.searchSourceUseCase = DependencyInjector.shared.makeSearchSourceUseCase()
+        
+        bind(performInitialSearch: !initialSearchValue.isEmpty)
     }
     
-    func bind() -> Void {
+    private func bind(performInitialSearch: Bool = false) -> Void {
         getSourcesUseCase.execute()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] sources in
@@ -204,11 +206,15 @@ final class SearchHomeViewModel: ObservableObject {
                         if $0.pinned != $1.pinned { return $0.pinned }
                         return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
                     }
+                
+                if performInitialSearch {
+                    self?.performSearch()
+                }
             }
             .store(in: &cancellables)
     }
     
-    func performSearch() {
+    func performSearch() -> Void {
         guard !search.isEmpty else { return }
         
         // snapshot of current values just in case

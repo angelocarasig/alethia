@@ -10,7 +10,7 @@ import SwiftUI
 struct LoadingView: View {
     var body: some View {
         ContentUnavailableView {
-            EnhancedCircularSpinner()
+            ModernSpinner()
                 .frame(
                     width: Constants.Icon.Size.large,
                     height: Constants.Icon.Size.large
@@ -24,36 +24,46 @@ struct LoadingView: View {
         .toolbar(.hidden, for: .tabBar)
     }
     
-    private struct EnhancedCircularSpinner: View {
+    private struct ModernSpinner: View {
         @State private var isAnimating = false
         
         var body: some View {
-            ZStack {
-                Circle()
-                    .stroke(Color.gray.opacity(0.2), lineWidth: 8)
-                
-                Circle()
-                    .trim(from: 0, to: 0.7)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color.blue.opacity(0.8), Color.purple],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
-                    )
-                    .rotationEffect(Angle(degrees: isAnimating ? 360 : 0))
-                    .animation(
-                        Animation.linear(duration: 1.5)
-                            .repeatForever(autoreverses: false),
-                        value: isAnimating
-                    )
-                    .shadow(color: Color.purple.opacity(0.3), radius: 5, x: 0, y: 0)
+            GeometryReader { geometry in
+                ForEach(0..<3) { index in
+                    Circle()
+                        .fill(Color.accentColor)
+                        .frame(width: geometry.size.width / 5, height: geometry.size.height / 5)
+                        .scaleEffect(isAnimating ? 1 : 0.5)
+                        .opacity(isAnimating ? 0.3 : 1)
+                        .animation(
+                            Animation.easeInOut(duration: 1.2)
+                                .repeatForever(autoreverses: true)
+                                .delay(Double(index) * 0.2),
+                            value: isAnimating
+                        )
+                        .position(
+                            x: geometry.size.width / 2,
+                            y: geometry.size.height / 2
+                        )
+                        .offset(
+                            x: cos(CGFloat(index) * .pi * 2 / 3) * geometry.size.width / 3,
+                            y: sin(CGFloat(index) * .pi * 2 / 3) * geometry.size.width / 3
+                        )
+                        .rotationEffect(Angle(degrees: isAnimating ? 360 : 0))
+                        .animation(
+                            Animation.linear(duration: 2)
+                                .repeatForever(autoreverses: false),
+                            value: isAnimating
+                        )
+                }
             }
             .onAppear {
                 isAnimating = true
             }
         }
     }
-    
+}
+
+#Preview {
+    LoadingView()
 }

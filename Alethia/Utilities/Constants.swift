@@ -35,12 +35,13 @@ extension Constants {
     }
     
     struct Offset {
-        static let badge: CGSize = .init(width: 4, height: -12)
+        static let badge: CGSize = .init(width: 2, height: -12)
     }
     
     struct Icon {
         struct Size {
             static let regular: CGFloat = 40
+            
             static let large: CGFloat = 75
         }
     }

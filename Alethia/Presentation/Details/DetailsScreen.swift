@@ -198,7 +198,7 @@ extension DetailsScreen {
                 BackdropView(cover: vm.details?.covers.first)
                 
                 GeometryReader { geometry in
-                    ScrollView {
+                    ScrollView(.vertical, showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 20) {
                             Spacer().frame(height: geometry.size.height / 8)
                             
@@ -211,7 +211,7 @@ extension DetailsScreen {
                         }
                         .animation(.easeInOut, value: vm.details != nil)
                         .frame(maxHeight: .infinity)
-                        .padding(.horizontal, 12) // looks best
+                        .padding(.horizontal, Constants.Padding.screen)
                         .background(BackgroundGradientView())
                     }
                     .refreshable {

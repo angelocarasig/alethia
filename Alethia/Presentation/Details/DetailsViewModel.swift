@@ -34,10 +34,6 @@ final class DetailsViewModel: ObservableObject {
         self.toggleMangaInLibraryUseCase = DependencyInjector.shared.makeToggleMangaInLibraryUseCase()
         self.markAllChaptersUseCase = DependencyInjector.shared.makeMarkAllChaptersUseCase()
     }
-    
-    deinit {
-        cancellables.removeAll()
-    }
 }
 
 // MARK: - Computed Properties

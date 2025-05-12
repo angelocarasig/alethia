@@ -11,38 +11,47 @@ import Combine
 import GRDB
 
 final class LibraryViewModel: ObservableObject {
+    // MARK: - Published Properties
     @Published var showFilters: Bool = false
     @Published var filters: LibraryFilters = .init()
-    
-    @Published var items: [Entry] = []
+    @Published private(set) var state: ViewState = .loading
     
     @Published private(set) var collections: [Collection] = []
     @Published private(set) var activeCollection: Collection? = nil
     
+    // MARK: - Properties
     private var cancellables: Set<AnyCancellable> = []
     private let getLibraryUseCase: GetLibraryUseCase
     
+    // MARK: - View State
+    enum ViewState {
+        case loading
+        case success
+        case error(Error)
+        case empty
+    }
+    
+    // MARK: - Computed Properties
+    var items: [Entry] {
+        switch state {
+        case .loading, .empty, .error:
+            return []
+        case .success:
+            return _items
+        }
+    }
+    
+    private var _items: [Entry] = []
+    
+    // MARK: - Initialization
     init() {
         self.getLibraryUseCase = DependencyInjector.shared.makeGetLibraryUseCase()
-        
-        $filters
-            .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
-            .flatMap { [unowned self] filters in
-                self.getLibraryUseCase
-                    .execute(filters: filters)
-                    .catch { _ in Just([]) } // just catch errors for now
-            }
-            .receive(on: RunLoop.main)
-            .sink { completion in
-                if case .failure(let error) = completion {
-                    print("Library fetch failed:", error)
-                }
-            } receiveValue: { [weak self] updated in
-                withAnimation {
-                    self?.items = updated
-                }
-            }
-            .store(in: &cancellables)
+    }
+    
+    // MARK: - Lifecycle
+    func onAppear() {
+        guard cancellables.isEmpty else { return }
+        bind()
     }
     
     func setActiveCollection(_ collection: Collection?) -> Void {
@@ -50,7 +59,39 @@ final class LibraryViewModel: ObservableObject {
     }
     
     func refreshCollection() -> Void {
+        state = .loading
+        // Trigger refresh by updating filters
+        filters = filters
+    }
+    
+    // MARK: - Private Methods
+    private func bind() -> Void {
+        state = .loading
         
+        $filters
+            .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
+            .handleEvents(receiveOutput: { [weak self] _ in
+                self?.state = .loading
+            })
+            .flatMap { [unowned self] filters in
+                self.getLibraryUseCase
+                    .execute(filters: filters)
+                    .replaceError(with: [])
+            }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] updated in
+                guard let self = self else { return }
+                
+                withAnimation {
+                    if updated.isEmpty {
+                        self.state = .empty
+                    } else {
+                        self._items = updated
+                        self.state = .success
+                    }
+                }
+            }
+            .store(in: &cancellables)
     }
 }
 

@@ -69,7 +69,9 @@ private extension ReaderScreen {
     }
     
     private func onTapGesture() -> Void {
-        guard vm.chapterLoaded.boolValue else { return }
+        guard vm.chapterLoaded.boolValue,
+              !vm.onHorizontalPageTransition
+        else { return }
         
         withAnimation {
             vm.showOverlay.toggle()

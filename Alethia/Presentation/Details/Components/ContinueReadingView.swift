@@ -10,12 +10,8 @@ import SwiftUI
 struct ContinueReadingView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
-    var details: Detail? {
-        vm.details
-    }
-    
     var targetChapter: ChapterExtended? {
-        details?.chapters
+        vm.details?.chapters
             .sorted { $0.chapter.number < $1.chapter.number }
             .first(where: { !$0.chapter.read })
     }
@@ -36,7 +32,7 @@ struct ContinueReadingView: View {
                 }
             }
         }
-        .redacted(reason: details == nil ? .placeholder : [])
+        .redacted(reason: vm.details == nil ? .placeholder : [])
         .padding(Constants.Padding.screen)
     }
     

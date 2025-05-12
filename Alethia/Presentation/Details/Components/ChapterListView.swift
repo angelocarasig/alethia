@@ -14,10 +14,11 @@ struct ChapterListView: View {
     var body: some View {
         LazyVStack {
             ChapterHeaderView()
+                .padding(.bottom, Constants.Padding.minimal)
             
-            ForEach(Array(vm.chapters.enumerated()), id: \.element.chapter.id) {
-                index,
-                chapter in
+            ForEach(Array(vm.chapters.enumerated()), id: \.element.chapter.id) { index, chapter in
+                Divider()
+                
                 NavigationLink(
                     destination: ReaderScreen(
                         title: vm.details.unsafelyUnwrapped.manga.title,
@@ -30,10 +31,6 @@ struct ChapterListView: View {
                         .id("\(chapter.chapter.title)-\(chapter.chapter.progress)")
                 }
                 .buttonStyle(.plain)
-                
-                if index < vm.chapters.count - 1 {
-                    Divider()
-                }
             }
         }
     }
@@ -48,6 +45,15 @@ private struct ChapterHeaderView: View {
             .first(where: { !$0.chapter.read })
     }
     
+    var targetChapterPresent: Bool {
+        targetChapter != nil
+    }
+    
+    var targetChapterIndex: Int? {
+        guard let targetChapter = targetChapter else { return nil }
+        return vm.details?.chapters.firstIndex(of: targetChapter)
+    }
+    
     var body: some View {
         VStack(spacing: Constants.Spacing.large) {
             HStack(alignment: .top) {
@@ -56,7 +62,7 @@ private struct ChapterHeaderView: View {
                         .font(.title2)
                         .fontWeight(.bold)
                     
-                    Text("\(vm.chapters.count) chapters")
+                    Text("^[\(vm.chapters.count) chapter](inflect: true)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -68,7 +74,7 @@ private struct ChapterHeaderView: View {
             
             HStack {
                 NavigationLink {
-                    if let chapter = targetChapter, let index = vm.details?.chapters.firstIndex(of: chapter) {
+                    if let index = targetChapterIndex {
                         ReaderScreen(
                             title: vm.details.unsafelyUnwrapped.manga.title,
                             orientation: vm.details.unsafelyUnwrapped.manga.orientation,
@@ -79,13 +85,12 @@ private struct ChapterHeaderView: View {
                     else {
                         EmptyView()
                     }
-                    
                 } label: {
-                    Text("Continue Reading")
+                    Text(targetChapter != nil ? "Continue Reading" : "All Chapters Read")
                         .font(.headline)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .disabled(false)
+                .disabled(!targetChapterPresent)
                 .buttonStyle(.borderedProminent)
                 
                 NavigationLink {
@@ -174,14 +179,14 @@ private struct ChapterRow: View {
     }
     
     var body: some View {
-        HStack(spacing: Constants.Spacing.regular) {
+        HStack(spacing: Constants.Spacing.minimal) {
             KFImage(URL(fileURLWithPath: item.source?.icon ?? ""))
                 .placeholder { Color.tint.shimmer() }
                 .resizable()
                 .scaledToFit()
                 .frame(
-                    width: Constants.Icon.Size.regular,
-                    height: Constants.Icon.Size.regular
+                    width: 50,
+                    height: 50
                 )
                 .cornerRadius(Constants.Corner.Radius.regular)
                 .padding(.trailing, Constants.Padding.regular)
@@ -237,7 +242,7 @@ private struct ChapterRow: View {
             Spacer()
             DownloadButton()
         }
-        .padding(.vertical, Constants.Padding.regular)
+        .padding(.vertical, Constants.Padding.minimal)
         .overlay {
             if read {
                 ZStack(alignment: .topTrailing) {

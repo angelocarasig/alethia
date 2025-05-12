@@ -28,7 +28,7 @@ private struct UnreadBadgeModifier: ViewModifier {
                     .foregroundColor(.white)
                     .padding(.horizontal, Constants.Padding.regular)
                     .padding(.vertical, Constants.Padding.minimal)
-                    .background(.red.gradient)
+                    .background(Color.red)
                     .clipShape(.capsule)
                     .offset(Constants.Offset.badge)
             }

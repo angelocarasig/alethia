@@ -13,11 +13,33 @@ struct LibraryScreen: View {
     var body: some View {
         NavigationStack {
             VStack {
-                SearchBar(searchText: $vm.filters.searchText).padding()
+                LibrarySearch()
                 
                 CollectionSelectorView()
                 
-                ContentView()
+                Group {
+                    switch vm.state {
+                    case .loading:
+                        LoadingView()
+                        
+                    case .empty:
+                        ContentUnavailableView(
+                            "Nothing Found",
+                            systemImage: "books.vertical"
+                        )
+                    
+                    case .success:
+                        ContentView()
+                        
+                    case .error(let error):
+                        ContentUnavailableView(
+                            "Something went wrong",
+                            systemImage: "exclamationmark.triangle",
+                            description: Text(error.localizedDescription)
+                        )
+                    }
+                }
+                .frame(maxHeight: .infinity)
             }
             .navigationTitle("Library")
             .toolbar {
@@ -41,6 +63,9 @@ struct LibraryScreen: View {
             }
         }
         .environmentObject(vm)
+        .onAppear {
+            vm.onAppear()
+        }
     }
     
     @ViewBuilder
@@ -53,6 +78,22 @@ struct LibraryScreen: View {
                 .background(Circle().fill(Color.red))
                 .offset(x: 10, y: -10)
         }
+    }
+    
+    @ViewBuilder
+    private func LibrarySearch() -> some View {
+        VStack(alignment: .center, spacing: 0) {
+            SearchBar(searchText: $vm.filters.searchText)
+                .padding(.horizontal)
+                .padding(.bottom, Constants.Padding.minimal)
+            
+            if !vm.filters.searchText.isEmpty {
+                NavigationLink(destination: SearchHomeView(initialSearchValue: vm.filters.searchText)) {
+                    Text("Search Globally")
+                }
+            }
+        }
+        .animation(.easeInOut, value: vm.filters.searchText.isEmpty)
     }
 }
 
