@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		174FAAAC2DD237D600AD7BE3 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 174FAAAB2DD237D300AD7BE3 /* README.md */; };
 		176C40592DCB380A00B521AD /* Flow in Frameworks */ = {isa = PBXBuildFile; productRef = 176C40582DCB380A00B521AD /* Flow */; };
 		17951B7B2DCCA80500528C58 /* SwiftUIIntrospect in Frameworks */ = {isa = PBXBuildFile; productRef = 17951B7A2DCCA80500528C58 /* SwiftUIIntrospect */; };
 		179E8D752DA6A3DE00F43EBC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 179E8D742DA6A3DE00F43EBC /* GRDB */; };
@@ -24,6 +25,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		174FAAAB2DD237D300AD7BE3 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		179E907F2DA7DC6E00F43EBC /* AlethiaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AlethiaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		17D458CE2DA6A34700CF3BA4 /* Alethia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Alethia.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -66,6 +68,7 @@
 		17D458C52DA6A34700CF3BA4 = {
 			isa = PBXGroup;
 			children = (
+				174FAAAB2DD237D300AD7BE3 /* README.md */,
 				17D458D02DA6A34700CF3BA4 /* Alethia */,
 				179E90802DA7DC6E00F43EBC /* AlethiaTests */,
 				17D458CF2DA6A34700CF3BA4 /* Products */,
@@ -190,6 +193,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				174FAAAC2DD237D600AD7BE3 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
