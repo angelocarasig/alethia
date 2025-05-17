@@ -16,17 +16,15 @@ struct ChapterListView: View {
             ChapterHeaderView()
                 .padding(.bottom, Constants.Padding.minimal)
             
-            ForEach(Array(vm.chapters.enumerated()), id: \.element.chapter.id) { index, chapter in
+            ForEach(vm.chapters) { chapter in
                 Divider()
                 
-                NavigationLink(
-                    destination: ReaderScreen(
-                        title: vm.details.unsafelyUnwrapped.manga.title,
-                        orientation: vm.details.unsafelyUnwrapped.manga.orientation,
-                        chapters: vm.details.unsafelyUnwrapped.chapters,
-                        currentChapterIndex: index
-                    )
-                ) {
+                NavigationLink(destination: ReaderScreen(
+                    title: vm.details?.manga.title ?? "Unknown Title",
+                    orientation: vm.details?.manga.orientation ?? .LeftToRight,
+                    startChapter: chapter,
+                    chapters: vm.chapters
+                )) {
                     ChapterRow(item: chapter)
                         .id("\(chapter.chapter.title)-\(chapter.chapter.progress)")
                 }
@@ -49,11 +47,6 @@ private struct ChapterHeaderView: View {
         targetChapter != nil
     }
     
-    var targetChapterIndex: Int? {
-        guard let targetChapter = targetChapter else { return nil }
-        return vm.details?.chapters.firstIndex(of: targetChapter)
-    }
-    
     var body: some View {
         VStack(spacing: Constants.Spacing.large) {
             HStack(alignment: .top) {
@@ -74,12 +67,12 @@ private struct ChapterHeaderView: View {
             
             HStack {
                 NavigationLink {
-                    if let index = targetChapterIndex {
+                    if let targetChapter = targetChapter {
                         ReaderScreen(
-                            title: vm.details.unsafelyUnwrapped.manga.title,
-                            orientation: vm.details.unsafelyUnwrapped.manga.orientation,
-                            chapters: vm.details.unsafelyUnwrapped.chapters,
-                            currentChapterIndex: index
+                            title: vm.details?.manga.title ?? "Unknown Title",
+                            orientation: vm.details?.manga.orientation ?? .LeftToRight,
+                            startChapter: targetChapter,
+                            chapters: vm.chapters
                         )
                     }
                     else {

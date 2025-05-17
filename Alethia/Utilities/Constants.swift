@@ -77,3 +77,10 @@ extension Constants {
         }()
     }
 }
+
+// MARK: Reader
+extension Constants {
+    struct Reader {
+        static let PreloadRange: Int = 5
+    }
+}

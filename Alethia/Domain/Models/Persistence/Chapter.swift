@@ -8,7 +8,7 @@
 import Foundation
 import GRDB
 
-struct Chapter: Codable, Identifiable {
+struct Chapter: Codable, Identifiable, Equatable, Hashable {
     var id: Int64?
     
     var originId: Int64

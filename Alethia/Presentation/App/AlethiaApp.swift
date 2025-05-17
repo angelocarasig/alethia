@@ -10,6 +10,7 @@ import SwiftUI
 @main
 struct AlethiaApp: App {
     var database: DatabaseProvider = DatabaseProvider.shared
+    var kingfisher: KingfisherProvider = KingfisherProvider.shared
     
     var body: some Scene {
         WindowGroup {
