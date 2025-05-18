@@ -12,7 +12,13 @@ struct VerticalReader: UIViewControllerRepresentable {
     @EnvironmentObject private var vm: ReaderViewModel
     
     func makeUIViewController(context: Context) -> UINavigationController {
-        UINavigationController(rootViewController: VerticalReaderController(vm: vm))
+        let navController = UINavigationController(
+            rootViewController: VerticalReaderController(vm: vm)
+        )
+        
+        navController.setNavigationBarHidden(true, animated: false)
+        navController.navigationBar.isHidden = true
+        return navController
     }
     
     func updateUIViewController(_: UINavigationController, context _: Context) {}

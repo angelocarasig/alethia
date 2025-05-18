@@ -39,8 +39,6 @@ struct RetryableImage: View {
                     loadedImage = nil // Clear the image if failed
                 }
                 .retry(maxCount: 5, interval: .seconds(0.5))
-                .cacheOriginalImage()
-                .backgroundDecode()
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .id(reloadID)

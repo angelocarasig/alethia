@@ -39,6 +39,7 @@ final class ReaderViewModel: ObservableObject {
     private(set) var orientation: Orientation
     
     // MARK: UI
+    @Published private(set) var shouldDismissReader: Bool = false
     @Published private(set) var state: ReaderState
     private(set) var sections: OrderedSet<Slug> = [] /// maintains ordered state in how to display loaded chapters
     
@@ -63,8 +64,6 @@ final class ReaderViewModel: ObservableObject {
         self.startingChapter = startingChapter
         self.chapters = ReaderChapterList(chapters: chapters)
         
-        print(self.chapters.debugDescription)
-        
         self.getChapterContentsUseCase = DependencyInjector.shared.makeGetChapterContentsUseCase()
         self.updateChapterProgressUseCase = DependencyInjector.shared.makeUpdateChapterProgressUseCase()
         self.markChapterReadUseCase = DependencyInjector.shared.makeMarkChapterReadUseCase()
@@ -72,6 +71,10 @@ final class ReaderViewModel: ObservableObject {
         Task {
             await loadInitialChapter(startingChapter)
         }
+    }
+    
+    func dismissReader() {
+        shouldDismissReader = true
     }
     
     func reset() {
@@ -104,7 +107,6 @@ final class ReaderViewModel: ObservableObject {
     }
     
     func loadNextChapter() async {
-        print("Loading Next Chapter...")
         guard let currentPanel = currentPanel else { return }
         
         let chapterExtended: ChapterExtended
@@ -142,10 +144,9 @@ extension ReaderViewModel {
 
 // MARK: Functions
 extension ReaderViewModel {
+    @MainActor
     func hasLoadedChapter(_ node: ReaderChapterListNode) -> Bool {
-        // First, log the type and value for debugging
-        print("Slug type: \(type(of: node.chapter.chapter.slug)), value: \(node.chapter.chapter.slug)")
-        
+        // Unsure why but a lot of breaks happen here
         // Ensure we're using a string-based lookup
         let slugString = String(describing: node.chapter.chapter.slug)
         
@@ -173,7 +174,7 @@ extension ReaderViewModel {
         }
         
         // check if already preloaded
-        if !hasLoadedChapter(chapterNode) {
+        if await !hasLoadedChapter(chapterNode) {
             await preloadChapter(chapterNode)
         }
         
@@ -203,7 +204,7 @@ extension ReaderViewModel {
     
     /// Inserts into the loadedChapters array
     private func preloadChapter(_ node: ReaderChapterListNode) async -> Void {
-        guard !hasLoadedChapter(node) else { return }
+        guard await !hasLoadedChapter(node) else { return }
         
         let chapterSlug: Slug = node.chapter.chapter.slug
         do {
@@ -219,7 +220,7 @@ extension ReaderViewModel {
                 .transition(
                     .init(
                         from: node.chapter,
-                        to: node.next?.chapter,
+                        to: node.prev?.chapter,
                         direction: .previous,
                         pageCount: contents.count
                     )

@@ -26,7 +26,8 @@ final class VerticalReaderController: ASDKViewController<ASCollectionNode> {
         
         node.delegate = self
         node.dataSource = self
-        node.backgroundColor = .systemBackground
+        node.backgroundColor = .clear
+        node.view.showsVerticalScrollIndicator = false
         node.view.alwaysBounceVertical = true
     }
     

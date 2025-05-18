@@ -32,6 +32,13 @@ struct ReaderTransition {
     let direction: ChapterLoadType
     
     let pageCount: Int
+    
+    init(from: ChapterExtended, to: ChapterExtended?, direction: ChapterLoadType, pageCount: Int) {
+        self.from = from
+        self.to = to
+        self.direction = direction
+        self.pageCount = pageCount
+    }
 }
 
 struct ReaderPage: Identifiable {

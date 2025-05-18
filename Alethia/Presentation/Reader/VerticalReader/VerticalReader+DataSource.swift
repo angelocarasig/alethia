@@ -127,11 +127,8 @@ extension VerticalReaderController: ASCollectionDataSource {
     }
     
     func buildChapterIfLoaded(for chapter: ChapterExtended, direction: ChapterLoadType) async {
-        print("Current Sections: \(vm.sections)")
-        
         // Find the node for the provided chapter
         guard let node = vm.chapters.findNode(where: { $0.chapter.slug == chapter.chapter.slug }) else {
-            print("Node not found for chapter: \(chapter.chapter.slug)")
             return
         }
         
@@ -150,7 +147,6 @@ extension VerticalReaderController: ASCollectionDataSource {
         guard let adjacentNode = adjacentNode,
               vm.hasLoadedChapter(adjacentNode.chapter),
               !vm.sections.contains(adjacentNode.chapter.chapter.slug) else {
-            print("Adjacent node not valid or already loaded: \(adjacentNode?.chapter.chapter.slug ?? "nil")")
             return
         }
         
@@ -160,7 +156,6 @@ extension VerticalReaderController: ASCollectionDataSource {
         guard let panelState = vm.loadedChapters[slug],
               case .loaded = panelState.state,
               let panels = panelState.panels else {
-            print("No valid panels for slug: \(slug)")
             return
         }
         

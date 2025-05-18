@@ -22,8 +22,6 @@ extension VerticalReaderController {
             sectionInset = .zero
             minimumLineSpacing = 0
             minimumInteritemSpacing = 0
-            
-            updateSpacing()
         }
         
         @available(*, unavailable)
@@ -67,10 +65,6 @@ extension VerticalReaderController {
                 contentSizeBeforeInsertingToTop = nil
                 isInsertingCellsToTop = false
             }
-        }
-        
-        func updateSpacing() {
-            minimumLineSpacing = 0
         }
     }
 }

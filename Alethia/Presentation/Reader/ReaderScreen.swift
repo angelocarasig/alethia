@@ -11,8 +11,6 @@ struct ReaderScreen: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var vm: ReaderViewModel
     
-    @State private var position: ScrollPosition = .init(id: 0, anchor: .top)
-    
     init(
         title: String,
         orientation: Orientation,
@@ -31,8 +29,16 @@ struct ReaderScreen: View {
     
     var body: some View {
         VerticalReader()
-            .edgesIgnoringSafeArea(.vertical)
+            .statusBar(hidden: true)                // hides status bar (time/battery etc)
+            .edgesIgnoringSafeArea(.vertical)       // shows content only
+            .toolbar(.hidden, for: .tabBar)         // hides bottom tabbar
+            .navigationBarBackButtonHidden()        // hides navbar
             .onDisappear { vm.reset() }
+            .onChange(of: vm.shouldDismissReader) {
+                if vm.shouldDismissReader {
+                    dismiss()
+                }
+            }
             .environmentObject(vm)
     }
 }

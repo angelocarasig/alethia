@@ -30,7 +30,7 @@ private extension VerticalReaderController {
             node.reloadData() // Data has been loaded, reload collection view
         case .error(let error):
             print("Error: \(error.localizedDescription)")
-        
+            
         default:
             break
         }

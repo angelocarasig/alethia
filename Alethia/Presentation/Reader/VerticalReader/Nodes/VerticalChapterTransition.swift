@@ -9,7 +9,7 @@ import SwiftUI
 import Combine
 
 struct VerticalChapterTransition: View {
-    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var vm: ReaderViewModel
     
     let transition: ReaderTransition
     
@@ -84,7 +84,7 @@ struct VerticalChapterTransition: View {
                     .foregroundColor(.secondary)
             }
             Button {
-                dismiss()
+                vm.dismissReader()
             } label: {
                 Text("Exit")
                     .font(.body)
@@ -100,5 +100,6 @@ struct VerticalChapterTransition: View {
             .padding(.horizontal)
             Spacer()
         }
+        .frame(height: 300)
     }
 }
