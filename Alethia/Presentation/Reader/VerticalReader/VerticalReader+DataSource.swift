@@ -103,37 +103,62 @@ extension VerticalReaderController: ASCollectionDataSource {
         // Check if we're near the end of the chapter
         let current = page.pageNumber
         let count = page.pageCount
-        let inPreloadRange = count - current < 5
+        let inNextPreloadRange = abs(count - current) < Constants.Reader.PreloadChapterPanelThreshold
+        let inPrevPreloadRange = current < Constants.Reader.PreloadChapterPanelThreshold
         
-        if inPreloadRange {
+        if inNextPreloadRange {
             Task { [weak self] in
                 await self?.vm.preloadChapter(after: page.underlyingChapter)
                 await self?.buildChapterIfLoaded(for: page.underlyingChapter, direction: .next)
             }
         }
+        else if inPrevPreloadRange {
+            Task { [weak self] in
+                await self?.vm.preloadChapter(before: page.underlyingChapter)
+                await self?.buildChapterIfLoaded(for: page.underlyingChapter, direction: .previous)
+            }
+        }
     }
     
     func buildChapterIfLoaded(for chapter: ChapterExtended, direction: ChapterLoadType) async {
-        print("Curernt Sections: \(vm.sections)")
-        guard
-            // find node were working with
-            let node: ReaderChapterListNode = vm.chapters.findNode(where: { $0.chapter.slug == chapter.chapter.slug }),
-            let next: ReaderChapterListNode = node.next,
-            // chapter should be loaded
-            vm.hasLoadedChapter(next.chapter),
-            // already inserted sections should not contain it
-            !vm.sections.contains(next.chapter.chapter.slug)
-        else { return }
+        print("Current Sections: \(vm.sections)")
         
-        let slug = next.chapter.chapter.slug
+        // Find the node for the provided chapter
+        guard let node = vm.chapters.findNode(where: { $0.chapter.slug == chapter.chapter.slug }) else {
+            print("Node not found for chapter: \(chapter.chapter.slug)")
+            return
+        }
+        
+        // Determine which adjacent chapter to load based on direction
+        let adjacentNode: ReaderChapterListNode?
+        switch direction {
+        case .previous:
+            adjacentNode = node.prev
+        case .next:
+            adjacentNode = node.next
+        case .update:
+            adjacentNode = nil
+        }
+        
+        // Make sure adjacent node exists and is loaded
+        guard let adjacentNode = adjacentNode,
+              vm.hasLoadedChapter(adjacentNode.chapter),
+              !vm.sections.contains(adjacentNode.chapter.chapter.slug) else {
+            print("Adjacent node not valid or already loaded: \(adjacentNode?.chapter.chapter.slug ?? "nil")")
+            return
+        }
+        
+        let slug = adjacentNode.chapter.chapter.slug
         
         // Make sure we have valid panels
         guard let panelState = vm.loadedChapters[slug],
               case .loaded = panelState.state,
-              let panels = panelState.panels
-        else { return }
+              let panels = panelState.panels else {
+            print("No valid panels for slug: \(slug)")
+            return
+        }
         
-        // Update view model's sections
+        // Update the view model's sections
         vm.updateSection(for: slug, at: direction)
         
         // Calculate section index and paths for batch update
@@ -143,18 +168,27 @@ extension VerticalReaderController: ASCollectionDataSource {
         
         // If inserting at the head, prepare layout
         if direction == .previous {
-            prepareForInsertAtHead()
-        }
-        
-        // Perform batch update
-        await collectionNode.performBatch(animated: false) { [weak self] in
-            self?.collectionNode.insertSections(set)
-            self?.collectionNode.insertItems(at: paths)
+            await MainActor.run {
+                prepareForInsertAtHead()
+            }
+            
+            // Perform batch update right after setting the flag
+            await collectionNode.performBatch(animated: false) { [weak self] in
+                guard let self = self else { return }
+                self.collectionNode.insertSections(set)
+                self.collectionNode.insertItems(at: paths)
+            }
+        } else {
+            // For other directions, just perform the batch update normally
+            await collectionNode.performBatch(animated: false) { [weak self] in
+                self?.collectionNode.insertSections(set)
+                self?.collectionNode.insertItems(at: paths)
+            }
         }
     }
     
     private func prepareForInsertAtHead() {
-        let layout = node.collectionViewLayout as? VerticalLayout
+        let layout = collectionNode.view.collectionViewLayout as? VerticalLayout
         layout?.isInsertingCellsToTop = true
     }
     

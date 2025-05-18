@@ -21,7 +21,7 @@ final class VerticalImageNode: ASCellNode {
         // Create an image node with the page URL
         let imageNode = ASNetworkImageNode()
         imageNode.url = URL(string: page.url)
-        imageNode.contentMode = .scaleAspectFit
+        imageNode.contentMode = .scaleAspectFill
         
         // Add the image node as a child
         addSubnode(imageNode)
@@ -30,7 +30,7 @@ final class VerticalImageNode: ASCellNode {
         layoutSpecBlock = { _, _ in
             return ASInsetLayoutSpec(
                 insets: .zero,
-                child: ASRatioLayoutSpec(ratio: 0.7, child: imageNode)
+                child: ASRatioLayoutSpec(ratio: 1.0, child: imageNode)
             )
         }
     }

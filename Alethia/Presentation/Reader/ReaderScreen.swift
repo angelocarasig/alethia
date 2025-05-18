@@ -31,6 +31,7 @@ struct ReaderScreen: View {
     
     var body: some View {
         VerticalReader()
+            .onDisappear { vm.reset() }
             .environmentObject(vm)
     }
 }

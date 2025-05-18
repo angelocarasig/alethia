@@ -63,6 +63,8 @@ final class ReaderViewModel: ObservableObject {
         self.startingChapter = startingChapter
         self.chapters = ReaderChapterList(chapters: chapters)
         
+        print(self.chapters.debugDescription)
+        
         self.getChapterContentsUseCase = DependencyInjector.shared.makeGetChapterContentsUseCase()
         self.updateChapterProgressUseCase = DependencyInjector.shared.makeUpdateChapterProgressUseCase()
         self.markChapterReadUseCase = DependencyInjector.shared.makeMarkChapterReadUseCase()
@@ -70,6 +72,12 @@ final class ReaderViewModel: ObservableObject {
         Task {
             await loadInitialChapter(startingChapter)
         }
+    }
+    
+    func reset() {
+        self.cancellables.removeAll()
+        self.sections.removeAll()
+        self.loadedChapters.removeAll()
     }
     
     func loadInitialChapter(_ chapter: Chapter) async {
@@ -135,7 +143,14 @@ extension ReaderViewModel {
 // MARK: Functions
 extension ReaderViewModel {
     func hasLoadedChapter(_ node: ReaderChapterListNode) -> Bool {
-        loadedChapters[node.chapter.chapter.slug] != nil
+        // First, log the type and value for debugging
+        print("Slug type: \(type(of: node.chapter.chapter.slug)), value: \(node.chapter.chapter.slug)")
+        
+        // Ensure we're using a string-based lookup
+        let slugString = String(describing: node.chapter.chapter.slug)
+        
+        // Check if slug exists in dictionary
+        return loadedChapters[slugString] != nil
     }
     
     func hasLoadedChapter(_ chapter: ChapterExtended) -> Bool {
@@ -176,6 +191,14 @@ extension ReaderViewModel {
         else { return }
         
         await preloadChapter(next)
+    }
+    
+    func preloadChapter(before chapter: ChapterExtended) async -> Void {
+        guard let node: ReaderChapterListNode = chapters.findNode(where: { $0.chapter.slug == chapter.chapter.slug }),
+              let prev: ReaderChapterListNode = node.prev
+        else { return }
+        
+        await preloadChapter(prev)
     }
     
     /// Inserts into the loadedChapters array

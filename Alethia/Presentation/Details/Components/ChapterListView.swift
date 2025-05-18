@@ -11,36 +11,31 @@ import Kingfisher
 struct ChapterListView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     @State private var selectedChapter: ChapterExtended?
-    @State private var isReaderPresented = false
     
     var body: some View {
         LazyVStack {
             ChapterHeaderView()
                 .padding(.bottom, Constants.Padding.minimal)
             
-            ForEach(Array(vm.chapters.enumerated()), id: \.element.chapter.id) { index, chapter in
+            ForEach(vm.chapters, id: \.chapter.id) { chapter in
                 Divider()
                 
                 Button {
                     selectedChapter = chapter
-                    isReaderPresented = true
                 } label: {
                     ChapterRow(item: chapter)
-                        .id("\(chapter.chapter.title)-\(chapter.chapter.progress)")
                 }
                 .buttonStyle(.plain)
             }
         }
-        .fullScreenCover(isPresented: $isReaderPresented) {
-            if let chapter = selectedChapter {
-                ReaderScreen(
-                    title: vm.details?.manga.title ?? "Unknown Title",
-                    orientation: vm.details?.manga.orientation ?? .LeftToRight,
-                    startingChapter: chapter.chapter,
-                    chapters: vm.details.unsafelyUnwrapped.chapters
-                )
-                .edgesIgnoringSafeArea(.all)
-            }
+        .fullScreenCover(item: $selectedChapter) { chapter in
+            ReaderScreen(
+                title: vm.details?.manga.title ?? "Unknown Title",
+                orientation: vm.details?.manga.orientation ?? .LeftToRight,
+                startingChapter: chapter.chapter,
+                chapters: vm.details?.chapters ?? []
+            )
+            .edgesIgnoringSafeArea(.all)
         }
     }
 }

@@ -18,3 +18,9 @@ struct ChapterExtended: Decodable, FetchableRecord, Equatable {
     var origin: Origin
     var source: Source? // as origin can be detached
 }
+
+extension ChapterExtended: Identifiable {
+    var id: String {
+        chapter.slug
+    }
+}
