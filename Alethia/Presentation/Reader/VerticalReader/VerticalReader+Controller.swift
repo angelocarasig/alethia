@@ -13,6 +13,8 @@ final class VerticalReaderController: ASDKViewController<ASCollectionNode> {
     var vm: ReaderViewModel
     var dataSource: DataSource
     
+    var resumptionPosition: (Int, CGFloat)? = (0, 0.0)
+    
     init(vm: ReaderViewModel) {
         self.vm = vm
         self.dataSource = DataSource(vm: vm)
@@ -63,7 +65,7 @@ extension VerticalReaderController {
     }
 }
 
-// MARK: Startup Logic
+// MARK: Logic
 extension VerticalReaderController {
     func startup() {
         Task { [weak self] in
@@ -79,5 +81,9 @@ extension VerticalReaderController {
         default:
             return
         }
+    }
+    
+    func clearResumption() {
+        resumptionPosition = nil
     }
 }

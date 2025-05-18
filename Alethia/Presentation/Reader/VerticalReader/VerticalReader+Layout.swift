@@ -13,9 +13,12 @@ protocol OffsetPreservingLayout: NSObject {
 
 extension VerticalReaderController {
     final class VerticalLayout: UICollectionViewFlowLayout, OffsetPreservingLayout {
+        private var contentSizeBeforeInsertingToTop: CGSize?
+        
         override init() {
             super.init()
             scrollDirection = .vertical
+            
             sectionInset = .zero
             minimumLineSpacing = 0
             minimumInteritemSpacing = 0
@@ -36,9 +39,21 @@ extension VerticalReaderController {
             }
         }
         
-        private var contentSizeBeforeInsertingToTop: CGSize?
+        override func shouldInvalidateLayout(forBoundsChange newBounds: CGRect) -> Bool {
+            return true
+        }
         
         override func prepare() {
+            super.prepare()
+            
+            sectionInset = .zero
+            minimumLineSpacing = 0
+            minimumInteritemSpacing = 0
+            
+            if let cv = collectionView {
+                itemSize = cv.bounds.size
+            }
+            
             if isInsertingCellsToTop {
                 if let collectionView = collectionView, let oldContentSize = contentSizeBeforeInsertingToTop {
                     UIView.performWithoutAnimation {

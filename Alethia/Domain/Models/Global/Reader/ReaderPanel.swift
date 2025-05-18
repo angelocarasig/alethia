@@ -29,6 +29,7 @@ enum ReaderPanel {
 struct ReaderTransition {
     let from: ChapterExtended
     let to: ChapterExtended?
+    let direction: ChapterLoadType
     
     let pageCount: Int
 }

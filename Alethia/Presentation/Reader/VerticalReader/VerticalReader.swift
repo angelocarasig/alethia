@@ -17,4 +17,3 @@ struct VerticalReader: UIViewControllerRepresentable {
     
     func updateUIViewController(_: UINavigationController, context _: Context) {}
 }
-

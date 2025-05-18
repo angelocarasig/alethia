@@ -220,6 +220,7 @@ extension ReaderViewModel {
                     .init(
                         from: node.chapter,
                         to: node.next?.chapter,
+                        direction: .previous,
                         pageCount: contents.count
                     )
                 )
@@ -246,6 +247,7 @@ extension ReaderViewModel {
                     .init(
                         from: node.chapter,
                         to: node.next?.chapter,
+                        direction: .next,
                         pageCount: contents.count
                     )
                 )

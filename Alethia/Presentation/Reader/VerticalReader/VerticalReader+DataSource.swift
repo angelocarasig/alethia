@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 18/5/2025.
 //
 
+import SwiftUI
 import AsyncDisplayKit
 
 // MARK: DataSource
@@ -38,19 +39,6 @@ struct DataSource {
         
         return panels.count
     }
-}
-
-// MARK: DEBUG {
-extension VerticalReaderController {
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        print("View appeared - collection view frame: \(node.view.frame)")
-        print("Collection view contentSize: \(node.view.contentSize)")
-        print("Collection view is hidden: \(node.isHidden)")
-        print("Collection view bounds: \(node.view.bounds)")
-    }
-    
-    
 }
 
 // MARK: ASCollectionDataSource
@@ -92,30 +80,48 @@ extension VerticalReaderController: ASCollectionDataSource {
         }
     }
     
-    /// Perform preload for given collection node `onAppear` if page is below threshold
+    /// Perform preload for given collection node `onAppear` if page is below threshold or if it's a transition
     func collectionNode(_: ASCollectionNode, willDisplayItemWith node: ASCellNode) {
         guard let path = node.indexPath else { return }
         guard let panel = dataSource.itemIdentifier(for: path) else { return }
         
-        // Only check pages, not transitions
-        guard case let .page(page) = panel else { return }
-        
-        // Check if we're near the end of the chapter
-        let current = page.pageNumber
-        let count = page.pageCount
-        let inNextPreloadRange = abs(count - current) < Constants.Reader.PreloadChapterPanelThreshold
-        let inPrevPreloadRange = current < Constants.Reader.PreloadChapterPanelThreshold
-        
-        if inNextPreloadRange {
-            Task { [weak self] in
-                await self?.vm.preloadChapter(after: page.underlyingChapter)
-                await self?.buildChapterIfLoaded(for: page.underlyingChapter, direction: .next)
+        switch panel {
+        case let .page(page):
+            // Check if we're near the end of the chapter
+            let current = page.pageNumber
+            let count = page.pageCount
+            let inNextPreloadRange = abs(count - current) < Constants.Reader.PreloadChapterPanelThreshold
+            let inPrevPreloadRange = current < Constants.Reader.PreloadChapterPanelThreshold
+            
+            if inNextPreloadRange {
+                Task { [weak self] in
+                    await self?.vm.preloadChapter(after: page.underlyingChapter)
+                    await self?.buildChapterIfLoaded(for: page.underlyingChapter, direction: .next)
+                }
             }
-        }
-        else if inPrevPreloadRange {
+            else if inPrevPreloadRange {
+                Task { [weak self] in
+                    await self?.vm.preloadChapter(before: page.underlyingChapter)
+                    await self?.buildChapterIfLoaded(for: page.underlyingChapter, direction: .previous)
+                }
+            }
+            
+        case let .transition(transition):
+            // For transitions, preload based on the transition direction
             Task { [weak self] in
-                await self?.vm.preloadChapter(before: page.underlyingChapter)
-                await self?.buildChapterIfLoaded(for: page.underlyingChapter, direction: .previous)
+                switch transition.direction {
+                case .previous:
+                    // If it's a "previous chapter" transition, preload the previous chapter
+                    await self?.vm.preloadChapter(before: transition.from)
+                    await self?.buildChapterIfLoaded(for: transition.from, direction: .previous)
+                    
+                case .update:
+                    fallthrough
+                case .next:
+                    // If it's a "next chapter" transition, preload the next chapter
+                    await self?.vm.preloadChapter(after: transition.from)
+                    await self?.buildChapterIfLoaded(for: transition.from, direction: .next)
+                }
             }
         }
     }
@@ -195,9 +201,21 @@ extension VerticalReaderController: ASCollectionDataSource {
     private func createCellNode(for panel: ReaderPanel) -> ASCellNode {
         switch panel {
         case .page(let page):
-            return VerticalImageNode(page: page, delegate: self)
+            let node = ASCellNode(viewControllerBlock: {
+                let view = RetryableImage(url: page.url,
+                                          index: page.id,
+                                          referer: page.referer)
+                return UIHostingController(rootView: view)
+            })
+            return node
+            
         case .transition(let transition):
-            return VerticalTransitionNode(transition: transition, delegate: self)
+            let node = ASCellNode(viewControllerBlock: {
+                let view = VerticalChapterTransition(transition: transition)
+                return UIHostingController(rootView: view)
+            })
+            node.style.height = ASDimension(unit: .points, value: 300)
+            return node
         }
     }
 }

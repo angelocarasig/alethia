@@ -31,6 +31,7 @@ struct ReaderScreen: View {
     
     var body: some View {
         VerticalReader()
+            .edgesIgnoringSafeArea(.vertical)
             .onDisappear { vm.reset() }
             .environmentObject(vm)
     }
