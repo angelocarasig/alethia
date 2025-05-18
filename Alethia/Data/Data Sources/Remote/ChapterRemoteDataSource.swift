@@ -38,6 +38,8 @@ final class ChapterRemoteDataSource {
             return url
         }
         
+        print("Fetching content at URL: \(url.absoluteString)")
+        
         return try await ns.request(url: url)
     }
 }

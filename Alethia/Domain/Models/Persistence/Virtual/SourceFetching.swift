@@ -17,7 +17,7 @@ struct SourceFetching: Decodable, FetchableRecord {
         URL.appendingPaths(host.baseUrl, source.path, route.path)!.absoluteString
     }
     
-    func itemUrl(_ slug: String) -> String {
+    func itemUrl(_ slug: Slug) -> String {
         URL.appendingPaths(host.baseUrl, source.path, "manga", slug)!.absoluteString
     }
 }

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContinueReadingView: View {
     @EnvironmentObject private var vm: DetailsViewModel
+    @State var isReaderPresented: Bool = false
     
     var targetChapter: ChapterExtended? {
         vm.details?.chapters
@@ -38,12 +39,9 @@ struct ContinueReadingView: View {
     
     @ViewBuilder
     private func ChaptersExisting(chapter: ChapterExtended, index: Int) -> some View {
-        NavigationLink(destination: ReaderScreen(
-            title: vm.details.unsafelyUnwrapped.manga.title,
-            orientation: vm.details.unsafelyUnwrapped.manga.orientation,
-            chapters: vm.details.unsafelyUnwrapped.chapters,
-            currentChapterIndex: index
-        )) {
+        Button {
+            isReaderPresented = true
+        } label: {
             HStack(spacing: Constants.Spacing.large) {
                 Image(systemName: "play.fill")
                     .foregroundColor(.white)
@@ -71,6 +69,14 @@ struct ContinueReadingView: View {
                         .stroke(Color.appBlue, lineWidth: 1)
                 }
             )
+            .fullScreenCover(isPresented: $isReaderPresented) {
+                ReaderScreen(
+                    title: vm.details?.manga.title ?? "Unknown Title",
+                    orientation: vm.details?.manga.orientation ?? .LeftToRight,
+                    startingChapter: chapter.chapter,
+                    chapters: vm.details.unsafelyUnwrapped.chapters
+                )
+            }
         }
         .buttonStyle(.plain)
     }
@@ -88,7 +94,7 @@ struct ContinueReadingView: View {
             }
             .font(.subheadline)
             .foregroundColor(.secondary)
-                
+            
         }
         .padding(.vertical, Constants.Padding.regular)
         .padding(.horizontal, Constants.Padding.screen)

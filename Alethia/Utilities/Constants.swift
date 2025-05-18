@@ -77,3 +77,11 @@ extension Constants {
         }()
     }
 }
+
+// MARK: Reader
+extension Constants {
+    struct Reader {
+        /// number of panels left before performing preload action on the subsequent chapter
+        static let PreloadChapterPanelThreshold: Int = 5
+    }
+}

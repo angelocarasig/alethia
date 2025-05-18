@@ -2,7 +2,7 @@
 //  ReaderScreen.swift
 //  Alethia
 //
-//  Created by Angelo Carasig on 7/5/2025.
+//  Created by Angelo Carasig on 18/5/2025.
 //
 
 import SwiftUI
@@ -16,65 +16,21 @@ struct ReaderScreen: View {
     init(
         title: String,
         orientation: Orientation,
-        chapters: [ChapterExtended],
-        currentChapterIndex: Int
+        startingChapter: Chapter,
+        chapters: [ChapterExtended]
     ) {
         _vm = StateObject(
             wrappedValue: ReaderViewModel(
                 title: title,
                 orientation: orientation,
-                chapters: chapters,
-                currentChapterIndex: currentChapterIndex
+                startingChapter: startingChapter,
+                chapters: chapters
             )
         )
     }
     
     var body: some View {
-        VStack {
-            if vm.chapterLoaded.boolValue {
-                switch vm.orientation {
-                case .Infinite, .Vertical:
-                    VerticalReader()
-                case .LeftToRight, .RightToLeft:
-                    HorizontalReader()
-                }
-            }
-            else if vm.errorMessage != nil {
-                Text("Error: \(vm.errorMessage!)")
-            }
-            else {
-                Text("Loading Chapter...")
-            }
-        }
-        .onTapGesture { onTapGesture() }
-        .onDisappear { vm.onReaderClose() }
-        .animation(.easeInOut, value: vm.chapterLoaded)
-        .overlay(Overlay())
-        .edgesIgnoringSafeArea(.top)
-        .toolbar(.hidden, for: .tabBar)
-        .statusBarHidden(!vm.showOverlay && vm.chapterLoaded.boolValue)
-        .navigationBarBackButtonHidden()
-        .environmentObject(vm)
-    }
-}
-
-// MARK: Related
-private extension ReaderScreen {
-    @ViewBuilder
-    private func Overlay() -> some View {
-        ZStack {
-            ReaderOverlay()
-            ReaderNotificationBanner(message: vm.showNotificationBanner)
-        }
-    }
-    
-    private func onTapGesture() -> Void {
-        guard vm.chapterLoaded.boolValue,
-              !vm.onHorizontalPageTransition
-        else { return }
-        
-        withAnimation {
-            vm.showOverlay.toggle()
-        }
+        VerticalReader()
+            .environmentObject(vm)
     }
 }

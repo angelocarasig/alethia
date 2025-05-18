@@ -10,6 +10,8 @@ import Kingfisher
 
 struct ChapterListView: View {
     @EnvironmentObject private var vm: DetailsViewModel
+    @State private var selectedChapter: ChapterExtended?
+    @State private var isReaderPresented = false
     
     var body: some View {
         LazyVStack {
@@ -19,18 +21,25 @@ struct ChapterListView: View {
             ForEach(Array(vm.chapters.enumerated()), id: \.element.chapter.id) { index, chapter in
                 Divider()
                 
-                NavigationLink(
-                    destination: ReaderScreen(
-                        title: vm.details.unsafelyUnwrapped.manga.title,
-                        orientation: vm.details.unsafelyUnwrapped.manga.orientation,
-                        chapters: vm.details.unsafelyUnwrapped.chapters,
-                        currentChapterIndex: index
-                    )
-                ) {
+                Button {
+                    selectedChapter = chapter
+                    isReaderPresented = true
+                } label: {
                     ChapterRow(item: chapter)
                         .id("\(chapter.chapter.title)-\(chapter.chapter.progress)")
                 }
                 .buttonStyle(.plain)
+            }
+        }
+        .fullScreenCover(isPresented: $isReaderPresented) {
+            if let chapter = selectedChapter {
+                ReaderScreen(
+                    title: vm.details?.manga.title ?? "Unknown Title",
+                    orientation: vm.details?.manga.orientation ?? .LeftToRight,
+                    startingChapter: chapter.chapter,
+                    chapters: vm.details.unsafelyUnwrapped.chapters
+                )
+                .edgesIgnoringSafeArea(.all)
             }
         }
     }
@@ -38,6 +47,7 @@ struct ChapterListView: View {
 
 private struct ChapterHeaderView: View {
     @EnvironmentObject private var vm: DetailsViewModel
+    @State var isReaderPresented: Bool = false
     
     var targetChapter: ChapterExtended? {
         vm.chapters
@@ -47,11 +57,6 @@ private struct ChapterHeaderView: View {
     
     var targetChapterPresent: Bool {
         targetChapter != nil
-    }
-    
-    var targetChapterIndex: Int? {
-        guard let targetChapter = targetChapter else { return nil }
-        return vm.details?.chapters.firstIndex(of: targetChapter)
     }
     
     var body: some View {
@@ -73,18 +78,8 @@ private struct ChapterHeaderView: View {
             }
             
             HStack {
-                NavigationLink {
-                    if let index = targetChapterIndex {
-                        ReaderScreen(
-                            title: vm.details.unsafelyUnwrapped.manga.title,
-                            orientation: vm.details.unsafelyUnwrapped.manga.orientation,
-                            chapters: vm.details.unsafelyUnwrapped.chapters,
-                            currentChapterIndex: index
-                        )
-                    }
-                    else {
-                        EmptyView()
-                    }
+                Button {
+                    isReaderPresented = true
                 } label: {
                     Text(targetChapter != nil ? "Continue Reading" : "All Chapters Read")
                         .font(.headline)
@@ -105,6 +100,16 @@ private struct ChapterHeaderView: View {
                 }
             }
             .frame(height: 44)
+        }
+        .fullScreenCover(isPresented: $isReaderPresented) {
+            if let chapter = targetChapter {
+                ReaderScreen(
+                    title: vm.details?.manga.title ?? "Unknown Title",
+                    orientation: vm.details?.manga.orientation ?? .LeftToRight,
+                    startingChapter: chapter.chapter,
+                    chapters: vm.details.unsafelyUnwrapped.chapters
+                )
+            }
         }
     }
     

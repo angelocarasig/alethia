@@ -15,7 +15,7 @@ struct Chapter: Codable, Identifiable {
     var scanlatorId: Int64
     
     var title: String
-    var slug: String
+    var slug: Slug
     var number: Double
     var date: Date
     

@@ -2,272 +2,262 @@
 //  ReaderViewModel.swift
 //  Alethia
 //
-//  Created by Angelo Carasig on 7/5/2025.
+//  Created by Angelo Carasig on 18/5/2025.
 //
 
-import Foundation
 import SwiftUI
-import Kingfisher
+import Combine
+import OrderedCollections
 
-@MainActor
-final class ReaderViewModel: ObservableObject {
-    // Pages
-    @Published private(set) var pages: [Page] = []
-    @Published var currentPage: Page? = nil { didSet { prefetch() }}
+enum ReaderState: Equatable {
+    case placeholder
+    case loading
+    case idle
+    case error(Error)
     
-    // Overlay
-    @Published private(set) var showNotificationBanner: String? = nil
-    @Published var showOverlay: Bool = false
-    @Published var onHorizontalPageTransition: Bool = false
-    @Published var scrolledFromSlider: Bool = false
-    
-    // Handling
-    @Published private(set) var chapterLoaded: Lock = .unlocked
-    @Published private(set) var errorMessage: String? = nil
-    
-    var activeChapter: ChapterExtended? {
-        currentPage?.getUnderlyingChapter(chapters: chapters)
+    static func == (lhs: ReaderState, rhs: ReaderState) -> Bool {
+        switch (lhs, rhs) {
+        case (.placeholder, .placeholder),
+            (.loading, .loading),
+            (.idle, .idle):
+            return true
+        case (.error(let lhsError), .error(let rhsError)):
+            return lhsError.localizedDescription == rhsError.localizedDescription
+        default:
+            return false
+        }
     }
+}
+final class ReaderViewModel: ObservableObject {
+    // MARK: Tracking
+    @Published var currentPanel: ReaderPanel? = nil
+    private(set) var startingChapter: Chapter
+    private(set) var chapters: ReaderChapterList
+    private(set) var loadedChapters: [Slug: ReaderPanelState] = [:] /// Dictionary of each chapter's loaded state and content
     
-    private(set) var mangaTitle: String
+    // MARK: Controls
     private(set) var orientation: Orientation
-    private(set) var chapters: [ChapterExtended]
     
-    private var initialChapterIndex: Int
-    private var prefetcher: ImagePrefetcher? = nil
-    private var getChapterContentsUseCase: GetChapterContentsUseCase
-    private var updateChapterProgressUseCase: UpdateChapterProgressUseCase
-    private var markChapterReadUseCase: MarkChapterReadUseCase
+    // MARK: UI
+    @Published private(set) var state: ReaderState
+    private(set) var sections: OrderedSet<Slug> = [] /// maintains ordered state in how to display loaded chapters
+    
+    // MARK: Metadata
+    let mangaTitle: String
+    
+    // MARK: Use-cases
+    var cancellables = Set<AnyCancellable>()
+    private let getChapterContentsUseCase: GetChapterContentsUseCase
+    private let updateChapterProgressUseCase: UpdateChapterProgressUseCase
+    private let markChapterReadUseCase: MarkChapterReadUseCase
     
     init(
         title: String,
         orientation: Orientation,
-        chapters: [ChapterExtended],
-        currentChapterIndex: Int
+        startingChapter: Chapter,
+        chapters: [ChapterExtended]
     ) {
+        self.state = .placeholder
         self.mangaTitle = title
         self.orientation = orientation
-        self.chapters = chapters
-        self.initialChapterIndex = currentChapterIndex
+        self.startingChapter = startingChapter
+        self.chapters = ReaderChapterList(chapters: chapters)
         
         self.getChapterContentsUseCase = DependencyInjector.shared.makeGetChapterContentsUseCase()
         self.updateChapterProgressUseCase = DependencyInjector.shared.makeUpdateChapterProgressUseCase()
         self.markChapterReadUseCase = DependencyInjector.shared.makeMarkChapterReadUseCase()
         
         Task {
-            print("Loading Chapter from INIT")
-            await loadChapter(at: currentChapterIndex)
+            await loadInitialChapter(startingChapter)
+        }
+    }
+    
+    func loadInitialChapter(_ chapter: Chapter) async {
+        await loadChapter(chapter: chapter, loadType: .update)
+    }
+    
+    func loadPreviousChapter() async {
+        guard let currentPanel = currentPanel else { return }
+        
+        let chapterExtended: ChapterExtended
+        
+        switch currentPanel {
+        case .page(let page):
+            chapterExtended = page.underlyingChapter
+        case .transition(let transition):
+            chapterExtended = transition.from
+        }
+        
+        guard let node = chapters.findNode(where: { $0.chapter.slug == chapterExtended.chapter.slug }),
+              let prev = node.prev
+        else { return }
+        
+        await loadChapter(chapter: prev.chapter.chapter, loadType: .previous)
+    }
+    
+    func loadNextChapter() async {
+        print("Loading Next Chapter...")
+        guard let currentPanel = currentPanel else { return }
+        
+        let chapterExtended: ChapterExtended
+        
+        switch currentPanel {
+        case .page(let page):
+            chapterExtended = page.underlyingChapter
+        case .transition(let transition):
+            chapterExtended = transition.from
+        }
+        
+        guard let node = chapters.findNode(where: { $0.chapter.slug == chapterExtended.chapter.slug }),
+              let next = node.next
+        else { return }
+        
+        await loadChapter(chapter: next.chapter.chapter, loadType: .next)
+    }
+}
+
+// MARK: Sections
+extension ReaderViewModel {
+    func updateSection(for slug: Slug, at direction: ChapterLoadType) {
+        switch direction {
+        case .next:
+            sections.append(slug)
+        case .previous:
+            sections.insert(slug, at: 0)
+        case .update:
+            // In this case we are jumping to a different section so clear all first
+            sections.removeAll()
+            sections.append(slug)
         }
     }
 }
 
-// MARK: Data fetching
+// MARK: Functions
 extension ReaderViewModel {
-    func loadChapter(at index: Int) async {
-        if pages.contains(where: { $0.chapterIndex == index }) {
+    func hasLoadedChapter(_ node: ReaderChapterListNode) -> Bool {
+        loadedChapters[node.chapter.chapter.slug] != nil
+    }
+    
+    func hasLoadedChapter(_ chapter: ChapterExtended) -> Bool {
+        guard let panelState = loadedChapters[chapter.chapter.slug],
+              panelState.state == .loaded
+        else { return false }
+        
+        return true
+    }
+    
+    func loadChapter(chapter: Chapter, loadType: ChapterLoadType) async -> Void {
+        guard let chapterNode: ReaderChapterListNode = chapters.findNode(where: { $0.chapter.slug == chapter.slug }) else {
+            state = .error(ChapterError.notFound)
             return
         }
         
-        guard index >= 0 && index < chapters.count else { return }
+        // If found, set state to loading
+        await MainActor.run {
+            state = .loading
+        }
         
-        do {
-            let urls = try await getChapterContentsUseCase.execute(chapter: chapters[index].chapter)
-            let newPages = makePages(from: urls, index: index)
-            
-            await MainActor.run {
-                // MARK: Initial Load
-                if pages.isEmpty {
-                    pages = newPages
-                }
-                // MARK: Previous Chapter
-                else if let first = pages.first, index > first.chapterIndex {
-                    pages.insert(contentsOf: newPages, at: 0)
-                }
-                // MARK: Next Chapter
-                else if let last = pages.last, index < last.chapterIndex {
-                    try? onNextChapterLoaded()
-                    
-                    pages.append(contentsOf: newPages)
-                }
-                else {
-                    pages = newPages
-                }
-                
-                chapterLoaded = .locked
-            }
-        } catch {
-            withAnimation { @MainActor in
-                errorMessage = error.localizedDescription
-            }
+        // check if already preloaded
+        if !hasLoadedChapter(chapterNode) {
+            await preloadChapter(chapterNode)
+        }
+        
+        updateSection(for: chapterNode.chapter.chapter.slug, at: loadType)
+        
+        // Once completed set status back to idle
+        await MainActor.run {
+            state = .idle
         }
     }
     
-    func canLoadPrevious(chapter: ChapterExtended) -> Bool {
-        guard let index = chapters.firstIndex(where: { $0.chapter.id == chapter.chapter.id }) else {
-            return false
-        }
-        return index > 0
-    }
-    
-    func canLoadNext(chapter: ChapterExtended) -> Bool {
-        guard let index = chapters.firstIndex(where: { $0.chapter.id == chapter.chapter.id }) else {
-            return false
-        }
-        return index < chapters.count - 1
-    }
-    
-    private func makePages(from urls: [String], index: Int) -> [Page] {
-        let total = urls.count
-        return urls.enumerated().map { idx, url in
-            Page(
-                url: url,
-                chapterIndex: index,
-                chapterNumber: chapters[index].chapter.number,
-                pageNumber: idx + 1,
-                isFirstPage: idx == 0,
-                isLastPage:  idx == total - 1
-            )
-        }
-    }
-}
-
-// MARK: Controls for slider buttons
-extension ReaderViewModel {
-    private var pagesInActiveChapter: [Page] {
-        guard let idx = currentPage?.chapterIndex else { return [] }
-        return pages.filter { $0.chapterIndex == idx }
-    }
-    
-    func goToFirstPageInChapter() {
-        guard let first = pagesInActiveChapter.first else { return }
-        scrolledFromSlider = true
-        currentPage = first
-    }
-    
-    func goToLastPageInChapter() {
-        guard let last = pagesInActiveChapter.last else { return }
-        scrolledFromSlider = true
-        currentPage = last
-    }
-}
-
-// MARK: Chapter Progression
-extension ReaderViewModel {
-    func onReaderClose() {
-        guard
-            let activeChapter = activeChapter,
-            let currentPage = currentPage,
-            
-                // If chapter progress is already completed don't update
-            // let user manually mark it as unread before updating progress again
-                activeChapter.chapter.progress < 1.0
+    func preloadChapter(after chapter: ChapterExtended) async -> Void {
+        guard let node: ReaderChapterListNode = chapters.findNode(where: { $0.chapter.slug == chapter.chapter.slug }),
+              let next: ReaderChapterListNode = node.next
         else { return }
         
-        let pagesInChapter = pagesInActiveChapter
-        let total = pagesInChapter.count
-        
-        guard total > 0 else { return }
-        
-        // MARK: Calculating progress of current chapter...
-        let progress = Double(currentPage.pageNumber) / Double(total)
-        
-        do {
-            try updateChapterProgressUseCase.execute(
-                chapter: activeChapter.chapter,
-                newProgress: progress
-            )
-        } catch {
-            self.errorMessage = "Failed to update chapter progression - \(error.localizedDescription)"
-        }
-        
-        // if we're at the end, mark it read
-        if progress >= 1.0 {
-            do {
-                try markChapterReadUseCase.execute(chapter: activeChapter.chapter)
-            } catch {
-                self.errorMessage = "Failed to update chapter progression - \(error.localizedDescription)"
-            }
-        }
+        await preloadChapter(next)
     }
     
-    private func onNextChapterLoaded() throws -> Void {
-        if let activeChapter = activeChapter {
-            // TODO: Handle if error thrown
-            try markChapterReadUseCase.execute(chapter: activeChapter.chapter)
+    /// Inserts into the loadedChapters array
+    private func preloadChapter(_ node: ReaderChapterListNode) async -> Void {
+        guard !hasLoadedChapter(node) else { return }
+        
+        let chapterSlug: Slug = node.chapter.chapter.slug
+        do {
+            updateLoadedChapters(for: chapterSlug)
+            
+            let contents: [String] = try await getChapterContents(for: node.chapter.chapter)
+            guard !contents.isEmpty else { throw ChapterError.noContent }
+            
+            var panels: [ReaderPanel] = []
+            
+            // insert start transition
+            panels.append(
+                .transition(
+                    .init(
+                        from: node.chapter,
+                        to: node.next?.chapter,
+                        pageCount: contents.count
+                    )
+                )
+            )
+            
+            // insert pages
+            panels.append(
+                contentsOf: contents.enumerated().map { index, url in
+                        .page(
+                            .init(
+                                underlyingChapter: node.chapter,
+                                pageNumber: index + 1,
+                                pageCount: contents.count,
+                                isFirstPage: index == 0,
+                                isLastPage: index == contents.count - 1,
+                                url: url
+                            )
+                        )
+                })
+            
+            // insert end transition
+            panels.append(
+                .transition(
+                    .init(
+                        from: node.chapter,
+                        to: node.next?.chapter,
+                        pageCount: contents.count
+                    )
+                )
+            )
+            
+            updateLoadedChapters(for: chapterSlug, with: panels)
+        }
+        catch {
+            state = .error(error)
         }
     }
 }
 
-// MARK: Utils
+// MARK: Util
 extension ReaderViewModel {
-    @MainActor
-    func toggleReaderDirection() -> Void {
-        chapterLoaded = .unlocked
+    private func updateLoadedChapters(for slug: Slug, with contents: [ReaderPanel]? = nil, error: Error? = nil) -> Void {
+        var state: PanelLoadedState
         
-        orientation.cycle()
-        
-        let modifiedOrientation: String = {
-            switch orientation {
-            case .Infinite:    return "Infinite Scrolling"
-            case .Vertical:    return "Vertically Paginated"
-            case .LeftToRight: return "Left → Right"
-            case .RightToLeft: return "Right → Left"
-            }
-        }()
-        
-        showNotificationBanner(message: modifiedOrientation)
-        
-        pages.removeAll()
-        let targetIndex = currentPage?.chapterIndex ?? initialChapterIndex
-        
-        Task.detached { [weak self] in
-            guard let self = self else { return }
-            
-            await self.loadChapter(at: targetIndex)
+        if contents != nil {
+            state = .loaded
         }
+        else if let error = error {
+            state = .error(error)
+        }
+        else {
+            state = .loading
+        }
+        
+        loadedChapters[slug] = .init(panels: contents, state: state)
     }
-    
-    private func showNotificationBanner(message: String) {
-        withAnimation {
-            showNotificationBanner = message
-        }
-        
-        // schedule the hide after 1.5 second
-        Task {
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            await MainActor.run {
-                withAnimation {
-                    showNotificationBanner = nil
-                }
-            }
-        }
-    }
-    
-    private func prefetch() -> Void {
-        guard   let currentPage = currentPage,
-                !pages.isEmpty
-        else { return }
-        
-        let prefetchRange: Int = 5
-        let start = max(
-            0,
-            currentPage.pageNumber - prefetchRange
-        )
-        let end = min(
-            pages.count - 1,
-            currentPage.pageNumber + prefetchRange
-        )
-        
-        guard start <= end else { return }
-        
-        let urls: [URL] = Array(pages[start...end]).compactMap { URL(string: $0.url) }
-        
-        prefetcher?.stop()
-        prefetcher = ImagePrefetcher(
-            urls: urls,
-            options: [.cacheMemoryOnly, .backgroundDecode],
-            progressBlock: nil
-        )
-        prefetcher?.start()
+}
+
+// MARK: Use-Cases
+extension ReaderViewModel {
+    private func getChapterContents(for chapter: Chapter) async throws -> [String] {
+        return try await getChapterContentsUseCase.execute(chapter: chapter)
     }
 }

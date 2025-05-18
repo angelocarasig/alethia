@@ -8,7 +8,7 @@
 import Foundation
 
 struct EntryDTO: Codable {
-    var slug: String
+    var slug: Slug
     var title: String
     var cover: String
 }

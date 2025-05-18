@@ -22,7 +22,7 @@ struct MangaDTO: Codable {
 }
 
 struct OriginDTO: Codable {
-    let slug: String
+    let slug: Slug
     let url: String
     let referer: String
     let covers: [String]
@@ -33,7 +33,7 @@ struct OriginDTO: Codable {
 
 struct ChapterDTO: Codable {
     let title: String
-    let slug: String
+    let slug: Slug
     let number: Double
     let scanlator: String
     let date: String

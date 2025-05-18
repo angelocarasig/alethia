@@ -14,7 +14,7 @@ struct Origin: Codable, Identifiable {
     var mangaId: Int64
     var sourceId: Int64?
     
-    var slug: String
+    var slug: Slug
     var url: String
     var referer: String
     var classification: Classification
