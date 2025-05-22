@@ -2,31 +2,18 @@
 //  ReaderOverlay.swift
 //  Alethia
 //
-//  Created by Angelo Carasig on 10/5/2025.
+//  Created by Angelo Carasig on 23/5/2025.
 //
 
 import SwiftUI
+import Kingfisher
 
 struct ReaderOverlay: View {
-    @EnvironmentObject private var vm: ReaderViewModel
     @Environment(\.dismiss) private var dismiss
-    
-    var chapter: ChapterExtended? {
-        vm.currentPage?.getUnderlyingChapter(chapters: vm.chapters)
-    }
-    
-    var totalPages: Int {
-        vm.pages.filter { $0.chapterIndex == vm.currentPage?.chapterIndex }.count
-    }
-    
-    var shouldDisplay: Bool {
-        vm.showOverlay &&               // from tap gesture
-        vm.chapterLoaded.boolValue &&   // chapter loaded
-        !vm.onHorizontalPageTransition  // should not be on a horizontal reader page transition
-    }
+    @EnvironmentObject private var vm: ReaderViewModel
     
     var body: some View {
-        if shouldDisplay {
+        if vm.showControls {
             VStack {
                 TopSection()
                 TopIslandButtons()
@@ -37,18 +24,29 @@ struct ReaderOverlay: View {
             }
         }
     }
-    
+}
+
+// MARK: Top Section
+extension ReaderOverlay {
     @ViewBuilder
     private func TopSection() -> some View {
-        HStack {
+        HStack(spacing: Constants.Spacing.regular) {
+            KFImage(URL(filePath: vm.currentChapter.source?.icon ?? ""))
+                .placeholder { Color.tint.shimmer() }
+                .resizable()
+                .scaledToFit()
+                .frame(width: 50, height: 50)
+            
             VStack(alignment: .leading) {
                 Text(vm.mangaTitle)
                     .font(.headline)
                     .fontWeight(.bold)
+                    .lineLimit(1)
                 
-                Text(vm.activeChapter?.chapter.toString() ?? "Loading Page...")
+                Text(vm.currentPage?.underlyingChapter.chapter.toString() ?? "Loading Page...")
                     .font(.subheadline)
                     .fontWeight(.semibold)
+                    .lineLimit(2)
             }
             
             Spacer()
@@ -59,10 +57,12 @@ struct ReaderOverlay: View {
                 Image(systemName: "xmark")
                     .font(.title2)
             }
+            .padding(.trailing, Constants.Padding.regular)
             .buttonStyle(.plain)
         }
+        .padding(.horizontal, Constants.Padding.minimal)
+        .padding(.bottom, Constants.Padding.regular)
         .frame(maxWidth: .infinity)
-        .padding()
         .background(.bar)
         .padding(.top, 50) // Top offset
     }
@@ -71,7 +71,7 @@ struct ReaderOverlay: View {
     private func TopIslandButtons() -> some View {
         HStack {
             Button {
-                vm.toggleReaderDirection()
+                vm.toggleOrientation()
             } label: {
                 Image(systemName: vm.orientation.image)
                     .foregroundColor(.white)
@@ -94,27 +94,37 @@ struct ReaderOverlay: View {
         }
         .padding(.horizontal, Constants.Padding.screen)
     }
-    
+}
+
+
+// MARK: Bottom Section
+extension ReaderOverlay {
     @ViewBuilder
     private func BottomSection() -> some View {
         VStack {
             HStack {
-                Button(action: vm.goToFirstPageInChapter) {
+                Button {
+                    
+                } label: {
                     Image(systemName: "chevron.left")
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, Constants.Padding.screen)
                 
-                if totalPages > 1 {
+                if vm.totalPages > 1 {
                     Slider(
                         value: Binding<Double>(
                             get: { Double(vm.currentPage?.pageNumber ?? .min) },
                             set: { newValue in
-                                vm.scrolledFromSlider = true
-                                vm.currentPage = vm.pages.first(where: { $0.pageNumber == Int(newValue) })
+                                if case let .loaded(pages) = vm.state,
+                                   let newPage = pages.first(where: { $0.pageNumber == Int(newValue) } )
+                                {
+                                    vm.didScrollScrubber = true
+                                    vm.updateCurrentPage(page: newPage)
+                                }
                             }
                         ),
-                        in: 1...Double(max(1, totalPages)),
+                        in: 1...Double(max(1, vm.totalPages)),
                         step: 1
                     )
                 }
@@ -122,14 +132,16 @@ struct ReaderOverlay: View {
                     Spacer()
                 }
                 
-                Button(action: vm.goToLastPageInChapter) {
+                Button {
+                    
+                } label: {
                     Image(systemName: "chevron.right")
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, Constants.Padding.screen)
             }
             
-            Text("Page \(vm.currentPage?.pageNumber ?? -1) of \(totalPages)")
+            Text("Page \(vm.currentPage?.pageNumber ?? -1) of \(vm.totalPages)")
                 .font(.headline)
                 .fontWeight(.medium)
         }

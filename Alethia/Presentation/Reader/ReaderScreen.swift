@@ -2,79 +2,95 @@
 //  ReaderScreen.swift
 //  Alethia
 //
-//  Created by Angelo Carasig on 7/5/2025.
+//  Created by Angelo Carasig on 22/5/2025.
 //
 
 import SwiftUI
+import Kingfisher
 
 struct ReaderScreen: View {
-    @Environment(\.dismiss) private var dismiss
     @StateObject private var vm: ReaderViewModel
     
-    @State private var position: ScrollPosition = .init(id: 0, anchor: .top)
+    @State private var scrollPosition = ScrollPosition(idType: Page.ID.self)
     
     init(
-        title: String,
+        mangaTitle: String,
         orientation: Orientation,
-        chapters: [ChapterExtended],
-        currentChapterIndex: Int
+        currentChapter: ChapterExtended,
+        chapters: [ChapterExtended]
     ) {
-        _vm = StateObject(
+        self._vm = StateObject(
             wrappedValue: ReaderViewModel(
-                title: title,
+                mangaTitle: mangaTitle,
                 orientation: orientation,
-                chapters: chapters,
-                currentChapterIndex: currentChapterIndex
+                currentChapter: currentChapter,
+                chapters: chapters
             )
         )
     }
     
     var body: some View {
         VStack {
-            if vm.chapterLoaded.boolValue {
-                switch vm.orientation {
-                case .Infinite, .Vertical:
-                    VerticalReader()
-                case .LeftToRight, .RightToLeft:
-                    HorizontalReader()
-                }
-            }
-            else if vm.errorMessage != nil {
-                Text("Error: \(vm.errorMessage!)")
-            }
-            else {
-                Text("Loading Chapter...")
+            switch vm.state {
+            case .idle, .loading:
+                LoadingView()
+            case .loaded(let pages):
+                ContentView(pages: pages)
+            case .error(let error):
+                ContentUnavailableView(
+                    error.localizedDescription,
+                    systemImage: "exclamationmark.triangle.fill"
+                )
             }
         }
-        .onTapGesture { onTapGesture() }
-        .onDisappear { vm.onReaderClose() }
-        .animation(.easeInOut, value: vm.chapterLoaded)
-        .overlay(Overlay())
-        .edgesIgnoringSafeArea(.top)
-        .toolbar(.hidden, for: .tabBar)
-        .statusBarHidden(!vm.showOverlay && vm.chapterLoaded.boolValue)
-        .navigationBarBackButtonHidden()
+        .onTapGesture { vm.toggleControls() }
+        .overlay(ReaderOverlay())
+        .toolbar(.hidden, for: .tabBar)     // tab bar
+        .navigationBarBackButtonHidden()    // navigation bar (i.e. back dismiss())
+        .statusBarHidden(!vm.showControls)  // statusbar (i.e. battery, wifi etc.)
+        .edgesIgnoringSafeArea(.vertical)   // make it infinite
+        .task { await vm.loadChapter() }
         .environmentObject(vm)
     }
-}
-
-// MARK: Related
-private extension ReaderScreen {
-    @ViewBuilder
-    private func Overlay() -> some View {
-        ZStack {
-            ReaderOverlay()
-            ReaderNotificationBanner(message: vm.showNotificationBanner)
-        }
-    }
     
-    private func onTapGesture() -> Void {
-        guard vm.chapterLoaded.boolValue,
-              !vm.onHorizontalPageTransition
-        else { return }
-        
-        withAnimation {
-            vm.showOverlay.toggle()
+    @ViewBuilder
+    private func ContentView(pages: [Page]) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            LazyVStack(spacing: 0) {
+                ForEach(pages) { page in
+                    RetryableImage(
+                        url: page.pageUrl,
+                        referer: page.pageReferer
+                    )
+                    .id(page.pageNumber)
+                    .onAppear { vm.updateCurrentPage(page: page) }
+                    .containerRelativeFrame(
+                        vm.orientation == Orientation.Vertical ? .vertical : .horizontal,
+                        count: 1,
+                        spacing: 0
+                    )
+                }
+                .scrollTargetLayout()
+                
+                EndDetails()
+                    .onAppear { vm.endDetailsVisible = true }
+                    .onDisappear { vm.endDetailsVisible = false }
+            }
+        }
+        .if(vm.orientation == Orientation.Vertical) { view in
+            view
+                .defaultScrollAnchor(.center)
+                .scrollTargetBehavior(.paging)
+        }
+        .scrollPosition($scrollPosition)
+        .onChange(of: vm.currentPage) {
+            guard vm.didScrollScrubber else { return }
+
+            withAnimation(.none) {
+                scrollPosition.scrollTo(id: vm.currentPage?.pageNumber, anchor: .top)
+            }
+            
+            vm.didScrollScrubber = false
         }
     }
 }

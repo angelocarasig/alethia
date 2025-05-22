@@ -19,14 +19,14 @@ struct ChapterListView: View {
             ForEach(Array(vm.chapters.enumerated()), id: \.element.chapter.id) { index, chapter in
                 Divider()
                 
-                NavigationLink(
-                    destination: ReaderScreen(
-                        title: vm.details.unsafelyUnwrapped.manga.title,
-                        orientation: vm.details.unsafelyUnwrapped.manga.orientation,
-                        chapters: vm.details.unsafelyUnwrapped.chapters,
-                        currentChapterIndex: index
+                NavigationLink {
+                    ReaderScreen(
+                        mangaTitle: vm.details?.manga.title ?? "Unknown Title",
+                        orientation: vm.details?.manga.orientation ?? .LeftToRight,
+                        currentChapter: chapter,
+                        chapters: vm.details?.chapters ?? []
                     )
-                ) {
+                } label: {
                     ChapterRow(item: chapter)
                         .id("\(chapter.chapter.title)-\(chapter.chapter.progress)")
                 }
@@ -43,10 +43,6 @@ private struct ChapterHeaderView: View {
         vm.chapters
             .sorted { $0.chapter.number < $1.chapter.number }
             .first(where: { !$0.chapter.read })
-    }
-    
-    var targetChapterPresent: Bool {
-        targetChapter != nil
     }
     
     var targetChapterIndex: Int? {
@@ -74,15 +70,16 @@ private struct ChapterHeaderView: View {
             
             HStack {
                 NavigationLink {
-                    if let index = targetChapterIndex {
+                    if let chapter = targetChapter {
                         ReaderScreen(
-                            title: vm.details.unsafelyUnwrapped.manga.title,
-                            orientation: vm.details.unsafelyUnwrapped.manga.orientation,
-                            chapters: vm.details.unsafelyUnwrapped.chapters,
-                            currentChapterIndex: index
+                            mangaTitle: vm.details?.manga.title ?? "Unknown Title",
+                            orientation: vm.details?.manga.orientation ?? .LeftToRight,
+                            currentChapter: chapter,
+                            chapters: vm.details?.chapters ?? []
                         )
                     }
                     else {
+                        Text("Empty View!")
                         EmptyView()
                     }
                 } label: {
@@ -90,7 +87,7 @@ private struct ChapterHeaderView: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .disabled(!targetChapterPresent)
+                .disabled(targetChapter == nil)
                 .buttonStyle(.borderedProminent)
                 
                 NavigationLink {
