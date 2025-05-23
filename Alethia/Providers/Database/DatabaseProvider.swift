@@ -25,7 +25,9 @@ final class DatabaseProvider {
         
         // MARK: Many-to-Many
         Author.self, MangaAuthor.self,
-        Tag.self, MangaTag.self
+        Tag.self, MangaTag.self,
+        
+        Collection.self, MangaCollection.self,
     ]
     
     let writer: DatabaseWriter

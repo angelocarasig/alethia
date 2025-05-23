@@ -40,6 +40,8 @@ final class ReaderViewModel: ObservableObject {
     
     // Tracking
     @Published private(set) var currentChapter: ChapterExtended
+    private(set) var recommendations: RecommendedEntries? = nil
+    private var mangaId: Int64
     private var chapters: ChapterList
     
     // Internal
@@ -51,13 +53,16 @@ final class ReaderViewModel: ObservableObject {
     private let getChapterContentsUseCase: GetChapterContentsUseCase
     private let updateChapterProgressUseCase: UpdateChapterProgressUseCase // on exit
     private let markChapterReadUseCase: MarkChapterReadUseCase // on next
+    private let getRecommendationsUseCase: GetRecommendationsUseCase
     
     init(
+        mangaId: Int64,
         mangaTitle: String,
         orientation: Orientation,
         currentChapter: ChapterExtended,
         chapters: [ChapterExtended]
     ) {
+        self.mangaId = mangaId
         self.mangaTitle = mangaTitle
         self.orientation = orientation
         self.currentChapter = currentChapter
@@ -66,6 +71,7 @@ final class ReaderViewModel: ObservableObject {
         self.getChapterContentsUseCase = DependencyInjector.shared.makeGetChapterContentsUseCase()
         self.updateChapterProgressUseCase = DependencyInjector.shared.makeUpdateChapterProgressUseCase()
         self.markChapterReadUseCase = DependencyInjector.shared.makeMarkChapterReadUseCase()
+        self.getRecommendationsUseCase = DependencyInjector.shared.makeGetRecommendationsUseCase()
         
         setupControls()
     }
@@ -129,6 +135,7 @@ extension ReaderViewModel {
         
         do {
             let pages = try await getChapterContentsUseCase.execute(chapter: currentChapter.chapter)
+            let recommendations = try getRecommendationsUseCase.execute(mangaId: mangaId)
             
             let mappedPages = pages
                 .enumerated()
@@ -144,6 +151,7 @@ extension ReaderViewModel {
                 }
             
             withAnimation {
+                self.recommendations = recommendations
                 self.totalPages = mappedPages.count
                 self.state = .loaded(mappedPages)
             }

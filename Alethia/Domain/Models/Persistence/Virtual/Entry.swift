@@ -70,3 +70,17 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
         self.match = match ?? .none
     }
 }
+
+struct RecommendedEntries {
+    // Similar in your library
+    let withSimilarTags: [Entry]
+    
+    // Others in same collection
+    let fromSameCollection: [Entry]
+    
+    // Authors other works
+    let otherWorksByAuthor: [Entry]
+    
+    // Scanlator's other series
+    let otherSeriesByScanlator: [Entry]
+}

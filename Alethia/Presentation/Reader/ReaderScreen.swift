@@ -14,6 +14,7 @@ struct ReaderScreen: View {
     @State private var scrollPosition = ScrollPosition(idType: Page.ID.self)
     
     init(
+        mangaId: Int64,
         mangaTitle: String,
         orientation: Orientation,
         currentChapter: ChapterExtended,
@@ -21,6 +22,7 @@ struct ReaderScreen: View {
     ) {
         self._vm = StateObject(
             wrappedValue: ReaderViewModel(
+                mangaId: mangaId,
                 mangaTitle: mangaTitle,
                 orientation: orientation,
                 currentChapter: currentChapter,

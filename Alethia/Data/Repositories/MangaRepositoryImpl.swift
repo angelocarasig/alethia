@@ -42,8 +42,12 @@ extension MangaRepositoryImpl: MangaRepository {
             .eraseToAnyPublisher()
     }
     
-    func toggleMangaInLibrary(mangaId: Int64, newValue: Bool) throws {
+    func toggleMangaInLibrary(mangaId: Int64, newValue: Bool) throws -> Void {
         try local.toggleMangaInLibrary(mangaId: mangaId, newValue: newValue)
+    }
+    
+    func getMangaRecommendations(mangaId: Int64) throws -> RecommendedEntries {
+        return try local.getMangaRecommendations(mangaId: mangaId)
     }
 }
 

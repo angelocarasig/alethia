@@ -48,6 +48,10 @@ extension DependencyInjector {
     func makeToggleMangaInLibraryUseCase() -> ToggleMangaInLibraryUseCase {
         return ToggleMangaInLibraryUserCaseImpl(repository: mangaRepository)
     }
+    
+    func makeGetRecommendationsUseCase() -> GetRecommendationsUseCase {
+        return GetRecommendationsUseCaseImpl(repository: mangaRepository)
+    }
 }
 
 // MARK: Sources

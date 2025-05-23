@@ -15,4 +15,6 @@ protocol MangaRepository {
     func getMangaDetail(entry: Entry) -> AnyPublisher<[Detail], Error>
     
     func toggleMangaInLibrary(mangaId: Int64, newValue: Bool) throws -> Void
+    
+    func getMangaRecommendations(mangaId: Int64) throws -> RecommendedEntries
 }

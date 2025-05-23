@@ -121,26 +121,26 @@ final class MangaLocalDataSource {
             guard let self = self else { return [] }
             
             var details: [Detail] = []
-
+            
             // First: fetch by ID - Exact match should return early
             if let manga = try Manga.fetchOne(db, key: entry.mangaId),
                let detail = try self.fetchDetailWithChapters(db: db, manga: manga) {
                 return [detail]
             }
-
+            
             // Alt: fetch by title
             let titleMatches = try self.findMangasByTitle(db: db, title: entry.title)
-
+            
             for manga in titleMatches where !details.contains(where: { $0.manga.id == manga.id }) {
                 if let detail = try self.fetchDetailWithChapters(db: db, manga: manga) {
                     details.append(detail)
                 }
             }
-
+            
             return details
             
-//            let manga = try Manga.fetchAll(db)
-//            return try manga.map { try self.fetchDetailWithChapters(db: db, manga: $0)! }
+            //            let manga = try Manga.fetchAll(db)
+            //            return try manga.map { try self.fetchDetailWithChapters(db: db, manga: $0)! }
         }
         .publisher(in: database, scheduling: .immediate)
         .catch { _ in Just([]) }
@@ -158,8 +158,121 @@ final class MangaLocalDataSource {
         }
     }
     
-    // MARK: - Private Helper Methods
+    func getMangaRecommendations(mangaId: Int64) throws -> RecommendedEntries {
+        return try database.read { db in
+            // Get the target manga to ensure it exists
+            guard try Manga.fetchOne(db, key: mangaId) != nil else {
+                throw MangaError.notFound
+            }
+            
+            // 1. Similar tags - manga that share tags with the target manga
+            let withSimilarTags = try fetchSimilarTaggedManga(db: db, mangaId: mangaId)
+            
+            // 2. Same collection - manga in the same collections
+            let fromSameCollection = try fetchSameCollectionManga(db: db, mangaId: mangaId)
+            
+            // 3. Same author - other works by the same authors
+            let otherWorksByAuthor = try fetchSameAuthorManga(db: db, mangaId: mangaId)
+            
+            // 4. Same scanlator - other series by the same scanlators
+            let otherSeriesByScanlator = try fetchSameScanlatorManga(db: db, mangaId: mangaId)
+            
+            return RecommendedEntries(
+                withSimilarTags: withSimilarTags,
+                fromSameCollection: fromSameCollection,
+                otherWorksByAuthor: otherWorksByAuthor,
+                otherSeriesByScanlator: otherSeriesByScanlator
+            )
+        }
+    }
     
+    private func fetchSimilarTaggedManga(db: Database, mangaId: Int64) throws -> [Entry] {
+        return try Manga.entry
+            .filter(Manga.Columns.inLibrary)
+            .filter(Manga.Columns.id != mangaId)
+            .filter(sql: """
+            mangaId IN (
+                SELECT DISTINCT mt2.mangaId 
+                FROM mangaTag mt2 
+                WHERE mt2.tagId IN (
+                    SELECT mt1.tagId 
+                    FROM mangaTag mt1 
+                    WHERE mt1.mangaId = ?
+                )
+                AND mt2.mangaId != ?
+            )
+        """, arguments: [mangaId, mangaId])
+            .limit(10)
+            .fetchAll(db)
+    }
+    
+    private func fetchSameCollectionManga(db: Database, mangaId: Int64) throws -> [Entry] {
+        return try Manga.entry
+            .filter(Manga.Columns.inLibrary)
+            .filter(Manga.Columns.id != mangaId)
+            .filter(sql: """
+            mangaId IN (
+                SELECT DISTINCT mc2.mangaId 
+                FROM mangaCollection mc2 
+                WHERE mc2.collectionId IN (
+                    SELECT mc1.collectionId 
+                    FROM mangaCollection mc1 
+                    WHERE mc1.mangaId = ?
+                )
+                AND mc2.mangaId != ?
+            )
+        """, arguments: [mangaId, mangaId])
+            .limit(10)
+            .fetchAll(db)
+    }
+    
+    private func fetchSameAuthorManga(db: Database, mangaId: Int64) throws -> [Entry] {
+        return try Manga.entry
+            .filter(Manga.Columns.inLibrary)
+            .filter(Manga.Columns.id != mangaId)
+            .filter(sql: """
+            mangaId IN (
+                SELECT DISTINCT ma2.mangaId 
+                FROM mangaAuthor ma2 
+                WHERE ma2.authorId IN (
+                    SELECT ma1.authorId 
+                    FROM mangaAuthor ma1 
+                    WHERE ma1.mangaId = ?
+                )
+                AND ma2.mangaId != ?
+            )
+        """, arguments: [mangaId, mangaId])
+            .limit(10)
+            .fetchAll(db)
+    }
+    
+    private func fetchSameScanlatorManga(db: Database, mangaId: Int64) throws -> [Entry] {
+        return try Manga.entry
+            .filter(Manga.Columns.inLibrary)
+            .filter(Manga.Columns.id != mangaId)
+            .filter(sql: """
+            mangaId IN (
+                SELECT DISTINCT o2.mangaId 
+                FROM origin o2 
+                JOIN chapter c2 ON c2.originId = o2.id 
+                WHERE c2.scanlatorId IN (
+                    SELECT DISTINCT c1.scanlatorId 
+                    FROM chapter c1 
+                    JOIN origin o1 ON c1.originId = o1.id 
+                    WHERE o1.mangaId = ?
+                )
+                AND o2.mangaId != ?
+            )
+        """, arguments: [mangaId, mangaId])
+            .limit(10)
+            .fetchAll(db)
+    }
+}
+
+
+// MARK: Private helpers
+
+private extension MangaLocalDataSource {
     private func applyPublishStatusFilter(
         to request: QueryInterfaceRequest<Entry>,
         statuses: [PublishStatus]
@@ -183,8 +296,8 @@ final class MangaLocalDataSource {
                     )
                 )
                 """,
-                arguments: StatementArguments(statusValues)
-            )
+                         arguments: StatementArguments(statusValues)
+                        )
         )
     }
     
@@ -211,8 +324,8 @@ final class MangaLocalDataSource {
                     )
                 )
                 """,
-                arguments: StatementArguments(classificationValues)
-            )
+                         arguments: StatementArguments(classificationValues)
+                        )
         )
     }
     

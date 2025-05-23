@@ -25,7 +25,9 @@ struct EndDetails: View {
             
             Spacer()
             
-            Recommendations()
+            if let recommendations = vm.recommendations {
+                Recommendations(recommendations: recommendations)
+            }
             
             Spacer().frame(height: 150)
         }
@@ -150,12 +152,54 @@ struct EndDetails: View {
     }
     
     @ViewBuilder
-    private func Recommendations() -> some View {
-        Text("TODO: ")
-        Text("Similar In Your Library")
-        Text("Others In Collections")
-        Text("Authors Other Works")
-        Text("Others By Scanlator")
+    private func Recommendations(recommendations: RecommendedEntries) -> some View {
+        VStack(spacing: Constants.Spacing.large) {
+            if recommendations.withSimilarTags.count > 0 {
+                RecommendationRow(title: "YOU MIGHT LIKE", content: recommendations.withSimilarTags)
+            }
+            
+            if recommendations.fromSameCollection.count > 0 {
+                RecommendationRow(title: "IN SIMILAR COLLECTIONS", content: recommendations.fromSameCollection)
+            }
+            
+            if recommendations.otherWorksByAuthor.count > 0 {
+                RecommendationRow(title: "AUTHORS OTHER WORKS", content: recommendations.otherWorksByAuthor)
+            }
+            
+            if recommendations.otherSeriesByScanlator.count > 0 {
+                RecommendationRow(title: "SCANLATORS OTHER SERIES", content: recommendations.otherSeriesByScanlator)
+            }
+        }
+        .padding(.vertical, Constants.Padding.screen)
+    }
+    
+    @ViewBuilder
+    private func RecommendationRow(title: String, content: [Entry]) -> some View {
+        VStack(alignment: .leading) {
+            Text(title)
+                .font(.footnote)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+                .padding(.top, Constants.Padding.regular)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: Constants.Spacing.minimal) {
+                    ForEach(content, id: \.self) { entry in
+                        NavigationLink {
+                            DetailsScreen(entry: entry, source: nil)
+                        } label: {
+                            EntryView(
+                                item: entry,
+                                downsample: true,
+                                lineLimit: 2
+                            )
+                        }
+                        .frame(width: 150)
+                        .id(entry.id)
+                    }
+                }
+            }
+        }
     }
     
     @ViewBuilder

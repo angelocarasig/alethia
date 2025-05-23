@@ -41,6 +41,7 @@ struct ContinueReadingView: View {
         NavigationLink {
             if let chapter = targetChapter {
                 ReaderScreen(
+                    mangaId: vm.details?.manga.id ?? -1,
                     mangaTitle: vm.details?.manga.title ?? "Unknown Title",
                     orientation: vm.details?.manga.orientation ?? .LeftToRight,
                     currentChapter: chapter,
