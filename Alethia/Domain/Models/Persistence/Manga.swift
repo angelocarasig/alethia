@@ -276,7 +276,7 @@ extension Manga {
         return query
             .order(Chapter.Columns.number.desc)
             .including(required: Chapter.scanlator)
-            .including(required: Chapter.origin.including(required: Origin.source))
+            .including(required: Chapter.origin.including(optional: Origin.source)) // optional for detached sources
             .asRequest(of: ChapterExtended.self)
     }
 }
