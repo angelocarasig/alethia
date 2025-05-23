@@ -9,6 +9,7 @@ import SwiftUI
 
 struct EndDetails: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var vm: ReaderViewModel
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -62,7 +63,9 @@ struct EndDetails: View {
             GeometryReader { geometry in
                 HStack {
                     Button {
-                        dismiss()
+                        vm.updateChapterProgress(didCompleteChapter: true) {
+                            dismiss()
+                        }
                     } label: {
                         Text("Exit")
                             .font(.headline)
@@ -75,6 +78,10 @@ struct EndDetails: View {
                             .cornerRadius(Constants.Corner.Radius.button)
                     }
                     .buttonStyle(.plain)
+                    
+                    // TODO: Add banner if next chapter skips a value:
+                    // - If next chapter is non-decimal and not a by-1 increment
+                    // - If next chapter is decimal but >= 2 value difference
                     
                     Button {} label: {
                         HStack {
@@ -108,6 +115,7 @@ struct EndDetails: View {
                 .padding(.bottom, Constants.Padding.regular)
             
             HStack {
+                // TODO: Use non-stubbed info
                 Image("AniList")
                     .resizable()
                     .scaledToFit()
@@ -115,7 +123,8 @@ struct EndDetails: View {
                     .cornerRadius(Constants.Corner.Radius.regular)
                 
                 VStack(alignment: .leading) {
-                    Text("Unknown Title")
+                    // TODO: Use title from anilist fetch instead
+                    Text(vm.mangaTitle)
                         .font(.headline)
                         .fontWeight(.semibold)
                         .lineLimit(1)
@@ -130,59 +139,7 @@ struct EndDetails: View {
                 Spacer()
                 
                 VStack(alignment: .trailing) {
-                    HStack {
-                        Text("Syncing")
-                            .font(.headline)
-                            .padding(Constants.Padding.regular)
-                            .background(
-                                RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-                                    .fill(Color.blue.opacity(0.5))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-                                            .stroke(Color.blue.opacity(0.9), lineWidth: 2)
-                                    )
-                            )
-                            .foregroundColor(Color.blue)
-                            .cornerRadius(Constants.Corner.Radius.regular)
-                    }
                     
-//                    HStack {
-//                        Text("Synced")
-//                            .font(.headline)
-//                            .padding(Constants.Padding.regular)
-//                            .background(
-//                                RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-//                                    .fill(Color.green.opacity(0.5))
-//                                    .overlay(
-//                                        RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-//                                            .stroke(Color.green.opacity(0.9), lineWidth: 2)
-//                                    )
-//                            )
-//                            .foregroundColor(Color.green)
-//                            .cornerRadius(Constants.Corner.Radius.regular)
-//                        
-//                        Image(systemName: "checkmark.circle")
-//                            .foregroundColor(Color.green)
-//                    }
-//                    
-//                    HStack {
-//                        Text("Error")
-//                            .font(.headline)
-//                            .padding(Constants.Padding.regular)
-//                            .background(
-//                                RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-//                                    .fill(Color.red.opacity(0.5))
-//                                    .overlay(
-//                                        RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-//                                            .stroke(Color.red.opacity(0.9), lineWidth: 2)
-//                                    )
-//                            )
-//                            .foregroundColor(Color.red)
-//                            .cornerRadius(Constants.Corner.Radius.regular)
-//                        
-//                        Image(systemName: "arrow.trianglehead.counterclockwise")
-//                            .foregroundColor(Color.red)
-//                    }
                     
                     Text("1/\(999) Chapters")
                         .font(.subheadline)
@@ -199,6 +156,69 @@ struct EndDetails: View {
         Text("Others In Collections")
         Text("Authors Other Works")
         Text("Others By Scanlator")
+    }
+    
+    @ViewBuilder
+    private func SyncingLabel() -> some View {
+        HStack {
+            Text("Syncing")
+                .font(.headline)
+                .padding(Constants.Padding.regular)
+                .background(
+                    RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
+                        .fill(Color.blue.opacity(0.5))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
+                                .stroke(Color.blue.opacity(0.9), lineWidth: 2)
+                        )
+                )
+                .foregroundColor(Color.blue)
+                .cornerRadius(Constants.Corner.Radius.regular)
+        }
+    }
+    
+    @ViewBuilder
+    private func SyncedLabel() -> some View {
+        HStack {
+            Text("Synced")
+                .font(.headline)
+                .padding(Constants.Padding.regular)
+                .background(
+                    RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
+                        .fill(Color.green.opacity(0.5))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
+                                .stroke(Color.green.opacity(0.9), lineWidth: 2)
+                        )
+                )
+                .foregroundColor(Color.green)
+                .cornerRadius(Constants.Corner.Radius.regular)
+            
+            Image(systemName: "checkmark.circle")
+                .foregroundColor(Color.green)
+        }
+    }
+    
+    @ViewBuilder
+    private func ErrorLabel() -> some View {
+        HStack {
+            Text("Error")
+                .font(.headline)
+                .padding(Constants.Padding.regular)
+                .background(
+                    RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
+                        .fill(Color.red.opacity(0.5))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
+                                .stroke(Color.red.opacity(0.9), lineWidth: 2)
+                        )
+                )
+                .foregroundColor(Color.red)
+                .cornerRadius(Constants.Corner.Radius.regular)
+            
+            Image(systemName: "arrow.trianglehead.counterclockwise")
+                .foregroundColor(Color.red)
+        }
     }
 }
 

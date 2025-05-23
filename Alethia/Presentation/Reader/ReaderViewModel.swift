@@ -49,6 +49,8 @@ final class ReaderViewModel: ObservableObject {
     // Use-Cases
     private var cancellables = Set<AnyCancellable>()
     private let getChapterContentsUseCase: GetChapterContentsUseCase
+    private let updateChapterProgressUseCase: UpdateChapterProgressUseCase // on exit
+    private let markChapterReadUseCase: MarkChapterReadUseCase // on next
     
     init(
         mangaTitle: String,
@@ -62,11 +64,12 @@ final class ReaderViewModel: ObservableObject {
         self.chapters = ChapterList(chapters: chapters)
         
         self.getChapterContentsUseCase = DependencyInjector.shared.makeGetChapterContentsUseCase()
+        self.updateChapterProgressUseCase = DependencyInjector.shared.makeUpdateChapterProgressUseCase()
+        self.markChapterReadUseCase = DependencyInjector.shared.makeMarkChapterReadUseCase()
         
         setupControls()
     }
 }
-
 
 // MARK: State
 extension ReaderViewModel {
@@ -158,6 +161,33 @@ extension ReaderViewModel {
         // Use weak self to prevent retain cycles
         DispatchQueue.main.async { [weak self] in
             self?.prefetch()
+        }
+    }
+    
+    func updateChapterProgress(didCompleteChapter: Bool, completion: (() -> Void)? = nil) -> Void {
+        do {
+            if didCompleteChapter {
+                try markChapterReadUseCase.execute(chapter: currentChapter.chapter)
+                completion?()
+                return
+            }
+            
+            // get current chapter progress
+            guard let currentPage = currentPage else {
+                completion?()
+                return
+            }
+            
+            let progress: Double = totalPages > 0
+            ? Double(currentPage.pageNumber) / Double(totalPages)
+            : 0.0
+            
+            try updateChapterProgressUseCase.execute(chapter: currentChapter.chapter, newProgress: progress)
+            completion?()
+        }
+        catch {
+            state = .error(error)
+            // completion is NOT called here, so dismiss() won't happen if there's an error
         }
     }
 }

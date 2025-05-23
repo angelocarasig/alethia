@@ -52,7 +52,9 @@ extension ReaderOverlay {
             Spacer()
             
             Button {
-                dismiss()
+                vm.updateChapterProgress(didCompleteChapter: false) {
+                    dismiss()
+                }
             } label: {
                 Image(systemName: "xmark")
                     .font(.title2)
