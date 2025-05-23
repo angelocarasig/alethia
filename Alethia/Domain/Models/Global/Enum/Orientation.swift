@@ -34,4 +34,12 @@ enum Orientation: String, Codable, CaseIterable {
             return "arrow.down.app.fill"
         }
     }
+    
+    var isVertical: Bool {
+        return self == .Vertical || self == .Infinite
+    }
+    
+    var isHorizontal: Bool {
+        return self == .LeftToRight || self == .RightToLeft
+    }
 }

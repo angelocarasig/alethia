@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct EndDetails: View {
+    @Environment(\.dismiss) private var dismiss
+    
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             Spacer().frame(height: 150)
@@ -15,6 +17,8 @@ struct EndDetails: View {
             ContentSection()
             
             Spacer()
+            
+            Text("Next Chapter Stuff ...")
             
             TrackerSection()
             
@@ -25,6 +29,7 @@ struct EndDetails: View {
             Spacer().frame(height: 150)
         }
         .padding(.horizontal, Constants.Padding.screen)
+        .frame(width: UIScreen.main.bounds.width)
     }
     
     @ViewBuilder
@@ -56,7 +61,9 @@ struct EndDetails: View {
             
             GeometryReader { geometry in
                 HStack {
-                    Button {} label: {
+                    Button {
+                        dismiss()
+                    } label: {
                         Text("Exit")
                             .font(.headline)
                             .fontWeight(.semibold)
