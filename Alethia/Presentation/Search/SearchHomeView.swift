@@ -182,16 +182,19 @@ final class SearchHomeViewModel: ObservableObject {
     @Published var state: State = .idle
     
     private(set) var sources: [Source] = []
+    private var raw: [SearchResult] = []
     
     private var cancellables = Set<AnyCancellable>()
     private let getSourcesUseCase: GetSourcesUseCase
     private let searchSourceUseCase: SearchSourceUseCase
+    private let observeMatchEntriesUseCase: ObserveMatchEntriesUseCase
     
     init(initialSearchValue: String = "") {
         self.search = initialSearchValue
         
         self.getSourcesUseCase = DependencyInjector.shared.makeGetSourcesUseCase()
         self.searchSourceUseCase = DependencyInjector.shared.makeSearchSourceUseCase()
+        self.observeMatchEntriesUseCase = DependencyInjector.shared.makeObserveMatchEntriesUseCase()
         
         bind(performInitialSearch: !initialSearchValue.isEmpty)
     }
@@ -217,17 +220,16 @@ final class SearchHomeViewModel: ObservableObject {
     func performSearch() -> Void {
         guard !search.isEmpty else { return }
         
-        // snapshot of current values just in case
+        clearMatchObservations()
+        
         let query = search
         let currentSources = sources
         
         Task {
             await MainActor.run { state = .loading }
             
-            // prepare empty result slots
             var results = Array(repeating: [Entry](), count: currentSources.count)
             
-            // kick off all searches in parallel
             await withTaskGroup(of: (Int, [Entry]).self) { group in
                 for (i, source) in currentSources.enumerated() {
                     group.addTask {
@@ -241,19 +243,51 @@ final class SearchHomeViewModel: ObservableObject {
                         }
                     }
                 }
-                // and collect in order
+                
                 for await (i, entries) in group {
                     results[i] = entries
                 }
             }
             
-            // format to wrapper
             let wrappedResults = zip(currentSources, results)
                 .map { SearchResult(source: $0, results: $1) }
             
             await MainActor.run {
-                state = .loaded(results: wrappedResults)
+                self.raw = wrappedResults
+                self.observeMatches()
             }
         }
+    }
+    
+    private func observeMatches() {
+        guard !raw.isEmpty else { return }
+        
+        let allEntries = raw.flatMap { $0.results }
+        
+        observeMatchEntriesUseCase
+            .execute(entries: allEntries)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] updatedEntries in
+                self?.updateResultsWithMatches(updatedEntries)
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func updateResultsWithMatches(_ updatedEntries: [Entry]) {
+        let updatedDict = Dictionary(uniqueKeysWithValues: updatedEntries.map { ($0.id, $0) })
+        
+        let updatedResults = raw.map { searchResult in
+            let updatedResultEntries = searchResult.results.compactMap { entry in
+                updatedDict[entry.id] ?? entry
+            }
+            return SearchResult(source: searchResult.source, results: updatedResultEntries)
+        }
+        
+        state = .loaded(results: updatedResults)
+    }
+    
+    private func clearMatchObservations() {
+        cancellables = cancellables.filter { _ in false }
+        bind()
     }
 }
