@@ -17,7 +17,7 @@ final class ChapterRepositoryImpl {
     }
 }
 
-extension ChapterRepositoryImpl: ChapterRepository {
+extension ChapterRepositoryImpl: ChapterRepository {    
     func getChapterContents(chapter: Chapter) async throws -> [String] {
         return try await remote.getChapterContents(chapter: chapter)
     }
@@ -26,8 +26,8 @@ extension ChapterRepositoryImpl: ChapterRepository {
         try local.markChapterRead(chapter: chapter)
     }
     
-    func updateChapterProgress(chapter: Chapter, newProgress: Double) throws {
-        try local.updateChapterProgress(chapter: chapter, newProgress: newProgress)
+    func updateChapterProgress(chapter: Chapter, newProgress: Double, override: Bool) throws {
+        try local.updateChapterProgress(chapter: chapter, newProgress: newProgress, override: override)
     }
     
     func markAllChapters(chapters: [Chapter], asRead: Bool) throws {

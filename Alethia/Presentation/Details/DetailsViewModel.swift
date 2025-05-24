@@ -24,6 +24,7 @@ final class DetailsViewModel: ObservableObject {
     private let getMangaDetailUseCase: GetMangaDetailUseCase
     private let toggleMangaInLibraryUseCase: ToggleMangaInLibraryUseCase
     private let markAllChaptersUseCase: MarkAllChaptersUseCase
+    private let updateChapterProgressUseCase: UpdateChapterProgressUseCase
     
     // MARK: - Initialization
     init(entry: Entry, context: Source?) {
@@ -33,6 +34,7 @@ final class DetailsViewModel: ObservableObject {
         self.getMangaDetailUseCase = DependencyInjector.shared.makeGetMangaDetailUseCase()
         self.toggleMangaInLibraryUseCase = DependencyInjector.shared.makeToggleMangaInLibraryUseCase()
         self.markAllChaptersUseCase = DependencyInjector.shared.makeMarkAllChaptersUseCase()
+        self.updateChapterProgressUseCase = DependencyInjector.shared.makeUpdateChapterProgressUseCase()
     }
 }
 
@@ -153,7 +155,7 @@ extension DetailsViewModel {
     }
 }
 
-// MARK: - Library Actions
+// MARK: - Use-Cases | Library Actions
 extension DetailsViewModel {
     func toggleInLibrary() {
         guard case let .success(details) = state,
@@ -165,6 +167,19 @@ extension DetailsViewModel {
                 newValue: !details.manga.inLibrary
             )
         } catch {
+            state = .error(error)
+        }
+    }
+    
+    func markChapter(asRead: Bool, for chapter: ChapterExtended) {
+        do {
+            try updateChapterProgressUseCase.execute(
+                chapter: chapter.chapter,
+                newProgress: asRead ? 1.0 : 0.0,
+                override: true
+            )
+        }
+        catch {
             state = .error(error)
         }
     }

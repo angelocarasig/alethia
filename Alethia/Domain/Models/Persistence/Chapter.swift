@@ -26,6 +26,10 @@ struct Chapter: Codable, Identifiable {
         progress == 1.0
     }
     
+    var downloaded: Bool {
+        localPath != nil
+    }
+    
     func toString() -> String {
         return "Chapter \(self.number.toString()) \(title.isEmpty ? "" : " - \(title)")"
     }

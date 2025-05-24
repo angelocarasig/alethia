@@ -52,21 +52,15 @@ private struct ChapterHeaderView: View {
     }
     
     var body: some View {
-        VStack(spacing: Constants.Spacing.large) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
-                    Text("Chapters")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    
-                    Text("^[\(vm.chapters.count) chapter](inflect: true)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+            VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
+                Text("Chapters")
+                    .font(.title2)
+                    .fontWeight(.bold)
                 
-                Spacer()
-                
-                SortButton()
+                Text("^[\(vm.chapters.count) chapter](inflect: true)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
             
             HStack {
@@ -106,71 +100,10 @@ private struct ChapterHeaderView: View {
             .frame(height: 44)
         }
     }
-    
-    @ViewBuilder
-    private func SortButton() -> some View {
-        Menu {
-            Section {
-                //                ForEach(ChapterSortOption.allCases, id: \.rawValue) { option in
-                //                    Button(action: {
-                //                        vm.toggleSortOption(context: modelContext, option: option)
-                //                    }) {
-                //                        HStack {
-                //                            Text(option.rawValue)
-                //                                .foregroundColor(.primary)
-                //                            Spacer()
-                //                            if settings.sortOption == option {
-                //                                Image(systemName: settings.sortDirection == .descending ? "arrow.down" : "arrow.up")
-                //                                    .foregroundColor(.accentColor)
-                //                            }
-                //                        }
-                //                    }
-                //                }
-            } header: {
-                Text("Sort Chapters")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-            }
-        } label: {
-            CircleButton(icon: "line.3.horizontal.decrease", isActive: false)
-        }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
-    }
-}
-
-private struct CircleButton: View {
-    let icon: String
-    var isActive: Bool = false
-    var action: (() -> Void)? = nil
-    
-    var body: some View {
-        Group {
-            if let action = action {
-                Button(action: action) {
-                    buttonContent
-                }
-            } else {
-                buttonContent
-            }
-        }
-    }
-    
-    private var buttonContent: some View {
-        Image(systemName: icon)
-            .font(.system(size: 16, weight: .semibold))
-            .frame(
-                width: Constants.Icon.Size.regular,
-                height: Constants.Icon.Size.regular
-            )
-            .background(isActive ? Color.accentColor : Color.tint)
-            .foregroundStyle(.text)
-            .clipShape(Circle())
-            .contentShape(Circle())
-    }
 }
 
 private struct ChapterRow: View {
+    @EnvironmentObject private var vm: DetailsViewModel
     let item: ChapterExtended
     
     var read: Bool {
@@ -264,61 +197,60 @@ private struct ChapterRow: View {
     
     @ViewBuilder
     private func ContextMenu() -> some View {
-        Text("CTX")
-        //        Group {
-        //            ControlGroup {
-        //                Button {
-        //                } label: {
-        //                    Label("Mark Read", systemImage: "book.closed")
-        //                }
-        //                .disabled(read)
-        //
-        //                Button {
-        //
-        //                } label: {
-        //                    Label("Read Above", systemImage: "arrow.up.square.fill")
-        //                }
-        //
-        //                Button {
-        //
-        //                } label: {
-        //                    Label("Read Below", systemImage: "arrow.down.square.fill")
-        //                }
-        //            }
-        //
-        //            ControlGroup {
-        //                Button {
-        //                } label: {
-        //                    Label("Mark Unread", systemImage: "book")
-        //                }
-        //                .disabled(!chapter.read)
-        //
-        //                Button {
-        //
-        //                } label: {
-        //                    Label("Unread Above", systemImage: "arrow.up.square")
-        //                }
-        //
-        //                Button {
-        //
-        //                } label: {
-        //                    Label("Unread Below", systemImage: "arrow.down.square")
-        //                }
-        //            }
-        //
-        //            ControlGroup {
-        //                Button {
-        //                } label: {
-        //                    Label("Start Chapter Download", systemImage: "arrow.down")
-        //                }
-        //                .disabled(chapter.isDownloaded)
-        //
-        //                Button(role: .destructive) {
-        //                } label: {
-        //                    Label("Remove Chapter Download", systemImage: "trash.fill")
-        //                }
-        //                .disabled(!chapter.isDownloaded)
-        //            }
-        //        }
+        ControlGroup {
+            Button {
+                vm.markChapter(asRead: true, for: item)
+            } label: {
+                Label("Mark Read", systemImage: "book.closed")
+            }
+            .disabled(item.chapter.read)
+            
+            Button {
+                
+            } label: {
+                Label("Read Above", systemImage: "arrow.up.square.fill")
+            }
+            
+            Button {
+                
+            } label: {
+                Label("Read Below", systemImage: "arrow.down.square.fill")
+            }
+        }
+        
+        ControlGroup {
+            Button {
+                vm.markChapter(asRead: false, for: item)
+            } label: {
+                Label("Mark Unread", systemImage: "book")
+            }
+            .disabled(!item.chapter.read)
+            
+            Button {
+                
+            } label: {
+                Label("Unread Above", systemImage: "arrow.up.square")
+            }
+            
+            Button {
+                
+            } label: {
+                Label("Unread Below", systemImage: "arrow.down.square")
+            }
+        }
+        
+        ControlGroup {
+            Button {
+            } label: {
+                Label("Start Chapter Download", systemImage: "arrow.down")
+            }
+            .disabled(item.chapter.downloaded)
+            
+            Button(role: .destructive) {
+            } label: {
+                Label("Remove Chapter Download", systemImage: "trash.fill")
+            }
+            .disabled(!item.chapter.downloaded)
+        }
     }
 }

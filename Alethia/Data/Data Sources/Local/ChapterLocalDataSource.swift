@@ -11,9 +11,11 @@ import GRDB
 final class ChapterLocalDataSource {
     init() { }
     
-    func updateChapterProgress(chapter: Chapter, newProgress: Double) throws -> Void {
-        // If chapter progress is already 100% don't update it
-        guard chapter.progress < 1.0 else { return }
+    func updateChapterProgress(chapter: Chapter, newProgress: Double, override: Bool) throws -> Void {
+        // Don't update if chapter is already completed unless explicitly overriding
+        guard override || chapter.progress < 1.0 else {
+            return
+        }
         
         try DatabaseProvider.shared.writer.write { db in
             guard var targetChapter = try Chapter.fetchOne(db, key: chapter.id) else {

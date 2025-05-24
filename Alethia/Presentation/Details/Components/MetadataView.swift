@@ -46,7 +46,7 @@ struct MetadataView: View {
                 Spacer()
                 
                 VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
-                    Text("Date Created")
+                    Text("Series Start Date")
                         .font(.headline)
                     
                     HStack {

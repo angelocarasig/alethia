@@ -11,7 +11,7 @@ import Combine
 protocol ChapterRepository {
     func getChapterContents(chapter: Chapter) async throws -> [String]
     
-    func updateChapterProgress(chapter: Chapter, newProgress: Double) throws -> Void
+    func updateChapterProgress(chapter: Chapter, newProgress: Double, override: Bool) throws -> Void
     
     func markChapterRead(chapter: Chapter) throws -> Void
     
