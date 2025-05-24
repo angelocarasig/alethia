@@ -12,35 +12,35 @@ import Combine
 struct SourcesScreen: View {
     @StateObject private var vm = SourcesViewModel()
     
-    private var pinned: [Source] {
-        vm.sources.filter { $0.pinned }
+    private var pinned: [SourceMetadata] {
+        vm.sources.filter { $0.source.pinned }
     }
     
-    private var active: [Source] {
-        vm.sources.filter { !$0.pinned && !$0.disabled }
+    private var active: [SourceMetadata] {
+        vm.sources.filter { !$0.source.pinned && !$0.source.disabled }
     }
     
-    private var disabled: [Source] {
-        vm.sources.filter { $0.disabled }
+    private var disabled: [SourceMetadata] {
+        vm.sources.filter { $0.source.disabled }
     }
     
     var body: some View {
         NavigationStack {
             List {
                 Section(header: Text("Pinned - \(pinned.count) Source\(pinned.count == 1 ? "" : "s")")) {
-                    ForEach(pinned, id: \.id) { source in
+                    ForEach(pinned, id: \.source.id) { source in
                         SourceRow(source: source)
                     }
                 }
                 
                 Section(header: Text("Active - \(active.count) Source\(active.count == 1 ? "" : "s")")) {
-                    ForEach(active, id: \.id) { source in
+                    ForEach(active, id: \.source.id) { source in
                         SourceRow(source: source)
                     }
                 }
                 
                 Section(header: Text("Disabled - \(disabled.count) Source\(disabled.count == 1 ? "" : "s")")) {
-                    ForEach(disabled, id: \.id) { source in
+                    ForEach(disabled, id: \.source.id) { source in
                         SourceRow(source: source)
                     }
                 }
@@ -187,12 +187,12 @@ private struct AddSourceSheet: View {
 
 private struct SourceRow: View {
     @EnvironmentObject private var vm: SourcesViewModel
-    let source: Source
+    let source: SourceMetadata
     
     var body: some View {
-        NavigationLink(destination: SourceHomeScreen(source: source)) {
+        NavigationLink(destination: SourceHomeScreen(source: source.source)) {
             HStack {
-                KFImage(URL(filePath: source.icon))
+                KFImage(URL(filePath: source.source.icon))
                     .placeholder { Color.tint.shimmer() }
                     .resizable()
                     .scaledToFit()
@@ -204,35 +204,34 @@ private struct SourceRow: View {
                     .padding(.trailing, Constants.Padding.regular)
                 
                 VStack(alignment: .leading) {
-                    Text(source.name)
+                    Text(source.source.name)
                         .lineLimit(1)
                         .font(.headline)
                         .foregroundStyle(.primary)
                     
-                    // TODO: Enforce hosts to have this format
-                    // maybe require author and name instead and format like so
-                    Text("@alethia/fortune")
+                    Text("@\(source.hostAuthor)/\(source.hostName)")
                         .lineLimit(1)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .textCase(.lowercase)
                 }
             }
             .contextMenu {
                 // Pin
-                let pinned = source.pinned
+                let pinned = source.source.pinned
                 Button {
                     // TODO: Drops for if failed
-                    try? vm.togglePinned(source: source)
+                    try? vm.togglePinned(source: source.source)
                 } label: {
                     Text(pinned ? "Unpin Source" : "Pin Source")
                     Image(systemName: pinned ? "pin.fill" : "pin")
                 }
                 
                 // Disabled
-                let disabled = source.disabled
+                let disabled = source.source.disabled
                 Button {
                     // TODO: Drops for if failed
-                    try? vm.toggleDisabled(source: source)
+                    try? vm.toggleDisabled(source: source.source)
                 } label: {
                     Text(disabled ? "Enable Source" : "Disable Source")
                     Image(systemName: disabled ? "slash.circle.fill" : "slash.circle")
@@ -243,7 +242,7 @@ private struct SourceRow: View {
 }
 
 private final class SourcesViewModel: ObservableObject {
-    @Published var sources: [Source] = []
+    @Published var sources: [SourceMetadata] = []
     @Published var openAddSourceSheet: Bool = false
     
     @Published private(set) var testResponse: NewHostPayload? = nil

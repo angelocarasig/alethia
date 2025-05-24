@@ -9,6 +9,8 @@ import Foundation
 
 struct HostDTO: Codable {
     let name: String
+    let author: String
+    let website: String
     let sources: [SourceDTO]
 }
 
@@ -22,25 +24,3 @@ struct SourceRouteDTO: Codable {
     let name: String
     let path: String
 }
-
-let mockHostDTO: HostDTO = HostDTO(
-    name: randomString(length: 10),
-    sources: [
-        SourceDTO(
-            name: randomString(length: 10),
-            icon: randomString(length: 10),
-            path: randomString(length: 10)
-        )
-    ]
-)
-
-let mockSourceRouteDTO: [SourceRouteDTO] = [
-    SourceRouteDTO(
-        name: randomString(length: 10),
-        path: randomString(length: 10)
-    ),
-    SourceRouteDTO(
-        name: randomString(length: 10),
-        path: randomString(length: 10)
-    )
-]

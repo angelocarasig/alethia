@@ -9,7 +9,7 @@ import Foundation
 import Combine
 
 protocol GetSourcesUseCase {
-    func execute() -> AnyPublisher<[Source], Never>
+    func execute() -> AnyPublisher<[SourceMetadata], Never>
 }
 
 final class GetSourcesUseCaseImpl: GetSourcesUseCase {
@@ -19,7 +19,7 @@ final class GetSourcesUseCaseImpl: GetSourcesUseCase {
         self.repository = repository
     }
     
-    func execute() -> AnyPublisher<[Source], Never> {
+    func execute() -> AnyPublisher<[SourceMetadata], Never> {
         return repository.getSources()
     }
 }

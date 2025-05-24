@@ -204,6 +204,7 @@ final class SearchHomeViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] sources in
                 self?.sources = sources
+                    .map { $0.source }
                     .filter { !$0.disabled }
                     .sorted {
                         if $0.pinned != $1.pinned { return $0.pinned }

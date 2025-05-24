@@ -23,7 +23,7 @@ extension SourcesRepositoryImpl: SourcesRepository {
         return local.getHosts()
     }
     
-    func getSources() -> AnyPublisher<[Source], Never> {
+    func getSources() -> AnyPublisher<[SourceMetadata], Never> {
         return local.getSources()
     }
     

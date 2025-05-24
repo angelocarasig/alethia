@@ -21,10 +21,21 @@ final class SourceLocalDataSource {
             .eraseToAnyPublisher()
     }
     
-    func getSources() -> AnyPublisher<[Source], Never> {
+    func getSources() -> AnyPublisher<[SourceMetadata], Never> {
         return ValueObservation
-            .tracking { db -> [Source] in
-                return try Source.order(Source.Columns.name).fetchAll(db)
+            .tracking { db -> [SourceMetadata] in
+                let sources = try Source.order(Source.Columns.name).fetchAll(db)
+                
+                return try sources.map { source in
+                    let host = try Host.fetchOne(db, key: source.hostId)
+                    
+                    return SourceMetadata(
+                        source: source,
+                        hostName: host?.name ?? "Unknown Host",
+                        hostAuthor: host?.author ?? "Unknown Author",
+                        hostWebsite: host?.baseUrl ?? "Unknown Website"
+                    )
+                }
             }
             .publisher(in: DatabaseProvider.shared.writer, scheduling: .immediate)
             .catch { _ in Just([]) }
@@ -33,7 +44,12 @@ final class SourceLocalDataSource {
     
     func createHost(with payload: NewHostPayload) async throws -> Void {
         let hostId: Int64 = try await DatabaseProvider.shared.writer.write { db in
-            let host = Host(name: payload.name, baseUrl: payload.baseUrl)
+            let host = Host(
+                name: payload.name,
+                author: payload.author,
+                repository: payload.repository,
+                baseUrl: payload.baseUrl
+            )
             let inserted = try host.insertAndFetch(db)
             guard let id = inserted.id else { throw DatabaseError.internalError("Host-retrieved ID failed - Could not be found.") }
             return id

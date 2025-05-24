@@ -11,7 +11,7 @@ import Combine
 protocol SourcesRepository {
     func getHosts() -> AnyPublisher<[Host], Never>
     
-    func getSources() -> AnyPublisher<[Source], Never>
+    func getSources() -> AnyPublisher<[SourceMetadata], Never>
     
     func testHostUseCase(url: String) async throws -> NewHostPayload
     

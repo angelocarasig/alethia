@@ -22,11 +22,16 @@ struct Source: Codable, Identifiable {
 }
 
 extension Source {
+    static let host = belongsTo(Host.self)
     static let routes = hasMany(SourceRoute.self)
     static let origins = hasMany(Origin.self)
 }
 
 extension Source {
+    var host: QueryInterfaceRequest<Host> {
+        request(for: Source.host)
+    }
+    
     var routes: QueryInterfaceRequest<SourceRoute> {
         request(for: Source.routes)
     }

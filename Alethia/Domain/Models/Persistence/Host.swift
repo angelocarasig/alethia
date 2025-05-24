@@ -12,6 +12,8 @@ struct Host: Codable, Identifiable {
     var id: Int64?
     
     var name: String
+    var author: String
+    var repository: String
     var baseUrl: String
 }
 
@@ -30,6 +32,8 @@ extension Host: TableRecord {
     enum Columns {
         static let id = Column(Host.CodingKeys.id)
         static let name = Column(Host.CodingKeys.name)
+        static let author = Column(Host.CodingKeys.author)
+        static let repository = Column(Host.CodingKeys.repository)
         static let baseUrl = Column(Host.CodingKeys.baseUrl)
     }
 }
@@ -50,6 +54,8 @@ extension Host: DatabaseModel {
             // Persistence
             t.autoIncrementedPrimaryKey(Columns.id.name)
             t.column(Columns.name.name, .text).notNull()
+            t.column(Columns.author.name, .text).notNull()
+            t.column(Columns.repository.name, .text).notNull()
             t.column(Columns.baseUrl.name, .text)
                 .notNull()
                 .collate(.nocase)

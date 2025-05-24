@@ -22,7 +22,12 @@ final class SourceRemoteDataSource {
         
         let host: HostDTO = try await networkService.request(url: request)
         
-        var payload: NewHostPayload = NewHostPayload(name: host.name, baseUrl: request.absoluteString)
+        var payload: NewHostPayload = NewHostPayload(
+            name: host.name,
+            author: host.author,
+            repository: host.website,
+            baseUrl: request.absoluteString
+        )
         
         for source in host.sources {
             guard let sourceURL = URL.appendingPaths(request.absoluteString, source.path) else {

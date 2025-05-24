@@ -9,6 +9,8 @@ import Foundation
 
 struct NewHostPayload {
     var name: String
+    var author: String
+    var repository: String
     var baseUrl: String
     var sources: [NewHostPayload.Source]
     
@@ -24,8 +26,10 @@ struct NewHostPayload {
         let path: String
     }
     
-    init(name: String, baseUrl: String) {
+    init(name: String, author: String, repository: String, baseUrl: String) {
         self.name = name
+        self.author = author
+        self.repository = repository
         self.baseUrl = baseUrl
         self.sources = []
     }
