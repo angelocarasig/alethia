@@ -82,3 +82,79 @@ extension NetworkService {
     }
 }
 
+// MARK: Ping
+extension NetworkService {
+    func ping(url: URL) async throws -> TimeInterval {
+        let startTime = CFAbsoluteTimeGetCurrent()
+        
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
+        request.httpMethod = "HEAD" // Use HEAD for faster response
+        request.timeoutInterval = 10.0 // 10 second timeout
+        
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            try handleResponse(response)
+            
+            let endTime = CFAbsoluteTimeGetCurrent()
+            return endTime - startTime
+        } catch let urlError as URLError {
+            switch urlError.code {
+            case .notConnectedToInternet:
+                throw NetworkError.noInternetConnection
+            case .timedOut:
+                throw NetworkError.timeout
+            case .cannotFindHost, .cannotConnectToHost:
+                throw NetworkError.invalidURL(url: url.absoluteString)
+            default:
+                throw NetworkError.requestFailed(underlyingError: urlError)
+            }
+        } catch {
+            throw NetworkError.requestFailed(underlyingError: URLError(.unknown))
+        }
+    }
+    
+    func pingMultiple(url: URL, count: Int = 3) async -> PingResult {
+        var times: [TimeInterval] = []
+        var errors: [Error] = []
+        
+        for _ in 0..<count {
+            do {
+                let pingTime = try await ping(url: url)
+                times.append(pingTime)
+            } catch {
+                errors.append(error)
+            }
+            
+            // Small delay between pings
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+        }
+        
+        return PingResult(
+            url: url,
+            times: times,
+            errors: errors,
+            averageTime: times.isEmpty ? nil : times.reduce(0, +) / Double(times.count),
+            minTime: times.min(),
+            maxTime: times.max()
+        )
+    }
+}
+
+struct PingResult {
+    let url: URL
+    let times: [TimeInterval]
+    let errors: [Error]
+    let averageTime: TimeInterval?
+    let minTime: TimeInterval?
+    let maxTime: TimeInterval?
+    
+    var successRate: Double {
+        let totalAttempts = times.count + errors.count
+        return totalAttempts > 0 ? Double(times.count) / Double(totalAttempts) : 0.0
+    }
+    
+    var formattedAverageTime: String {
+        guard let avgTime = averageTime else { return "N/A" }
+        return String(format: "%.0f ms", avgTime * 1000)
+    }
+}

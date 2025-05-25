@@ -189,6 +189,40 @@ private struct SourceRow: View {
     @EnvironmentObject private var vm: SourcesViewModel
     let source: SourceMetadata
     
+    enum PingStatus {
+        case idle
+        case loading
+        case success
+        case failed
+        
+        var color: Color {
+            switch self {
+            case .idle, .loading:
+                return .gray
+            case .success:
+                return .green
+            case .failed:
+                return .red
+            }
+        }
+    }
+    
+    private var pingText: String {
+        switch pingStatus {
+        case .idle:
+            return "Idle"
+        case .loading:
+            return "..."
+        case .success:
+            return pingTime
+        case .failed:
+            return "Error"
+        }
+    }
+    
+    @State private var pingStatus: PingStatus = .idle
+    @State private var pingTime: String = ""
+    
     var body: some View {
         NavigationLink(destination: SourceHomeScreen(source: source.source)) {
             HStack {
@@ -215,6 +249,10 @@ private struct SourceRow: View {
                         .foregroundStyle(.secondary)
                         .textCase(.lowercase)
                 }
+                
+                Spacer()
+                
+                PingSection()
             }
             .contextMenu {
                 // Pin
@@ -239,6 +277,34 @@ private struct SourceRow: View {
             }
         }
     }
+    
+    @ViewBuilder
+    private func PingSection() -> some View {
+        VStack(spacing: 8) {
+            Circle()
+                .fill(pingStatus.color)
+                .frame(width: 12, height: 12)
+            
+            Text(pingText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .task {
+            await performPing()
+        }
+    }
+    
+    private func performPing() async {
+        pingStatus = .loading
+        
+        do {
+            let result = try await vm.pingSource(source)
+            pingTime = result
+            pingStatus = .success
+        } catch {
+            pingStatus = .failed
+        }
+    }
 }
 
 private final class SourcesViewModel: ObservableObject {
@@ -250,6 +316,7 @@ private final class SourcesViewModel: ObservableObject {
     @Published private(set) var error: String? = nil
     
     private var cancellables = Set<AnyCancellable>()
+    private let ns = NetworkService() // for pinging
     private let getSourcesUseCase: GetSourcesUseCase
     private let testHostUseCase: TestHostUseCase
     private let createHostUseCase: CreateHostUseCase
@@ -344,5 +411,11 @@ private final class SourcesViewModel: ObservableObject {
         try withAnimation {
             try toggleSourceDisabledUseCase.execute(sourceId: source.id!, newValue: !source.disabled)
         }
+    }
+    
+    func pingSource(_ source: SourceMetadata) async throws -> String {
+        let result = try await ns.ping(url: URL(string: source.pingUrl)!)
+        
+        return String(format: "%.0f ms", result * 1000)
     }
 }

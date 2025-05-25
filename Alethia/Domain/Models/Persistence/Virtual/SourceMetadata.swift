@@ -20,4 +20,9 @@ struct SourceMetadata: Decodable, FetchableRecord, Equatable {
     var hostName: String
     var hostAuthor: String
     var hostWebsite: String
+    var hostBaseUrl: String
+    
+    var pingUrl: String {
+        URL.appendingPaths(hostBaseUrl, source.path, "ping")!.absoluteString
+    }
 }

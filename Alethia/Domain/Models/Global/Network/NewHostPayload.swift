@@ -18,6 +18,8 @@ struct NewHostPayload {
         let name: String
         let path: String
         let icon: String
+        let website: String
+        let description: String
         let paths: [NewHostPayload.SourceRoute]
     }
     

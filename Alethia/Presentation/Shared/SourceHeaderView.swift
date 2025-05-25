@@ -69,12 +69,23 @@ struct SourceHeaderView: View {
                         height: Constants.Icon.Size.large
                     )
                     .clipShape(.circle)
+                    .onTapGesture {
+                        guard let url = URL(string: source.website) else { return }
+                        UIApplication.shared.open(url)
+                    }
                 
                 Text(source.name)
                     .lineLimit(1)
                     .font(.title)
                     .fontWeight(.bold)
+                
+                Text(source.description)
+                    .lineLimit(2)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
+            
             .padding()
         }
         .onReceive(timer) { _ in

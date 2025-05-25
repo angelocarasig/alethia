@@ -44,6 +44,8 @@ final class SourceRemoteDataSource {
                 name: source.name,
                 path: source.path,
                 icon: iconURL.absoluteString,
+                website: source.website,
+                description: source.description,
                 paths: routeResponse.map { route in
                     NewHostPayload.SourceRoute(name: route.name, path: route.path)
                 }

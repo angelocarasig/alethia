@@ -18,6 +18,8 @@ struct SourceDTO: Codable {
     let name: String
     let icon: String
     let path: String
+    let website: String
+    let description: String
 }
 
 struct SourceRouteDTO: Codable {

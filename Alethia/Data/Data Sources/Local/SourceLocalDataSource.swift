@@ -33,7 +33,8 @@ final class SourceLocalDataSource {
                         source: source,
                         hostName: host?.name ?? "Unknown Host",
                         hostAuthor: host?.author ?? "Unknown Author",
-                        hostWebsite: host?.baseUrl ?? "Unknown Website"
+                        hostWebsite: host?.repository ?? "",
+                        hostBaseUrl: host?.baseUrl ?? ""
                     )
                 }
             }
@@ -69,6 +70,8 @@ final class SourceLocalDataSource {
                     name: source.name,
                     icon: iconPath.path,
                     path: source.path,
+                    website: source.website,
+                    description: source.description,
                     hostId: hostId
                 )
                 

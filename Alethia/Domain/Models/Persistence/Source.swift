@@ -14,6 +14,8 @@ struct Source: Codable, Identifiable {
     var name: String
     var icon: String
     var path: String
+    var website: String
+    var description: String
     
     var pinned: Bool = false
     var disabled: Bool = false
@@ -47,6 +49,8 @@ extension Source: TableRecord {
         static let name = Column(Source.CodingKeys.name)
         static let icon = Column(Source.CodingKeys.icon)
         static let path = Column(Source.CodingKeys.path)
+        static let website = Column(Source.CodingKeys.website)
+        static let description = Column(Source.CodingKeys.description)
         static let pinned = Column(Source.CodingKeys.pinned)
         static let disabled = Column(Source.CodingKeys.disabled)
         static let hostId = Column(Source.CodingKeys.hostId)
@@ -66,6 +70,8 @@ extension Source: DatabaseModel {
             t.column(Columns.name.name, .text).notNull()
             t.column(Columns.icon.name, .text).notNull()
             t.column(Columns.path.name, .text).notNull()
+            t.column(Columns.website.name, .text).notNull()
+            t.column(Columns.description.name, .text).notNull()
             t.column(Columns.pinned.name, .boolean).notNull()
             t.column(Columns.disabled.name, .boolean).notNull()
             
