@@ -60,15 +60,22 @@ extension Constants {
     struct Paths {
         static let DatabaseFilePath: String = {
             let fileManager = FileManager.default
+            
+            // Always use App Group container
+            guard let containerURL = fileManager.containerURL(
+                forSecurityApplicationGroupIdentifier: "group.alethia.app"
+            ) else {
+                fatalError("App Group 'group.alethia.app' not configured. Please add App Groups capability.")
+            }
+            
             do {
-                let dbFolderURL = try fileManager.url(
-                    for: .applicationSupportDirectory,
-                    in: .userDomainMask,
-                    appropriateFor: nil,
-                    create: true
-                ).appendingPathComponent("Database", isDirectory: true)
+                let dbFolderURL = containerURL
+                    .appendingPathComponent("Database", isDirectory: true)
                 
-                try fileManager.createDirectory(at: dbFolderURL, withIntermediateDirectories: true)
+                try fileManager.createDirectory(
+                    at: dbFolderURL,
+                    withIntermediateDirectories: true
+                )
                 
                 return dbFolderURL.appendingPathComponent("alethia.db").path
             } catch {
