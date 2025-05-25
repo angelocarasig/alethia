@@ -105,8 +105,8 @@ extension ReaderScreen {
                         referer: page.pageReferer
                     )
                     .id(page.pageNumber)
-                    .onAppear {
-                        withAnimation {
+                    .onScrollVisibilityChange { isVisible in
+                        if !vm.didScrollScrubber && isVisible {
                             vm.updateCurrentPage(page: page)
                         }
                     }
@@ -140,10 +140,15 @@ extension ReaderScreen {
             guard vm.didScrollScrubber else { return }
             
             withAnimation(.none) {
-                scrollPosition.scrollTo(id: vm.currentPage?.pageNumber, anchor: .top)
+                scrollPosition.scrollTo(id: vm.currentPage?.pageNumber ?? 1, anchor: .top)
             }
             
-            vm.didScrollScrubber = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                vm.didScrollScrubber = false
+            }
+        }
+        .onScrollPhaseChange { _, newPhase in
+            vm.isScrolling = newPhase != .idle
         }
     }
     
@@ -157,8 +162,8 @@ extension ReaderScreen {
                         referer: page.pageReferer
                     )
                     .id(page.pageNumber)
-                    .onAppear {
-                        withAnimation {
+                    .onScrollVisibilityChange { isVisible in
+                        if !vm.didScrollScrubber && isVisible {
                             vm.updateCurrentPage(page: page)
                         }
                     }
@@ -181,19 +186,28 @@ extension ReaderScreen {
         }
         .scrollPosition($scrollPosition)
         .onChange(of: vm.currentChapter) {
-            scrollPosition.scrollTo(edge: .top)
+            withAnimation(.none) {
+                scrollPosition.scrollTo(edge: .top)
+            }
         }
         .onChange(of: vm.orientation) {
-            scrollPosition.scrollTo(edge: .top)
+            withAnimation(.none) {
+                scrollPosition.scrollTo(edge: .top)
+            }
         }
         .onChange(of: vm.currentPage) {
             guard vm.didScrollScrubber else { return }
             
             withAnimation(.none) {
-                scrollPosition.scrollTo(id: vm.currentPage?.pageNumber, anchor: .top)
+                scrollPosition.scrollTo(id: vm.currentPage?.pageNumber ?? 1, anchor: .top)
             }
             
-            vm.didScrollScrubber = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                vm.didScrollScrubber = false
+            }
+        }
+        .onScrollPhaseChange { _, newPhase in
+            vm.isScrolling = newPhase != .idle
         }
     }
 }

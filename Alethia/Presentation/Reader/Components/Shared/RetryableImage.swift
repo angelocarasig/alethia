@@ -55,7 +55,6 @@ struct RetryableImage: View {
                         height: UIScreen.main.bounds.height
                     )
             }
-            .fade(duration: 0.25)
             .resizable()
             .aspectRatio(contentMode: .fit)
             .id(reloadID)

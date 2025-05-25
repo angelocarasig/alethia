@@ -30,7 +30,8 @@ final class ReaderViewModel: ObservableObject {
     // UI
     @Published var state: ReaderState = .idle
     @Published var endDetailsVisible: Bool = false
-    @Published var didScrollScrubber: Bool = false
+    @Published var isScrolling: Bool = false                // disable slider while scrolling
+    @Published var didScrollScrubber: Bool = false          // indicate when scrolling via slider happened
     @Published private(set) var showControls: Bool = false
     @Published private(set) var totalPages: Int = 0
     @Published private(set) var currentPage: Page? = nil
@@ -47,6 +48,7 @@ final class ReaderViewModel: ObservableObject {
     // Internal
     @Published private var userWantsControlsVisible: Bool = false
     private var prefetcher: ImagePrefetcher? = nil
+    private var isUpdatingFromSlider: Bool = false
     
     // Use-Cases
     private var cancellables = Set<AnyCancellable>()

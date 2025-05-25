@@ -28,19 +28,22 @@ struct SourceHomeScreen: View {
     }
     
     var body: some View {
-        ScrollView {
-            SourceHeaderView(source: source, images: images)
-
-            ForEach(routes) { route in
-                RowView(
-                    source: source,
-                    route: route,
-                    onRandom: { entry in
-                        headerEntries.append(entry)
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: -69) {  // Negative spacing to overlap
+                SourceHeaderView(source: source, images: images)
+                
+                VStack {
+                    ForEach(routes) { route in
+                        RowView(
+                            source: source,
+                            route: route,
+                            onRandom: { entry in
+                                headerEntries.append(entry)
+                            }
+                        )
                     }
-                )
+                }
             }
-            .offset(y: -69)
         }
         .navigationBarTitle(source.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -233,7 +236,9 @@ private final class ViewModel: ObservableObject {
             .execute(entries: raw)
             .receive(on: RunLoop.main)
             .sink { [weak self] updated in
-                self?.items = updated
+                withAnimation {
+                    self?.items = updated
+                }
             }
             .store(in: &cancellables)
     }

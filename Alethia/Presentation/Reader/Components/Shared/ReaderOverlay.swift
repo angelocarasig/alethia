@@ -39,6 +39,7 @@ extension ReaderOverlay {
                     width: Constants.Icon.Size.regular,
                     height: Constants.Icon.Size.regular
                 )
+                .padding(.leading, Constants.Padding.minimal)
             
             Menu {
                 ChapterListMenu()
@@ -168,6 +169,7 @@ extension ReaderOverlay {
                         in: 1...Double(max(1, vm.totalPages)),
                         step: 1
                     )
+                    .disabled(vm.isScrolling) // disabled while scroll interacting is happening
                 }
                 else {
                     Spacer()
