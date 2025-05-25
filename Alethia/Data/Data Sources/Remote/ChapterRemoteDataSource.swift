@@ -38,6 +38,12 @@ final class ChapterRemoteDataSource {
             return url
         }
         
-        return try await ns.request(url: url)
+        let contents: [String] = try await ns.request(url: url)
+        
+        guard !contents.isEmpty else {
+            throw ChapterError.noContent
+        }
+        
+        return contents
     }
 }

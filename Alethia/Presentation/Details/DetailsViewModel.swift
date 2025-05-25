@@ -35,8 +35,6 @@ final class DetailsViewModel: ObservableObject {
         self.entry = entry
         self.context = context
         
-        print("Entry: \(entry)")
-        
         let injector = DependencyInjector.shared
         self.getMangaDetailUseCase = injector.makeGetMangaDetailUseCase()
         self.resolveMangaOrientationUseCase = injector.makeResolveMangaOrientationUseCase()

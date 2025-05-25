@@ -137,19 +137,23 @@ extension ReaderViewModel {
               let nextChapter = currentNode.next else {
             return
         }
-        
-        currentChapter = nextChapter.chapter
+        withAnimation {
+            self.state = .loading
+            self.currentChapter = nextChapter.chapter
+        }
         await loadChapter()
     }
     
     @MainActor
     func loadPrevChapter() async -> Void {
         guard let currentNode = chapters.findNode(for: currentChapter),
-              let prevChapter = currentNode.previous else { // Changed from .next to .previous
+              let prevChapter = currentNode.previous else {
             return
         }
-        
-        currentChapter = prevChapter.chapter
+        withAnimation {
+            self.state = .loading
+            self.currentChapter = prevChapter.chapter
+        }
         await loadChapter()
     }
     
@@ -167,6 +171,7 @@ extension ReaderViewModel {
         
         do {
             let pages = try await getChapterContentsUseCase.execute(chapter: currentChapter.chapter)
+            
             let recommendations = try getRecommendationsUseCase.execute(mangaId: mangaId)
             
             let mappedPages = pages
