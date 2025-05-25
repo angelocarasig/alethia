@@ -49,8 +49,16 @@ extension DependencyInjector {
         return ToggleMangaInLibraryUserCaseImpl(repository: mangaRepository)
     }
     
+    func makeUpdateMangaOrientationUseCase() -> UpdateMangaOrientationUseCase {
+        return UpdateMangaOrientationUseCaseImpl(repository: mangaRepository)
+    }
+    
     func makeGetRecommendationsUseCase() -> GetRecommendationsUseCase {
         return GetRecommendationsUseCaseImpl(repository: mangaRepository)
+    }
+    
+    func makeResolveMangaOrientationUseCase() -> ResolveMangaOrientationUseCase {
+        return ResolveMangaOrientationImpl(repository: mangaRepository)
     }
 }
 

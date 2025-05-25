@@ -8,6 +8,11 @@
 import Foundation
 
 enum Orientation: String, Codable, CaseIterable {
+    /// Default assigned to all manga initially
+    /// - It looks for tags for anything that would make sense to pass in `Infinite`
+    /// - If found, that value is passed, on any cycle toggle it will update away from
+    /// the default value
+    case Default
     case LeftToRight
     case RightToLeft
     case Vertical
@@ -19,6 +24,8 @@ enum Orientation: String, Codable, CaseIterable {
         case .RightToLeft:  self = .Infinite
         case .Infinite:     self = .Vertical
         case .Vertical:     self = .LeftToRight
+        default:
+            self = .LeftToRight
         }
     }
     
@@ -32,6 +39,8 @@ enum Orientation: String, Codable, CaseIterable {
             return "platter.filled.bottom.and.arrow.down.iphone"
         case .Infinite:
             return "arrow.down.app.fill"
+        default:
+            return "questionmark.circle.dashed"
         }
     }
     

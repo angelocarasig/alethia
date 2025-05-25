@@ -18,7 +18,7 @@ struct Manga: Codable, Identifiable {
     var updatedAt: Date = Date()
     
     var inLibrary: Bool = false
-    var orientation: Orientation = .LeftToRight
+    var orientation: Orientation = .Default
     var showAllChapters: Bool = false
     var showHalfChapters: Bool = true
     

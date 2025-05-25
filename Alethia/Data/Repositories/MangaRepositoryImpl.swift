@@ -46,8 +46,16 @@ extension MangaRepositoryImpl: MangaRepository {
         try local.toggleMangaInLibrary(mangaId: mangaId, newValue: newValue)
     }
     
+    func updateMangaOrientation(mangaId: Int64, newValue: Orientation) throws {
+        try local.updateMangaOrientation(mangaId: mangaId, newValue: newValue)
+    }
+    
     func getMangaRecommendations(mangaId: Int64) throws -> RecommendedEntries {
         return try local.getMangaRecommendations(mangaId: mangaId)
+    }
+    
+    func resolveMangaOrientation(detail: Detail) -> Orientation {
+        return local.resolveMangaOrientation(detail: detail)
     }
 }
 

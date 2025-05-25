@@ -43,7 +43,7 @@ struct ContinueReadingView: View {
                 ReaderScreen(
                     mangaId: vm.details?.manga.id ?? -1,
                     mangaTitle: vm.details?.manga.title ?? "Unknown Title",
-                    orientation: vm.details?.manga.orientation ?? .LeftToRight,
+                    orientation: vm.resolvedOrientation ?? .LeftToRight,
                     currentChapter: chapter,
                     chapters: vm.details?.chapters ?? []
                 )

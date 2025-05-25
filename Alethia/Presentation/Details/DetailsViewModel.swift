@@ -16,12 +16,14 @@ final class DetailsViewModel: ObservableObject {
     
     // MARK: - Properties
     private(set) var entry: Entry
+    private(set) var resolvedOrientation: Orientation?
     private var context: Source?
     private var options: [Detail] = []
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Use Cases
     private let getMangaDetailUseCase: GetMangaDetailUseCase
+    private let resolveMangaOrientationUseCase: ResolveMangaOrientationUseCase
     private let toggleMangaInLibraryUseCase: ToggleMangaInLibraryUseCase
     private let markAllChaptersUseCase: MarkAllChaptersUseCase
     private let updateChapterProgressUseCase: UpdateChapterProgressUseCase
@@ -32,6 +34,7 @@ final class DetailsViewModel: ObservableObject {
         self.context = context
         
         self.getMangaDetailUseCase = DependencyInjector.shared.makeGetMangaDetailUseCase()
+        self.resolveMangaOrientationUseCase = DependencyInjector.shared.makeResolveMangaOrientationUseCase()
         self.toggleMangaInLibraryUseCase = DependencyInjector.shared.makeToggleMangaInLibraryUseCase()
         self.markAllChaptersUseCase = DependencyInjector.shared.makeMarkAllChaptersUseCase()
         self.updateChapterProgressUseCase = DependencyInjector.shared.makeUpdateChapterProgressUseCase()
@@ -98,6 +101,7 @@ extension DetailsViewModel {
                     } else if let first = received.first {
                         self.options = []
                         self.state = .success(first)
+                        self.resolvedOrientation = self.resolveMangaOrientationUseCase.execute(detail: first)
                     } else {
                         self.options = []
                         self.state = .empty

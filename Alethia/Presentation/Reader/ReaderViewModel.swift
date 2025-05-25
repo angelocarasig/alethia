@@ -51,6 +51,7 @@ final class ReaderViewModel: ObservableObject {
     // Use-Cases
     private var cancellables = Set<AnyCancellable>()
     private let getChapterContentsUseCase: GetChapterContentsUseCase
+    private let updateMangaOrientationUseCase: UpdateMangaOrientationUseCase
     private let updateChapterProgressUseCase: UpdateChapterProgressUseCase // on exit
     private let markChapterReadUseCase: MarkChapterReadUseCase // on next
     private let getRecommendationsUseCase: GetRecommendationsUseCase
@@ -69,6 +70,7 @@ final class ReaderViewModel: ObservableObject {
         self.chapters = ChapterList(chapters: chapters)
         
         self.getChapterContentsUseCase = DependencyInjector.shared.makeGetChapterContentsUseCase()
+        self.updateMangaOrientationUseCase = DependencyInjector.shared.makeUpdateMangaOrientationUseCase()
         self.updateChapterProgressUseCase = DependencyInjector.shared.makeUpdateChapterProgressUseCase()
         self.markChapterReadUseCase = DependencyInjector.shared.makeMarkChapterReadUseCase()
         self.getRecommendationsUseCase = DependencyInjector.shared.makeGetRecommendationsUseCase()
@@ -204,6 +206,13 @@ extension ReaderViewModel {
 extension ReaderViewModel {
     func toggleOrientation() {
         orientation.cycle()
+        
+        do {
+            try updateMangaOrientationUseCase.execute(mangaId: mangaId, orientation: orientation)
+        }
+        catch {
+            self.state = .error(error)
+        }
     }
     
     func toggleControls() {

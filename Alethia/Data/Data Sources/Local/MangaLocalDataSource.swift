@@ -158,6 +158,17 @@ final class MangaLocalDataSource {
         }
     }
     
+    func updateMangaOrientation(mangaId: Int64, newValue: Orientation) throws {
+        try database.write { db in
+            guard var manga = try Manga.fetchOne(db, key: mangaId) else {
+                throw MangaError.notFound
+            }
+            
+            manga.orientation = newValue
+            try manga.update(db)
+        }
+    }
+    
     func getMangaRecommendations(mangaId: Int64) throws -> RecommendedEntries {
         return try database.read { db in
             // Get the target manga to ensure it exists
@@ -186,86 +197,48 @@ final class MangaLocalDataSource {
         }
     }
     
-    private func fetchSimilarTaggedManga(db: Database, mangaId: Int64) throws -> [Entry] {
-        return try Manga.entry
-            .filter(Manga.Columns.inLibrary)
-            .filter(Manga.Columns.id != mangaId)
-            .filter(sql: """
-            mangaId IN (
-                SELECT DISTINCT mt2.mangaId 
-                FROM mangaTag mt2 
-                WHERE mt2.tagId IN (
-                    SELECT mt1.tagId 
-                    FROM mangaTag mt1 
-                    WHERE mt1.mangaId = ?
-                )
-                AND mt2.mangaId != ?
-            )
-        """, arguments: [mangaId, mangaId])
-            .limit(10)
-            .fetchAll(db)
-    }
-    
-    private func fetchSameCollectionManga(db: Database, mangaId: Int64) throws -> [Entry] {
-        return try Manga.entry
-            .filter(Manga.Columns.inLibrary)
-            .filter(Manga.Columns.id != mangaId)
-            .filter(sql: """
-            mangaId IN (
-                SELECT DISTINCT mc2.mangaId 
-                FROM mangaCollection mc2 
-                WHERE mc2.collectionId IN (
-                    SELECT mc1.collectionId 
-                    FROM mangaCollection mc1 
-                    WHERE mc1.mangaId = ?
-                )
-                AND mc2.mangaId != ?
-            )
-        """, arguments: [mangaId, mangaId])
-            .limit(10)
-            .fetchAll(db)
-    }
-    
-    private func fetchSameAuthorManga(db: Database, mangaId: Int64) throws -> [Entry] {
-        return try Manga.entry
-            .filter(Manga.Columns.inLibrary)
-            .filter(Manga.Columns.id != mangaId)
-            .filter(sql: """
-            mangaId IN (
-                SELECT DISTINCT ma2.mangaId 
-                FROM mangaAuthor ma2 
-                WHERE ma2.authorId IN (
-                    SELECT ma1.authorId 
-                    FROM mangaAuthor ma1 
-                    WHERE ma1.mangaId = ?
-                )
-                AND ma2.mangaId != ?
-            )
-        """, arguments: [mangaId, mangaId])
-            .limit(10)
-            .fetchAll(db)
-    }
-    
-    private func fetchSameScanlatorManga(db: Database, mangaId: Int64) throws -> [Entry] {
-        return try Manga.entry
-            .filter(Manga.Columns.inLibrary)
-            .filter(Manga.Columns.id != mangaId)
-            .filter(sql: """
-            mangaId IN (
-                SELECT DISTINCT o2.mangaId 
-                FROM origin o2 
-                JOIN chapter c2 ON c2.originId = o2.id 
-                WHERE c2.scanlatorId IN (
-                    SELECT DISTINCT c1.scanlatorId 
-                    FROM chapter c1 
-                    JOIN origin o1 ON c1.originId = o1.id 
-                    WHERE o1.mangaId = ?
-                )
-                AND o2.mangaId != ?
-            )
-        """, arguments: [mangaId, mangaId])
-            .limit(10)
-            .fetchAll(db)
+    func resolveMangaOrientation(detail: Detail) -> Orientation {
+        //only resolve for default, otherwise just return the current one
+        guard detail.manga.orientation == .Default else {
+            return detail.manga.orientation
+        }
+        
+        let tagMatchers: [String] = [
+            "webtoon",
+            "manhwa",
+            "manhua",
+            "longstrip",
+            "vertical",
+            "scroll",
+            "scrolling",
+            "webcomic",
+            "digitalcomic",
+            "mobilecomic",
+            "korean",
+            "chinese",
+            "fullcolor",
+            "colored",
+            "oel",
+            "tapas",
+            "linewebtoon",
+            "naver",
+            "lezhin",
+            "toomics",
+        ]
+        
+        func sanitizer(_ text: String) -> String {
+            return text.lowercased().filter { $0.isLetter && $0.isASCII }
+        }
+        
+        let sanitizedTagMatchers = tagMatchers.map(sanitizer)
+        
+        if detail.tags.contains(where: { tag in
+            sanitizedTagMatchers.contains(sanitizer(tag.name))
+        }) {
+            return .Infinite
+        }
+        
+        return .LeftToRight
     }
 }
 
@@ -505,5 +478,87 @@ private extension MangaLocalDataSource {
                 ).insert(db)
             }
         }
+    }
+    
+    private func fetchSimilarTaggedManga(db: Database, mangaId: Int64) throws -> [Entry] {
+        return try Manga.entry
+            .filter(Manga.Columns.inLibrary)
+            .filter(Manga.Columns.id != mangaId)
+            .filter(sql: """
+            mangaId IN (
+                SELECT DISTINCT mt2.mangaId 
+                FROM mangaTag mt2 
+                WHERE mt2.tagId IN (
+                    SELECT mt1.tagId 
+                    FROM mangaTag mt1 
+                    WHERE mt1.mangaId = ?
+                )
+                AND mt2.mangaId != ?
+            )
+        """, arguments: [mangaId, mangaId])
+            .limit(10)
+            .fetchAll(db)
+    }
+    
+    private func fetchSameCollectionManga(db: Database, mangaId: Int64) throws -> [Entry] {
+        return try Manga.entry
+            .filter(Manga.Columns.inLibrary)
+            .filter(Manga.Columns.id != mangaId)
+            .filter(sql: """
+            mangaId IN (
+                SELECT DISTINCT mc2.mangaId 
+                FROM mangaCollection mc2 
+                WHERE mc2.collectionId IN (
+                    SELECT mc1.collectionId 
+                    FROM mangaCollection mc1 
+                    WHERE mc1.mangaId = ?
+                )
+                AND mc2.mangaId != ?
+            )
+        """, arguments: [mangaId, mangaId])
+            .limit(10)
+            .fetchAll(db)
+    }
+    
+    private func fetchSameAuthorManga(db: Database, mangaId: Int64) throws -> [Entry] {
+        return try Manga.entry
+            .filter(Manga.Columns.inLibrary)
+            .filter(Manga.Columns.id != mangaId)
+            .filter(sql: """
+            mangaId IN (
+                SELECT DISTINCT ma2.mangaId 
+                FROM mangaAuthor ma2 
+                WHERE ma2.authorId IN (
+                    SELECT ma1.authorId 
+                    FROM mangaAuthor ma1 
+                    WHERE ma1.mangaId = ?
+                )
+                AND ma2.mangaId != ?
+            )
+        """, arguments: [mangaId, mangaId])
+            .limit(10)
+            .fetchAll(db)
+    }
+    
+    private func fetchSameScanlatorManga(db: Database, mangaId: Int64) throws -> [Entry] {
+        return try Manga.entry
+            .filter(Manga.Columns.inLibrary)
+            .filter(Manga.Columns.id != mangaId)
+            .filter(sql: """
+            mangaId IN (
+                SELECT DISTINCT o2.mangaId 
+                FROM origin o2 
+                JOIN chapter c2 ON c2.originId = o2.id 
+                WHERE c2.scanlatorId IN (
+                    SELECT DISTINCT c1.scanlatorId 
+                    FROM chapter c1 
+                    JOIN origin o1 ON c1.originId = o1.id 
+                    WHERE o1.mangaId = ?
+                )
+                AND o2.mangaId != ?
+            )
+        """, arguments: [mangaId, mangaId])
+            .limit(10)
+            .fetchAll(db)
     }
 }
