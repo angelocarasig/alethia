@@ -210,32 +210,58 @@ extension SourceLocalDataSource {
         let sourceId = entry.sourceId
         
         // 2. Check for a match by title + source (via origin)
-        let mangaWithMatchingSource = try Manga
-            .filter(Manga.Columns.inLibrary == true)
-            .joining(required: Manga.origins
-                .filter(Origin.Columns.sourceId == sourceId)
-            )
-            .joining(optional: Manga.titles)
-            .filter(
-                Manga.Columns.title == title ||
-                Title.Columns.title == title
-            )
-            .fetchOne(db)
-        
-        if mangaWithMatchingSource != nil {
-            return .exact
+        if let sourceId = sourceId {
+            // First check main title match with source
+            let mangaWithMatchingSource = try Manga
+                .filter(Manga.Columns.inLibrary == true)
+                .filter(Manga.Columns.title == title)
+                .joining(required: Manga.origins
+                    .filter(Origin.Columns.sourceId == sourceId)
+                )
+                .fetchOne(db)
+            
+            if mangaWithMatchingSource != nil {
+                return .exact
+            }
+            
+            // Then check alternative titles with source
+            let mangaWithAltTitleAndSource = try Manga
+                .filter(Manga.Columns.inLibrary == true)
+                .joining(required: Manga.titles
+                    .filter(Title.Columns.title == title)
+                )
+                .joining(required: Manga.origins
+                    .filter(Origin.Columns.sourceId == sourceId)
+                )
+                .fetchOne(db)
+            
+            if mangaWithAltTitleAndSource != nil {
+                return .exact
+            }
         }
         
-        // 3. Fallback: match just by title
-        let mangaWithTitleOnly = try Manga
+        // 3. Check main title only (partial match)
+        let mangaWithMainTitle = try Manga
             .filter(Manga.Columns.inLibrary == true)
-            .joining(optional: Manga.titles)
-            .filter(
-                Manga.Columns.title == title ||
-                Title.Columns.title == title
+            .filter(Manga.Columns.title == title)
+            .fetchOne(db)
+        
+        if mangaWithMainTitle != nil {
+            return .partial
+        }
+        
+        // 4. Check alternative titles only (partial match)
+        let mangaWithAltTitle = try Manga
+            .filter(Manga.Columns.inLibrary == true)
+            .joining(required: Manga.titles
+                .filter(Title.Columns.title == title)
             )
             .fetchOne(db)
         
-        return mangaWithTitleOnly != nil ? .partial : .none
+        if mangaWithAltTitle != nil {
+            return .partial
+        }
+        
+        return .none
     }
 }

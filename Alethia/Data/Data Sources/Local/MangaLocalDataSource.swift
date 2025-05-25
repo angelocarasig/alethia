@@ -347,20 +347,37 @@ private extension MangaLocalDataSource {
     }
     
     private func findMangasByTitle(db: Database, title: String) throws -> [Manga] {
-        return try Manga
-            .filter(Manga.Columns.title == title || Title.Columns.title == title)
-            .joining(optional: Manga.titles.filter(Title.Columns.title == title))
-            .distinct()
-            .order(
-                sql: """
-                    CASE
-                        WHEN manga.title = ? THEN 0
-                        ELSE 1
-                    END
-                    """,
-                arguments: [title]
-            )
+        var results: [Manga] = []
+        var foundIds: Set<Int64> = []
+        
+        // 1. Find manga with matching main title
+        let mainTitleMatches = try Manga
+            .filter(Manga.Columns.title == title)
+            .order(Manga.Columns.id.asc)  // Consistent ordering
             .fetchAll(db)
+        
+        for manga in mainTitleMatches {
+            if let id = manga.id {
+                results.append(manga)
+                foundIds.insert(id)
+            }
+        }
+        
+        // 2. Find manga with matching alternative titles
+        let altTitleMatches = try Manga
+            .joining(required: Manga.titles.filter(Title.Columns.title == title))
+            .order(Manga.Columns.id.asc)
+            .fetchAll(db)
+        
+        for manga in altTitleMatches {
+            if let id = manga.id, !foundIds.contains(id) {
+                results.append(manga)
+                foundIds.insert(id)
+            }
+        }
+        
+        // Return with main title matches first
+        return results
     }
     
     private func fetchDetailWithChapters(db: Database, manga: Manga) throws -> Detail? {
