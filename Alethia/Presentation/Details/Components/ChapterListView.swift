@@ -41,7 +41,7 @@ private struct ChapterHeaderView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
     var targetChapter: ChapterExtended? {
-        vm.chapters
+        vm.details?.chapters
             .sorted { $0.chapter.number < $1.chapter.number }
             .first(where: { !$0.chapter.read })
     }
@@ -75,13 +75,19 @@ private struct ChapterHeaderView: View {
                         )
                     }
                     else {
-                        Text("Empty View!")
                         EmptyView()
                     }
                 } label: {
-                    Text(targetChapter != nil ? "Continue Reading" : "All Chapters Read")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // Use the same logic as ContinueReadingView
+                    if let chapter = targetChapter, let index = targetChapterIndex {
+                        Text(index == (vm.details?.chapters.count ?? 0) - 1 ? "Start Reading" : "Continue Reading")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        Text("All Chapters Read")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 }
                 .disabled(targetChapter == nil)
                 .buttonStyle(.borderedProminent)

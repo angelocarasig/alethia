@@ -46,7 +46,7 @@ struct ActionButtonsView: View {
             
             QuickButtonsView()
         }
-        .frame(height: 45)
+        .frame(height: 50)
         .animation(.easeInOut(duration: 0.3), value: vm.details?.manga.inLibrary)
     }
     
@@ -131,16 +131,12 @@ private struct QuickButtonsView: View {
             }
         } label: {
             Image(systemName: "ellipsis")
-                .frame(
-                    width: Constants.Icon.Size.regular,
-                    height: Constants.Icon.Size.regular
-                )
-                .contentShape(.rect)
+                .padding(.horizontal, Constants.Padding.minimal)
+                .lineLimit(1)
+                .fontWeight(.medium)
+                .frame(width: 50, height: 50)
                 .foregroundColor(.background)
-                .background(.text, in: .rect(
-                    cornerRadius: Constants.Corner.Radius.button,
-                    style: .continuous
-                ))
+                .background(Color.text, in: .rect(cornerRadius: 12, style: .continuous))
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

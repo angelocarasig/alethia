@@ -58,7 +58,7 @@ struct ContinueReadingView: View {
                     .font(.system(size: 18, weight: .bold))
                 
                 VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
-                    Text(index == vm.details.unsafelyUnwrapped.chapters.count - 1 ? "Start" : "Continue")
+                    Text(index == (vm.details?.chapters.count ?? 0) - 1 ? "Start" : "Continue")
                         .font(.headline)
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
