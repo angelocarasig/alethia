@@ -11,8 +11,8 @@ import Kingfisher
 struct SourcesView: View {
     @EnvironmentObject var vm: DetailsViewModel
     
-    var origins: [Origin] {
-        (vm.details?.origins ?? []).sorted { $0.priority < $1.priority }
+    var origins: [OriginExtended] {
+        (vm.details?.origins ?? []).sorted { $0.origin.priority < $1.origin.priority }
     }
     
     var body: some View {
@@ -32,9 +32,9 @@ struct SourcesView: View {
             .disabled(!vm.inLibrary)
             
             VStack(spacing: Constants.Spacing.large) {
-                ForEach(origins, id: \.id) { origin in
+                ForEach(origins) { origin in
                     SourceRow(origin)
-                        .disabled(origin.sourceId == nil)
+                        .disabled(origin.source == nil)
                 }
             }
         }
@@ -42,11 +42,11 @@ struct SourcesView: View {
     }
     
     @ViewBuilder
-    private func SourceRow(_ origin: Origin) -> some View {
-        let sourceDisabled = origin.sourceId == nil
+    private func SourceRow(_ origin: OriginExtended) -> some View {
+        let sourceDisabled = origin.source == nil
         
         HStack(spacing: Constants.Spacing.large) {
-            KFImage(URL(fileURLWithPath: ""))
+            KFImage(URL(fileURLWithPath: origin.sourceIcon))
                 .placeholder {
                     Color.gray.opacity(0.3)
                 }
@@ -60,22 +60,17 @@ struct SourcesView: View {
                 .grayscale(sourceDisabled ? 1 : 0)
             
             VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
-                // TODO:
-                Text("Some Source")
-                    .font(.headline)
+                Text("\(origin.sourceName) • \(origin.sourceHost)")
+                    .lineLimit(1)
                 
-                Text("Some Host")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                
-                Text("69 Chapters")
+                Text("^[\(origin.chapterCount) chapter](inflect: true)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
             
             Spacer()
             
-            if let originURL = URL(string: origin.url) {
+            if let originURL = URL(string: origin.origin.url) {
                 HStack(spacing: Constants.Spacing.large) {
                     Button {
                         UIPasteboard.general.string = originURL.absoluteString
@@ -97,7 +92,7 @@ struct SourcesView: View {
         .opacity(sourceDisabled ? 0.5 : 1.0)
         .foregroundStyle(sourceDisabled ? .gray : .text)
         .contextMenu {
-            if let originURL = URL(string: origin.url) {
+            if let originURL = URL(string: origin.origin.url) {
                 Button {
                     UIPasteboard.general.string = originURL.absoluteString
                 } label: {

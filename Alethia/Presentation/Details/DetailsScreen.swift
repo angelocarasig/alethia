@@ -22,7 +22,12 @@ struct DetailsScreen: View {
     
     var body: some View {
         contentView
-            .task { vm.loadDetails() }
+            .task {
+                // Only load if we haven't loaded successfully yet
+                if case .loading = vm.state {
+                    vm.loadDetails()
+                }
+            }
             .environmentObject(vm)
             .confirmationDialog(with: $vm.confirmationRequest)
             .animation(.easeInOut, value: vm.stateIdentifier)

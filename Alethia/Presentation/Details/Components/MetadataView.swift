@@ -11,7 +11,7 @@ struct MetadataView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
     var origin: Origin? {
-        (vm.details?.origins ?? []).min(by: { $0.priority < $1.priority })
+        (vm.details?.origins ?? []).min(by: { $0.origin.priority < $1.origin.priority })?.origin
     }
     
     var createdAt: Date {

@@ -48,7 +48,7 @@ extension DetailsViewModel {
               details.manga.inLibrary else { return false }
         
         return details.origins.contains {
-            entry.fetchUrl?.decodeUri.contains($0.slug.decodeUri) ?? false
+            entry.fetchUrl?.decodeUri.contains($0.origin.slug.decodeUri) ?? false
         }
     }
     

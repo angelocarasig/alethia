@@ -130,6 +130,20 @@ extension ReaderViewModel {
 // MARK: Chapter Management
 extension ReaderViewModel {
     @MainActor
+    func loadNextChapter() async -> Void {
+        // Mark current chapter as completed before moving to next
+        updateChapterProgress(didCompleteChapter: true)
+        
+        guard let currentNode = chapters.findNode(for: currentChapter),
+              let nextChapter = currentNode.next else {
+            return
+        }
+        
+        currentChapter = nextChapter.chapter
+        await loadChapter()
+    }
+    
+    @MainActor
     func loadChapter() async -> Void {
         withAnimation {
             self.state = .loading

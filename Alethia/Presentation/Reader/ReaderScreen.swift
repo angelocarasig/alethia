@@ -82,7 +82,11 @@ extension ReaderScreen {
                         referer: page.pageReferer
                     )
                     .id(page.pageNumber)
-                    .onAppear { vm.updateCurrentPage(page: page) }
+                    .onAppear {
+                        withAnimation {
+                            vm.updateCurrentPage(page: page)
+                        }
+                    }
                     .containerRelativeFrame(
                         .horizontal,
                         count: 1,
@@ -102,6 +106,9 @@ extension ReaderScreen {
             view
                 .environment(\.layoutDirection, .rightToLeft)
                 .flipsForRightToLeftLayoutDirection(true)
+        }
+        .onChange(of: vm.currentChapter) {
+            scrollPosition.scrollTo(edge: .top)
         }
         .onChange(of: vm.orientation) {
             scrollPosition.scrollTo(edge: .top)
@@ -127,7 +134,11 @@ extension ReaderScreen {
                         referer: page.pageReferer
                     )
                     .id(page.pageNumber)
-                    .onAppear { vm.updateCurrentPage(page: page) }
+                    .onAppear {
+                        withAnimation {
+                            vm.updateCurrentPage(page: page)
+                        }
+                    }
                     .containerRelativeFrame(
                         vm.orientation == Orientation.Vertical ? .vertical : .horizontal,
                         count: 1,
@@ -146,6 +157,9 @@ extension ReaderScreen {
             view.scrollTargetBehavior(.paging)
         }
         .scrollPosition($scrollPosition)
+        .onChange(of: vm.currentChapter) {
+            scrollPosition.scrollTo(edge: .top)
+        }
         .onChange(of: vm.orientation) {
             scrollPosition.scrollTo(edge: .top)
         }

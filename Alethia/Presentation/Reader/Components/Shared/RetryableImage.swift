@@ -44,7 +44,7 @@ struct RetryableImage: View {
                 loadingState = .failed
             }
             .placeholder { _ in
-                Color.tint
+                Color.background
                     .frame(
                         width: UIScreen.main.bounds.width,
                         height: UIScreen.main.bounds.height

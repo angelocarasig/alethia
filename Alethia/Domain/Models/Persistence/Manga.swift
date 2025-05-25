@@ -280,3 +280,32 @@ extension Manga {
             .asRequest(of: ChapterExtended.self)
     }
 }
+
+extension Manga {
+    var originsExtended: QueryInterfaceRequest<OriginExtended> {
+        guard let id = id else {
+            fatalError("Manga ID is required to fetch extended origins.")
+        }
+        
+        let chapterCountColumn = SQL("""
+            (SELECT COUNT(*) FROM chapter WHERE chapter.originId = origin.id)
+        """).forKey("chapterCount")
+        
+        let hostNameColumn = SQL("""
+            COALESCE((SELECT host.name FROM host WHERE host.id = source.hostId), 'Unknown Host')
+        """).forKey("hostName")
+        
+        let hostAuthorColumn = SQL("""
+            COALESCE((SELECT host.author FROM host WHERE host.id = source.hostId), 'Unknown Author')
+        """).forKey("hostAuthor")
+        
+        return Origin
+            .filter(Origin.Columns.mangaId == id)
+            .including(optional: Origin.source)
+            .annotated(with: chapterCountColumn)
+            .annotated(with: hostNameColumn)
+            .annotated(with: hostAuthorColumn)
+            .order(Origin.Columns.priority.asc)
+            .asRequest(of: OriginExtended.self)
+    }
+}

@@ -364,12 +364,11 @@ private extension MangaLocalDataSource {
     }
     
     private func fetchDetailWithChapters(db: Database, manga: Manga) throws -> Detail? {
-        let titles = try manga.titles.order(Title.Columns.title).fetchAll(db)
-        let covers = try manga.covers.fetchAll(db)
-        let authors = try manga.authors.fetchAll(db)
-        let tags = try manga.tags.fetchAll(db)
-        let origins = try manga.origins.fetchAll(db)
-            .sorted { $0.priority < $1.priority }
+        let titles: [Title] = try manga.titles.order(Title.Columns.title).fetchAll(db)
+        let covers: [Cover] = try manga.covers.fetchAll(db)
+        let authors: [Author] = try manga.authors.fetchAll(db)
+        let tags: [Tag] = try manga.tags.fetchAll(db)
+        let origins: [OriginExtended] = try manga.originsExtended.fetchAll(db)
         
         // Use the chapters query interface request from the Manga model
         let chapters = try manga.chapters.fetchAll(db)

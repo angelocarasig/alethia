@@ -37,6 +37,8 @@ struct EndDetails: View {
     
     @ViewBuilder
     private func ContentSection() -> some View {
+        let chapterNumber = "Chapter \(vm.currentChapter.chapter.number.toString())"
+        let chapterTitle = vm.currentChapter.chapter.title
         VStack(spacing: Constants.Spacing.large) {
             HStack {
                 Image(systemName: "checkmark.circle")
@@ -49,15 +51,17 @@ struct EndDetails: View {
             .font(.title)
             
             VStack(spacing: Constants.Spacing.large) {
-                Text("Chapter 23")
+                Text(chapterNumber)
                     .font(.title3)
                     .fontWeight(.semibold)
                 
-                Text("Alone With You.")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .lineLimit(3, reservesSpace: true)
-                    .multilineTextAlignment(.center)
+                if chapterNumber.localizedCaseInsensitiveCompare(chapterTitle) != .orderedSame {
+                    Text(chapterTitle)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .lineLimit(3, reservesSpace: true)
+                        .multilineTextAlignment(.center)
+                }
             }
             
             Spacer().frame(height: 50)
@@ -85,9 +89,13 @@ struct EndDetails: View {
                     // - If next chapter is non-decimal and not a by-1 increment
                     // - If next chapter is decimal but >= 2 value difference
                     
-                    Button {} label: {
+                    Button {
+                        Task {
+                            await vm.loadNextChapter()
+                        }
+                    } label: {
                         HStack {
-                            Text("Next Chapter")
+                            Text(vm.canGoForward ? "Next Chapter" : "No Next Chapter")
                             Image(systemName: "chevron.right")
                         }
                         .font(.headline)
@@ -98,6 +106,7 @@ struct EndDetails: View {
                         .frame(maxHeight: .infinity)
                         .background(Color.tint)
                         .cornerRadius(Constants.Corner.Radius.button)
+                        .disabled(!vm.canGoForward)
                     }
                     .buttonStyle(.plain)
                 }
@@ -266,6 +275,3 @@ struct EndDetails: View {
     }
 }
 
-#Preview {
-    EndDetails()
-}
