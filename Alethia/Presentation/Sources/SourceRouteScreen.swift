@@ -8,200 +8,305 @@
 import SwiftUI
 import Combine
 
+// MARK: - Main View
 struct SourceRouteScreen: View {
     @Namespace private var namespace
-    @StateObject private var vm = ViewModel()
+    @StateObject private var viewModel: SourceRouteViewModel
     
-    var source: Source
-    var route: SourceRoute
+    let source: Source
+    let route: SourceRoute
     
-    var body: some View {
-        ZStack {
-            if vm.items.isEmpty && vm.loading {
-                SkeletonGridView()
-            } else {
-                VStack {
-                    CollectionViewGrid(
-                        data: vm.items,
-                        content: { entry in
-                            SourceCardView(
-                                namespace: namespace,
-                                source: source,
-                                entry: entry
-                            )
-                        },
-                        columns: 3,
-                        spacing: Constants.Spacing.minimal,
-                        contentInsets: NSDirectionalEdgeInsets(
-                            top: 8, leading: 8, bottom: 8, trailing: 8
-                        ),
-                        onReachedBottom: {
-                            guard !vm.loading, !vm.items.isEmpty, !vm.noMoreContent else { return }
-                            vm.page += 1
-                            Task { await vm.load(with: route.id!) }
-                        },
-                        onItemTapped: { entry in
-                            // Handle item tap
-                            print("Tapped: \(entry.title)")
-                        }
-                    )
-                    
-                    // Next-page loader
-                    if vm.loading && !vm.items.isEmpty {
-                        ProgressView()
-                            .padding()
-                    }
-                    
-                    if vm.noMoreContent {
-                        Text("No More Results")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .padding()
-                    }
-                }
-                .refreshable {
-                    await vm.refresh(with: route.id!)
-                }
-            }
-        }
-        .task {
-            await vm.load(with: route.id!)
-        }
-        .navigationTitle(route.name)
+    init(source: Source, route: SourceRoute) {
+        self.source = source
+        self.route = route
+        self._viewModel = StateObject(wrappedValue: SourceRouteViewModel(routeId: route.id!))
     }
     
-    @ViewBuilder
-    private func SkeletonGridView() -> some View {
-        ScrollView {
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: Constants.Spacing.minimal),
-                GridItem(.flexible(), spacing: Constants.Spacing.minimal),
-                GridItem(.flexible(), spacing: Constants.Spacing.minimal)
-            ]) {
-                ForEach(0..<30, id: \.self) { _ in
-                    VStack(alignment: .leading, spacing: 10) {
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(height: 175)
-                            .shimmer()
-                        
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(height: 14)
-                        
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(height: 14)
-                            .frame(maxWidth: 100)
-                    }
-                    .padding(.vertical, Constants.Padding.regular)
-                    .padding(.horizontal, Constants.Padding.minimal)
+    var body: some View {
+        Group {
+            switch viewModel.viewState {
+            case .loading:
+                SourceRouteSkeletonView()
+            case .empty:
+                EmptyStateView(message: "No content available")
+            case .content:
+                contentView
+            case .error(let message):
+                ErrorStateView(message: message) {
+                    Task { await viewModel.refresh() }
                 }
             }
+        }
+        .navigationTitle(route.name)
+        .task {
+            await viewModel.loadInitialContent()
+        }
+    }
+    
+    // MARK: - Content View
+    private var contentView: some View {
+        CollectionViewGrid(
+            data: viewModel.items,
+            columns: 3,
+            spacing: Constants.Spacing.minimal,
+            onReachedBottom: {
+                Task { await viewModel.loadNextPage() }
+            },
+            content: { entry in
+                SourceCardView(
+                    namespace: namespace,
+                    source: source,
+                    entry: entry
+                )
+            },
+            footer: {
+                bottomStatusView
+            }
+        )
+        .refreshable {
+            await viewModel.refresh()
+        }
+    }
+    
+    // MARK: - Bottom Status View
+    @ViewBuilder
+    private var bottomStatusView: some View {
+        if viewModel.isLoadingMore {
+            ProgressView()
+                .padding()
+        }
+        else if viewModel.hasReachedEnd {
+            Text("No More Results")
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+                .padding()
+                .transition(.opacity)
         }
     }
 }
 
-private final class ViewModel: ObservableObject {
-    @Published var page: Int = 0
-    @Published var items: [Entry] = []
-    @Published var loading: Bool = false
-    @Published var refreshing: Bool = false
-    @Published var firstLoad: Bool = true
-    @Published var noMoreContent: Bool = false
+// MARK: - View Model
+@MainActor
+final class SourceRouteViewModel: ObservableObject {
+    // MARK: - View State
+    enum ViewState {
+        case loading
+        case empty
+        case content
+        case error(String)
+    }
     
-    /**
-     Seperating raw with the `matched` objects which if not done:
-     - Lose the original entries (can't reapply match logic)
-     - Have to refetch them every time the library changes (wasted effort)
-     */
-    private var raw: [Entry] = []
+    // MARK: - Published Properties
+    @Published private(set) var viewState: ViewState = .loading
+    @Published private(set) var items: [Entry] = []
+    @Published private(set) var isLoadingMore = false
+    @Published private(set) var hasReachedEnd = false
+    
+    // MARK: - Private Properties
+    private let routeId: Int64
+    private var currentPage = 0
+    private var rawEntries: [Entry] = []
     private var cancellables = Set<AnyCancellable>()
-    private var currentTask: Task<Void, Never>?
+    private var loadTask: Task<Void, Never>?
     
-    private let getSourceRouteContentUseCase: GetSourceRouteContentUseCase
-    private let observeMatchEntriesUseCase: ObserveMatchEntriesUseCase
+    // MARK: - Use Cases
+    private let getSourceRouteContent: GetSourceRouteContentUseCase
+    private let observeMatchEntries: ObserveMatchEntriesUseCase
     
-    init() {
-        self.getSourceRouteContentUseCase = DependencyInjector.shared.makeGetSourceRouteContentUseCase()
-        self.observeMatchEntriesUseCase = DependencyInjector.shared.makeObserveMatchEntriesUseCase()
+    // MARK: - Initialization
+    init(routeId: Int64) {
+        self.routeId = routeId
+        let injector = DependencyInjector.shared
+        self.getSourceRouteContent = injector.makeGetSourceRouteContentUseCase()
+        self.observeMatchEntries = injector.makeObserveMatchEntriesUseCase()
     }
     
     deinit {
-        currentTask?.cancel()
+        loadTask?.cancel()
     }
     
-    @MainActor
-    func load(with id: Int64) async {
-        currentTask?.cancel()
+    // MARK: - Public Methods
+    func loadInitialContent() async {
+        guard case .loading = viewState else { return }
+        await loadContent(isInitial: true)
+    }
+    
+    func loadNextPage() async {
+        guard !isLoadingMore, !hasReachedEnd, case .content = viewState else { return }
+        currentPage += 1
+        await loadContent(isInitial: false)
+    }
+    
+    func refresh() async {
+        resetState()
+        await loadContent(isInitial: true)
+    }
+    
+    // MARK: - Private Methods
+    private func loadContent(isInitial: Bool) async {
+        loadTask?.cancel()
         
-        currentTask = Task {
-            defer {
-                if !Task.isCancelled {
-                    withAnimation(.easeInOut) {
-                        loading = false
-                        firstLoad = false
-                    }
-                }
-                currentTask = nil
-            }
+        loadTask = Task {
+            defer { loadTask = nil }
             
             do {
-                withAnimation(.easeInOut) {
-                    loading = true
-                }
+                updateLoadingState(isInitial: isInitial)
                 
-                print("Fetching for page: \(page)")
-                let newEntries = try await getSourceRouteContentUseCase.execute(sourceRouteId: id, page: page)
+                let newEntries = try await getSourceRouteContent.execute(
+                    sourceRouteId: routeId,
+                    page: currentPage
+                )
                 
                 try Task.checkCancellation()
                 
-                if newEntries.isEmpty {
-                    noMoreContent = true
-                    return
-                }
-                
-                raw.append(contentsOf: newEntries)
-                bind()
+                processNewEntries(newEntries, isInitial: isInitial)
             } catch {
-                print("Error: \(error)")
+                if !Task.isCancelled {
+                    handleError(error)
+                }
             }
         }
         
-        await currentTask?.value
+        await loadTask?.value
     }
     
-    @MainActor
-    func refresh(with id: Int64) async {
-        currentTask?.cancel()
-        
-        withAnimation(.easeInOut) {
-            page = 0
-            refreshing = true
-            items.removeAll()
-            raw.removeAll()
-            noMoreContent = false
-            firstLoad = true
-        }
-        
-        await load(with: id)
-        
-        withAnimation(.easeInOut) {
-            refreshing = false
+    private func updateLoadingState(isInitial: Bool) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if isInitial {
+                viewState = .loading
+            } else {
+                isLoadingMore = true
+            }
         }
     }
     
-    private func bind() {
-        guard !raw.isEmpty else { return }
-        
+    private func processNewEntries(_ newEntries: [Entry], isInitial: Bool) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if newEntries.isEmpty {
+                if isInitial {
+                    viewState = .empty
+                } else {
+                    hasReachedEnd = true
+                }
+            } else {
+                rawEntries.append(contentsOf: newEntries)
+                setupEntriesBinding()
+                viewState = .content
+            }
+            isLoadingMore = false
+        }
+    }
+    
+    private func setupEntriesBinding() {
         cancellables.removeAll()
         
-        observeMatchEntriesUseCase
-            .execute(entries: raw)
+        observeMatchEntries
+            .execute(entries: rawEntries)
             .receive(on: RunLoop.main)
-            .sink { [weak self] updated in
-                self?.items = updated
+            .sink { [weak self] matchedEntries in
+                self?.items = matchedEntries
             }
             .store(in: &cancellables)
+    }
+    
+    private func handleError(_ error: Error) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if currentPage == 0 {
+                viewState = .error(error.localizedDescription)
+            }
+            isLoadingMore = false
+        }
+    }
+    
+    private func resetState() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            currentPage = 0
+            rawEntries.removeAll()
+            items.removeAll()
+            hasReachedEnd = false
+            viewState = .loading
+        }
+    }
+}
+
+// MARK: - Supporting Views
+private struct SourceRouteSkeletonView: View {
+    private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: Constants.Spacing.minimal), count: 3)
+    
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: gridColumns, spacing: Constants.Spacing.minimal) {
+                ForEach(0..<12, id: \.self) { _ in
+                    SkeletonCard()
+                }
+            }
+            .padding(.horizontal, Constants.Padding.minimal)
+        }
+    }
+}
+
+private struct SkeletonCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.gray.opacity(0.3))
+                .frame(height: 175)
+                .shimmer()
+            
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.gray.opacity(0.3))
+                .frame(height: 14)
+            
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.gray.opacity(0.3))
+                .frame(height: 14)
+                .frame(maxWidth: 100)
+        }
+        .padding(.vertical, Constants.Padding.regular)
+    }
+}
+
+private struct EmptyStateView: View {
+    let message: String
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: 60))
+                .foregroundColor(.secondary)
+            
+            Text(message)
+                .font(.headline)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
+    }
+}
+
+private struct ErrorStateView: View {
+    let message: String
+    let onRetry: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 60))
+                .foregroundColor(.red)
+            
+            Text("Something went wrong")
+                .font(.headline)
+            
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
+            Button("Try Again", action: onRetry)
+                .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
     }
 }

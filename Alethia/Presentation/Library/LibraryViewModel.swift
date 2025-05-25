@@ -68,27 +68,43 @@ final class LibraryViewModel: ObservableObject {
     private func bind() -> Void {
         state = .loading
         
+        // switchToLatest ensure we're always using the latest filter
         $filters
             .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
             .handleEvents(receiveOutput: { [weak self] _ in
                 self?.state = .loading
             })
-            .flatMap { [unowned self] filters in
+            .map { [unowned self] filters in
                 self.getLibraryUseCase
                     .execute(filters: filters)
-                    .replaceError(with: [])
+                    .catch { error -> AnyPublisher<[Entry], Never> in
+                        // Handle error and return empty publisher
+                        DispatchQueue.main.async { [weak self] in
+                            self?.state = .error(error)
+                        }
+                        return Just([]).eraseToAnyPublisher()
+                    }
+                    .eraseToAnyPublisher()
             }
+            .switchToLatest()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] updated in
                 guard let self = self else { return }
                 
-                withAnimation {
-                    if updated.isEmpty {
-                        self.state = .empty
-                    } else {
-                        self._items = updated
-                        self.state = .success
-                    }
+                // Check if we're not in an error state before setting empty
+                let isInErrorState: Bool
+                if case .error = self.state {
+                    isInErrorState = true
+                } else {
+                    isInErrorState = false
+                }
+                
+                if updated.isEmpty && !isInErrorState {
+                    self.state = .empty
+                    self._items = []
+                } else if !updated.isEmpty {
+                    self._items = updated
+                    self.state = .success
                 }
             }
             .store(in: &cancellables)

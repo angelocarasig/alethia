@@ -112,7 +112,9 @@ private extension SearchHomeView {
 private extension SearchHomeView {
     @ViewBuilder
     private func HeaderView(source: Source) -> some View {
-        NavigationLink(destination: SearchSourceView(source: source, initialSearchValue: vm.search)) {
+        NavigationLink(
+            destination: SearchSourceView(source: source, initialSearchValue: vm.search)
+        ) {
             HStack {
                 let iconSize: CGFloat = 40
                 KFImage(URL(filePath: source.icon))

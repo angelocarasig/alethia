@@ -78,8 +78,7 @@ private struct ChapterHeaderView: View {
                         EmptyView()
                     }
                 } label: {
-                    // Use the same logic as ContinueReadingView
-                    if let chapter = targetChapter, let index = targetChapterIndex {
+                    if targetChapter != nil, let index = targetChapterIndex {
                         Text(index == (vm.details?.chapters.count ?? 0) - 1 ? "Start Reading" : "Continue Reading")
                             .font(.headline)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)

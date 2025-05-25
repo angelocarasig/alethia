@@ -1,161 +1,120 @@
 //
-//  CollectionGrid.swift
+//  CollectionViewGrid.swift
 //  Alethia
 //
 //  Created by Angelo Carasig on 11/5/2025.
 //
 
 import SwiftUI
-import UIKit
 
-struct CollectionViewGrid<Data, Cell>: UIViewRepresentable where Data: RandomAccessCollection, Data.Element: Identifiable, Cell: View {
+struct CollectionViewGrid<Data, Content, Footer>: View where Data: RandomAccessCollection, Data.Element: Identifiable, Content: View, Footer: View {
     // Data
-    var data: Data
-    var content: (Data.Element) -> Cell
+    let data: Data
+    let content: (Data.Element) -> Content
     
     // Layout
     var columns: Int = 3
     var spacing: CGFloat = Constants.Spacing.minimal
-    var contentInsets: NSDirectionalEdgeInsets = .zero
     
     // UI
     var showsScrollIndicator: Bool = true
     
+    // Footer
+    let footer: Footer?
+    
     // Callbacks
     var onReachedBottom: (() -> Void)?
-    var onItemTapped: ((Data.Element) -> Void)?
     
-    // For recycling and identifier management
-    private let cellIdentifier = "Cell"
+    // State for bottom detection
+    @State private var lastTriggerTime: Date?
+    private let throttleInterval: TimeInterval = 2.0
     
-    // UIViewRepresentable implementation
-    func makeUIView(context: Context) -> UICollectionView {
-        // Create layout
-        let layout = createGridLayout()
-        
-        // Create collection view
-        let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
-        collectionView.backgroundColor = .clear
-        collectionView.showsVerticalScrollIndicator = showsScrollIndicator
-        
-        // Register cell
-        collectionView.register(HostingCell<Cell>.self, forCellWithReuseIdentifier: cellIdentifier)
-        
-        // Set up delegate and data source
-        collectionView.dataSource = context.coordinator
-        collectionView.delegate = context.coordinator
-        
-        return collectionView
+    private var gridColumns: [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: spacing), count: columns)
     }
     
-    func updateUIView(_ collectionView: UICollectionView, context: Context) {
-        // Update coordinator
-        context.coordinator.parent = self
-        
-        collectionView.showsVerticalScrollIndicator = showsScrollIndicator
-        
-        // Update data
-        collectionView.reloadData()
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    // Helper method to create a grid layout
-    private func createGridLayout() -> UICollectionViewLayout {
-        let itemSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1.0/CGFloat(columns)),
-            heightDimension: .estimated(200)
-        )
-        
-        let item = NSCollectionLayoutItem(layoutSize: itemSize)
-        item.contentInsets = NSDirectionalEdgeInsets(
-            top: spacing/2,
-            leading: spacing/2,
-            bottom: spacing/2,
-            trailing: spacing/2
-        )
-        
-        let groupSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1.0),
-            heightDimension: .estimated(200)
-        )
-        
-        let group = NSCollectionLayoutGroup.horizontal(
-            layoutSize: groupSize,
-            subitems: [item]
-        )
-        
-        let section = NSCollectionLayoutSection(group: group)
-        section.contentInsets = contentInsets
-        
-        return UICollectionViewCompositionalLayout(section: section)
-    }
-    
-    // Coordinator class
-    class Coordinator: NSObject, UICollectionViewDataSource, UICollectionViewDelegate {
-        var parent: CollectionViewGrid
-        
-        init(_ parent: CollectionViewGrid) {
-            self.parent = parent
-        }
-        
-        // DataSource
-        func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-            return parent.data.count
-        }
-        
-        func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: parent.cellIdentifier, for: indexPath) as! HostingCell<Cell>
-            
-            let item = parent.data[parent.data.index(parent.data.startIndex, offsetBy: indexPath.item)]
-            cell.setup(rootView: parent.content(item))
-            
-            return cell
-        }
-        
-        // Delegate
-        func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-            let item = parent.data[parent.data.index(parent.data.startIndex, offsetBy: indexPath.item)]
-            parent.onItemTapped?(item)
-        }
-        
-        func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            // Check if reached bottom
-            let bottomEdge = scrollView.contentOffset.y + scrollView.frame.size.height
-            if bottomEdge >= (scrollView.contentSize.height - 100) && parent.onReachedBottom != nil {
-                parent.onReachedBottom?()
-            }
-        }
-    }
-    
-    // Hosting cell to wrap SwiftUI content
-    class HostingCell<Content: View>: UICollectionViewCell {
-        private var hostingController: UIHostingController<Content>?
-        
-        override func prepareForReuse() {
-            super.prepareForReuse()
-            hostingController?.view.removeFromSuperview()
-            hostingController = nil
-        }
-        
-        func setup(rootView: Content) {
-            if hostingController == nil {
-                hostingController = UIHostingController(rootView: rootView)
-                hostingController!.view.backgroundColor = .clear
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: showsScrollIndicator) {
+            VStack(spacing: 0) {
+                LazyVGrid(columns: gridColumns, spacing: spacing) {
+                    ForEach(data) { item in
+                        content(item)
+                    }
+                }
                 
-                contentView.addSubview(hostingController!.view)
-                hostingController!.view.translatesAutoresizingMaskIntoConstraints = false
-                NSLayoutConstraint.activate([
-                    hostingController!.view.topAnchor.constraint(equalTo: contentView.topAnchor),
-                    hostingController!.view.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-                    hostingController!.view.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-                    hostingController!.view.trailingAnchor.constraint(equalTo: contentView.trailingAnchor)
-                ])
-            } else {
-                hostingController?.rootView = rootView
+                // Footer view inside the ScrollView
+                if let footer = footer {
+                    footer
+                }
             }
         }
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            // Calculate if we've reached near the bottom
+            let bottomEdge = geometry.contentOffset.y + geometry.containerSize.height
+            let contentHeight = geometry.contentSize.height
+            
+            // Check if content is scrollable and if we're near bottom
+            guard contentHeight > geometry.containerSize.height else { return false }
+            
+            return bottomEdge >= (contentHeight - 100)
+        } action: { _, isNearBottom in
+            if isNearBottom {
+                triggerBottomReachedIfNeeded()
+            }
+        }
+    }
+    
+    private func triggerBottomReachedIfNeeded() {
+        let now = Date()
+        
+        // Check if we should throttle
+        if let lastTime = lastTriggerTime {
+            let timeSinceLastTrigger = now.timeIntervalSince(lastTime)
+            guard timeSinceLastTrigger >= throttleInterval else { return }
+        }
+        
+        // Update last trigger time and call the callback
+        lastTriggerTime = now
+        onReachedBottom?()
+    }
+}
+
+// MARK: - Convenience Initializers
+extension CollectionViewGrid where Footer == EmptyView {
+    init(data: Data,
+         columns: Int = 3,
+         spacing: CGFloat = Constants.Spacing.minimal,
+         showsScrollIndicator: Bool = true,
+         onReachedBottom: (() -> Void)? = nil,
+         @ViewBuilder content: @escaping (Data.Element) -> Content) {
+        self.init(
+            data: data,
+            content: content,
+            columns: columns,
+            spacing: spacing,
+            showsScrollIndicator: showsScrollIndicator,
+            footer: nil,
+            onReachedBottom: onReachedBottom
+        )
+    }
+}
+
+extension CollectionViewGrid {
+    init(data: Data,
+         columns: Int = 3,
+         spacing: CGFloat = Constants.Spacing.minimal,
+         showsScrollIndicator: Bool = true,
+         onReachedBottom: (() -> Void)? = nil,
+         @ViewBuilder content: @escaping (Data.Element) -> Content,
+         @ViewBuilder footer: () -> Footer) {
+        self.init(
+            data: data,
+            content: content,
+            columns: columns,
+            spacing: spacing,
+            showsScrollIndicator: showsScrollIndicator,
+            footer: footer(),
+            onReachedBottom: onReachedBottom
+        )
     }
 }

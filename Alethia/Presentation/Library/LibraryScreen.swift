@@ -104,15 +104,15 @@ private struct ContentView: View {
     var body: some View {
         CollectionViewGrid(
             data: vm.items,
+            columns: 3,
+            spacing: Constants.Spacing.minimal,
+            showsScrollIndicator: false,
             content: { item in
                 CardView(
                     namespace: namespace,
                     entry: item
                 )
-            },
-            columns: 3,
-            spacing: Constants.Spacing.minimal,
-            showsScrollIndicator: false
+            }
         )
         .padding(.horizontal, Constants.Padding.regular)
     }

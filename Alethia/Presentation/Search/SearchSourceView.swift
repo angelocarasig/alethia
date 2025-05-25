@@ -31,45 +31,36 @@ struct SearchSourceView: View {
                 if vm.items.isEmpty && vm.loading {
                     SkeletonGridView()
                 } else {
-                    VStack {
-                        CollectionViewGrid(
-                            data: vm.items,
-                            content: { entry in
-                                SourceCardView(
-                                    namespace: namespace,
-                                    source: vm.source,
-                                    entry: entry
-                                )
-                            },
-                            columns: 3,
-                            spacing: Constants.Spacing.minimal,
-                            contentInsets: NSDirectionalEdgeInsets(
-                                top: 8, leading: 8, bottom: 8, trailing: 8
-                            ),
-                            onReachedBottom: {
-                                guard !vm.loading, !vm.items.isEmpty, !vm.noMoreContent else { return }
-                                vm.page += 1
-                                Task { await vm.loadPage() }
-                            },
-                            onItemTapped: { entry in
-                                // Handle item tap
-                                print("Tapped: \(entry.title)")
+                    CollectionViewGrid(
+                        data: vm.items,
+                        columns: 3,
+                        spacing: Constants.Spacing.minimal,
+                        onReachedBottom: {
+                            guard !vm.loading, !vm.items.isEmpty, !vm.noMoreContent else { return }
+                            vm.page += 1
+                            Task { await vm.loadPage() }
+                        },
+                        content: { entry in
+                            SourceCardView(
+                                namespace: namespace,
+                                source: vm.source,
+                                entry: entry
+                            )
+                        },
+                        footer: {
+                            // Footer content for loading and end states
+                            if vm.loading && !vm.items.isEmpty {
+                                ProgressView()
+                                    .padding()
+                            } else if vm.noMoreContent {
+                                Text("No More Results")
+                                    .font(.headline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.secondary)
+                                    .padding()
                             }
-                        )
-                        
-                        // Next-page loader
-                        if vm.loading && !vm.items.isEmpty {
-                            ProgressView()
-                                .padding()
                         }
-                        
-                        if vm.noMoreContent {
-                            Text("No More Results")
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                                .padding()
-                        }
-                    }
+                    )
                     .refreshable {
                         await vm.refresh()
                     }
@@ -93,7 +84,7 @@ struct SearchSourceView: View {
                 GridItem(.flexible(), spacing: Constants.Spacing.minimal),
                 GridItem(.flexible(), spacing: Constants.Spacing.minimal),
                 GridItem(.flexible(), spacing: Constants.Spacing.minimal)
-            ]) {
+            ], spacing: Constants.Spacing.minimal) {
                 ForEach(0..<15, id: \.self) { _ in
                     VStack(alignment: .leading, spacing: 6) {
                         RoundedRectangle(cornerRadius: 6)

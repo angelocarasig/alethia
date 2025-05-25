@@ -156,30 +156,40 @@ extension Manga: DatabaseModel {
 
 extension Manga {
     static var entry: QueryInterfaceRequest<Entry> {
-        let originSlug = Origin
-            .filter(Origin.Columns.mangaId == Manga.Columns.id)
-            .order(Origin.Columns.priority.asc)
-            .limit(1)
-            .select(Origin.Columns.slug)
-            .sqlSubquery
-        
-        let sourceId = Origin
-            .filter(Origin.Columns.mangaId == Manga.Columns.id)
-            .order(Origin.Columns.priority.asc)
-            .limit(1)
-            .select(Origin.Columns.sourceId)
-            .sqlSubquery
-        
-        // NOTE: For some reason cover needs to be fetched like this
-        let cover = SQL("""
-            (SELECT url FROM cover
-            WHERE cover.mangaId = manga.id
-            AND cover.active = 1
-            ORDER BY id DESC
-            LIMIT 1)
+        // Get the source ID from the best origin
+        let sourceId = SQL("""
+            (SELECT o.sourceId 
+             FROM origin o 
+             WHERE o.mangaId = manga.id 
+             ORDER BY o.priority ASC 
+             LIMIT 1)
         """)
         
-        // Simplified unread count query
+        // Construct the full URL by joining through source to host
+        let fetchUrl = SQL("""
+            (SELECT 
+                RTRIM(h.baseUrl, '/') || '/' || 
+                LTRIM(s.path, '/') || '/manga/' || 
+                o.slug
+             FROM origin o
+             JOIN source s ON s.id = o.sourceId
+             JOIN host h ON h.id = s.hostId
+             WHERE o.mangaId = manga.id
+             ORDER BY o.priority ASC
+             LIMIT 1)
+        """)
+        
+        // Get the active cover
+        let cover = SQL("""
+            (SELECT c.url 
+             FROM cover c
+             WHERE c.mangaId = manga.id
+             AND c.active = 1
+             ORDER BY c.id DESC
+             LIMIT 1)
+        """)
+        
+        // Calculate unread count
         let unreadCount = SQL("""
             IFNULL((SELECT COUNT(*) FROM (
                 WITH RankedChapters AS (
@@ -202,7 +212,7 @@ extension Manga {
             )), 0)
         """)
         
-        // Explicitly cast as INTEGER to ensure it's not null
+        // Cast unread count as INTEGER
         let unreadCountCasted = SQL("CAST(\(unreadCount) AS INTEGER)")
         
         return Manga
@@ -210,9 +220,9 @@ extension Manga {
                 Manga.Columns.id    .forKey("mangaId"),
                 Manga.Columns.title .forKey("title"),
                 sourceId            .forKey("sourceId"),
-                originSlug          .forKey("fetchUrl"),  // Map originSlug to fetchUrl property
+                fetchUrl            .forKey("fetchUrl"),  // Now contains the full URL
                 cover               .forKey("cover"),
-                unreadCountCasted   .forKey("unread")     // Use the casted count
+                unreadCountCasted   .forKey("unread")
             ])
             .asRequest(of: Entry.self)
     }

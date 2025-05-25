@@ -3,6 +3,6 @@
 <plist version="1.0">
 <dict>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Alethia requires permission to save images to Photos</string>
+	<string>Alethia needs permission to save images to Photos, using &quot;Limit Access&quot; will be sufficient</string>
 </dict>
 </plist>

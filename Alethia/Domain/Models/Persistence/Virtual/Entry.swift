@@ -21,7 +21,11 @@ enum EntryMatch {
 
 struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
     // MARK: Public API
-    var id: String { fetchUrl ?? title }
+    
+    var id: String {
+        fetchUrl ?? // fetchUrl is a stable unique value - may not exist if source not present
+        "\(mangaId ?? sourceId ?? -1)-\(title)-\(unread)"
+    }
 
     var transitionId: String {
         title
