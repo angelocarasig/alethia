@@ -35,19 +35,33 @@ extension ReaderOverlay {
                 .placeholder { Color.tint.shimmer() }
                 .resizable()
                 .scaledToFit()
-                .frame(width: 50, height: 50)
+                .frame(
+                    width: Constants.Icon.Size.regular,
+                    height: Constants.Icon.Size.regular
+                )
             
-            VStack(alignment: .leading) {
-                Text(vm.mangaTitle)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .lineLimit(1)
-                
-                Text(vm.currentPage?.underlyingChapter.chapter.toString() ?? "Loading Page...")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .lineLimit(2)
+            Menu {
+                ChapterListMenu()
+            } label: {
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text(vm.mangaTitle)
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .lineLimit(1)
+                        
+                        Text(vm.currentChapter.chapter.toString())
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .lineLimit(2)
+                    }
+                    
+                    Image(systemName: "chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
+            .buttonStyle(.plain)
             
             Spacer()
             
@@ -65,8 +79,8 @@ extension ReaderOverlay {
         .padding(.horizontal, Constants.Padding.minimal)
         .padding(.bottom, Constants.Padding.regular)
         .frame(maxWidth: .infinity)
+        .padding(.top, 60) // Top offset
         .background(.bar)
-        .padding(.top, 50) // Top offset
     }
     
     @ViewBuilder
@@ -96,6 +110,28 @@ extension ReaderOverlay {
         }
         .padding(.horizontal, Constants.Padding.screen)
     }
+    
+    @ViewBuilder
+    private func ChapterListMenu() -> some View {
+        let allChapters = vm.chapters.toArray()
+        
+        ForEach(allChapters, id: \.chapter.id) { chapter in
+            Button {
+                Task {
+                    await vm.loadChapter(with: chapter)
+                }
+            } label: {
+                HStack {
+                    Text(chapter.chapter.toString())
+                    
+                    if chapter.chapter.id == vm.currentChapter.chapter.id {
+                        Spacer()
+                        Image(systemName: "checkmark")
+                    }
+                }
+            }
+        }
+    }
 }
 
 
@@ -106,12 +142,15 @@ extension ReaderOverlay {
         VStack {
             HStack {
                 Button {
-                    
+                    Task {
+                        await vm.loadPrevChapter()
+                    }
                 } label: {
                     Image(systemName: "chevron.left")
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, Constants.Padding.screen)
+                .disabled(!vm.canGoBackward)
                 
                 if vm.totalPages > 1 {
                     Slider(
@@ -135,12 +174,18 @@ extension ReaderOverlay {
                 }
                 
                 Button {
-                    
+                    // because loading next assumes you read it already bruh
+                    vm.updateChapterProgress(didCompleteChapter: true) {
+                        Task {
+                            await vm.loadNextChapter()
+                        }
+                    }
                 } label: {
                     Image(systemName: "chevron.right")
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, Constants.Padding.screen)
+                .disabled(!vm.canGoForward)
             }
             
             Text("Page \(vm.currentPage?.pageNumber ?? -1) of \(vm.totalPages)")

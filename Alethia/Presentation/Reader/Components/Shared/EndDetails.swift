@@ -19,7 +19,8 @@ struct EndDetails: View {
             
             Spacer()
             
-            Text("Next Chapter Stuff ...")
+            // TODO: Redesign
+//            ChapterSelectionSection()
             
             TrackerSection()
             
@@ -34,7 +35,10 @@ struct EndDetails: View {
         .padding(.horizontal, Constants.Padding.screen)
         .frame(width: UIScreen.main.bounds.width)
     }
-    
+}
+
+// MARK: - Content Section
+extension EndDetails {
     @ViewBuilder
     private func ContentSection() -> some View {
         let chapterNumber = "Chapter \(vm.currentChapter.chapter.number.toString())"
@@ -90,8 +94,10 @@ struct EndDetails: View {
                     // - If next chapter is decimal but >= 2 value difference
                     
                     Button {
-                        Task {
-                            await vm.loadNextChapter()
+                        vm.updateChapterProgress(didCompleteChapter: true) {
+                            Task {
+                                await vm.loadNextChapter()
+                            }
                         }
                     } label: {
                         HStack {
@@ -115,7 +121,91 @@ struct EndDetails: View {
             .frame(height: 75)
         }
     }
+}
+
+// MARK: - Chapter Selection
+extension EndDetails {
+    @ViewBuilder
+    private func ChapterSelectionSection() -> some View {
+        let allChapters = vm.chapters.toArray()
+        
+        VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
+            Text("CHAPTERS")
+                .font(.footnote)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+                .padding(.bottom, Constants.Padding.regular)
+            
+            ScrollView(.vertical, showsIndicators: true) {
+                LazyVStack(spacing: 0) {
+                    ForEach(allChapters, id: \.chapter.id) { chapter in
+                        ChapterRow(chapter: chapter)
+                    }
+                }
+            }
+            .frame(maxHeight: 500)
+            .background(Color.background)
+            .cornerRadius(Constants.Corner.Radius.regular)
+            .overlay(
+                RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
+                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+            )
+        }
+        .padding(.vertical, Constants.Padding.regular)
+    }
     
+    @ViewBuilder
+    private func ChapterRow(chapter: ChapterExtended) -> some View {
+        let isCurrentChapter = chapter.chapter.id == vm.currentChapter.chapter.id
+        let isBeforeCurrentChapter = chapter.chapter.number < vm.currentChapter.chapter.number
+        
+        Button {
+            if !isCurrentChapter {
+                Task {
+                    await vm.loadChapter(with: chapter)
+                }
+            }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Chapter \(chapter.chapter.number.toString())")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+                    
+                    if chapter.chapter.title != chapter.chapter.number.toString() {
+                        Text(chapter.chapter.title)
+                            .font(.caption)
+                            .lineLimit(1)
+                    }
+                }
+                
+                Spacer()
+                
+                if isCurrentChapter {
+                    Text("Current")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.accentColor)
+                        .foregroundStyle(.white)
+                        .cornerRadius(4)
+                }
+            }
+            .padding(.horizontal, Constants.Padding.regular)
+            .padding(.vertical, 12)
+            .background(isCurrentChapter ? Color.accentColor.opacity(0.1) : Color.clear)
+            .opacity(isBeforeCurrentChapter ? 0.5 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .disabled(isCurrentChapter)
+    }
+}
+
+// MARK: - Tracker Section
+extension EndDetails {
     @ViewBuilder
     private func TrackerSection() -> some View {
         VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
@@ -150,7 +240,7 @@ struct EndDetails: View {
                 Spacer()
                 
                 VStack(alignment: .trailing) {
-                    
+                    SyncingLabel()
                     
                     Text("1/\(999) Chapters")
                         .font(.subheadline)
@@ -159,7 +249,10 @@ struct EndDetails: View {
             }
         }
     }
-    
+}
+
+// MARK: - Recommendations
+extension EndDetails {
     @ViewBuilder
     private func Recommendations(recommendations: RecommendedEntries) -> some View {
         VStack(spacing: Constants.Spacing.large) {
@@ -210,7 +303,10 @@ struct EndDetails: View {
             }
         }
     }
-    
+}
+
+// MARK: - Sync Status Labels
+extension EndDetails {
     @ViewBuilder
     private func SyncingLabel() -> some View {
         HStack {
@@ -274,4 +370,3 @@ struct EndDetails: View {
         }
     }
 }
-

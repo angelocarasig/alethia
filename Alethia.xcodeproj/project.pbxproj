@@ -30,6 +30,16 @@
 		17D458CE2DA6A34700CF3BA4 /* Alethia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Alethia.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		176741682DE2EEA300F21B72 /* Exceptions for "Alethia" folder in "Alethia" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 17D458CD2DA6A34700CF3BA4 /* Alethia */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		179E90802DA7DC6E00F43EBC /* AlethiaTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -38,6 +48,9 @@
 		};
 		17D458D02DA6A34700CF3BA4 /* Alethia */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				176741682DE2EEA300F21B72 /* Exceptions for "Alethia" folder in "Alethia" target */,
+			);
 			path = Alethia;
 			sourceTree = "<group>";
 		};
@@ -391,6 +404,7 @@
 				DEVELOPMENT_TEAM = V2NAC76HWU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Alethia/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -426,6 +440,7 @@
 				DEVELOPMENT_TEAM = V2NAC76HWU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Alethia/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

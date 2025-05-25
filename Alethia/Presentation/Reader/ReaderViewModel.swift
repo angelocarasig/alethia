@@ -41,8 +41,8 @@ final class ReaderViewModel: ObservableObject {
     // Tracking
     @Published private(set) var currentChapter: ChapterExtended
     private(set) var recommendations: RecommendedEntries? = nil
+    private(set) var chapters: ChapterList
     private var mangaId: Int64
-    private var chapters: ChapterList
     
     // Internal
     @Published private var userWantsControlsVisible: Bool = false
@@ -131,15 +131,29 @@ extension ReaderViewModel {
 extension ReaderViewModel {
     @MainActor
     func loadNextChapter() async -> Void {
-        // Mark current chapter as completed before moving to next
-        updateChapterProgress(didCompleteChapter: true)
-        
         guard let currentNode = chapters.findNode(for: currentChapter),
               let nextChapter = currentNode.next else {
             return
         }
         
         currentChapter = nextChapter.chapter
+        await loadChapter()
+    }
+    
+    @MainActor
+    func loadPrevChapter() async -> Void {
+        guard let currentNode = chapters.findNode(for: currentChapter),
+              let prevChapter = currentNode.previous else { // Changed from .next to .previous
+            return
+        }
+        
+        currentChapter = prevChapter.chapter
+        await loadChapter()
+    }
+    
+    @MainActor
+    func loadChapter(with chapter: ChapterExtended) async -> Void {
+        currentChapter = chapter
         await loadChapter()
     }
     

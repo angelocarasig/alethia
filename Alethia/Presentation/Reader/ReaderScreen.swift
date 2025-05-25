@@ -9,6 +9,7 @@ import SwiftUI
 import Kingfisher
 
 struct ReaderScreen: View {
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var vm: ReaderViewModel
     
     @State private var scrollPosition = ScrollPosition(idType: Page.ID.self)
@@ -39,10 +40,32 @@ struct ReaderScreen: View {
             case .loaded(let pages):
                 ContentView(pages: pages)
             case .error(let error):
-                ContentUnavailableView(
-                    error.localizedDescription,
-                    systemImage: "exclamationmark.triangle.fill"
-                )
+                ContentUnavailableView {
+                    Label("Something went wrong.", systemImage: "exclamationmark.triangle.fill")
+                } description: {
+                    Text(error.localizedDescription)
+                        .padding()
+                } actions: {
+                    Button(action: {
+                        Task {
+                            await vm.loadChapter()
+                        }
+                    }) {
+                        Text("Retry")
+                            .fontWeight(.semibold)
+                            .padding(.horizontal, Constants.Padding.regular)
+                            .padding(.vertical, Constants.Padding.minimal)
+                    }
+                    
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Text("Exit")
+                            .fontWeight(.semibold)
+                            .padding(.horizontal, Constants.Padding.regular)
+                            .padding(.vertical, Constants.Padding.minimal)
+                    }
+                }
             }
         }
         .onTapGesture { vm.toggleControls() }

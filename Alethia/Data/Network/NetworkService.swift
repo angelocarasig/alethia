@@ -56,8 +56,6 @@ extension NetworkService {
                 throw NetworkError.noInternetConnection
             case .timedOut:
                 throw NetworkError.timeout
-            case .cannotFindHost, .cannotConnectToHost:
-                throw NetworkError.invalidURL(url: url.absoluteString)
             default:
                 throw NetworkError.requestFailed(underlyingError: urlError)
             }

@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import Kingfisher
+import PhotosUI
 
 struct RetryableImage: View {
     let url: String
@@ -15,6 +16,9 @@ struct RetryableImage: View {
     
     @State private var loadingState: LoadingState = .idle
     @State private var reloadID = UUID()
+    @State private var loadedImage: UIImage?
+    @State private var showingSaveAlert = false
+    @State private var saveAlertMessage = ""
     
     private enum LoadingState: Equatable {
         case idle
@@ -29,16 +33,17 @@ struct RetryableImage: View {
             .setProcessor(
                 DownsamplingImageProcessor(
                     size: CGSize(
-                        width: UIScreen.main.bounds.width,
-                        height: UIScreen.main.bounds.height
+                        width: UIScreen.main.bounds.width * UIScreen.main.scale,
+                        height: UIScreen.main.bounds.height * UIScreen.main.scale
                     )
                 )
             )
             .onProgress { receivedSize, totalSize in
                 loadingState = .loading(Double(receivedSize) / Double(totalSize))
             }
-            .onSuccess { _ in
+            .onSuccess { result in
                 loadingState = .loaded
+                loadedImage = result.image
             }
             .onFailure { _ in
                 loadingState = .failed
@@ -61,6 +66,32 @@ struct RetryableImage: View {
             }
             .background(Color.background)
             .clipped()
+            .contextMenu {
+                if loadingState == .loaded, loadedImage != nil {
+                    Button(action: saveToPhotos) {
+                        Label("Save to Photos", systemImage: "square.and.arrow.down")
+                    }
+                    
+                    Button(action: copyToClipboard) {
+                        Label("Copy Image", systemImage: "doc.on.doc")
+                    }
+                    
+                    ShareLink(item: Image(uiImage: loadedImage!), preview: SharePreview("Manga Page", image: Image(uiImage: loadedImage!))) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                    
+                    Divider()
+                    
+                    Button(action: copyImageURL) {
+                        Label("Copy Image URL", systemImage: "link")
+                    }
+                }
+            }
+            .alert("Image Action", isPresented: $showingSaveAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(saveAlertMessage)
+            }
     }
     
     private func retryLoading() {
@@ -70,6 +101,68 @@ struct RetryableImage: View {
         // Reset state and force reload
         loadingState = .idle
         reloadID = UUID()
+    }
+    
+    private func saveToPhotos() {
+        guard let image = loadedImage else { return }
+        
+        Task {
+            do {
+                let photosStatus = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+                
+                switch photosStatus {
+                case .authorized, .limited:
+                    try await PHPhotoLibrary.shared().performChanges {
+                        PHAssetChangeRequest.creationRequestForAsset(from: image)
+                    }
+                    await MainActor.run {
+                        saveAlertMessage = "Image saved to Photos successfully!"
+                        showingSaveAlert = true
+                    }
+                    
+                case .denied, .restricted:
+                    await MainActor.run {
+                        saveAlertMessage = "Please grant permission to save images in Settings > Privacy & Security > Photos."
+                        showingSaveAlert = true
+                    }
+                    
+                case .notDetermined:
+                    break
+                    
+                @unknown default:
+                    break
+                }
+            } catch {
+                await MainActor.run {
+                    saveAlertMessage = "Failed to save image: \(error.localizedDescription)"
+                    showingSaveAlert = true
+                }
+            }
+        }
+    }
+    
+    private func copyToClipboard() {
+        guard let image = loadedImage else { return }
+        
+        UIPasteboard.general.image = image
+        
+        // Haptic feedback for better UX
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+        
+        saveAlertMessage = "Image copied to clipboard!"
+        showingSaveAlert = true
+    }
+    
+    private func copyImageURL() {
+        UIPasteboard.general.string = url
+        
+        // Haptic feedback for better UX
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+        
+        saveAlertMessage = "Image URL copied to clipboard!"
+        showingSaveAlert = true
     }
 }
 
