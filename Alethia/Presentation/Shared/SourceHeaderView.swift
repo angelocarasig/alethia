@@ -19,16 +19,6 @@ struct SourceHeaderView: View {
     private let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
     private let downsample: CGSize = .init(width: 200, height: 200)
     
-    // TODO: Place in use-case
-    //    var inLibraryCount: Int {
-    //        (try? DatabaseProvider.shared.reader.read { db in
-    //            try Origin
-    //                .joining(required: Origin.manga.filter(Manga.Columns.inLibrary))
-    //                .filter(Origin.Columns.sourceId == source.id)
-    //                .fetchCount(db)
-    //        }) ?? 0
-    //    }
-    
     var body: some View {
         ZStack {
             let urlString = images.indices.contains(currentIndex) ? images[currentIndex] : ""

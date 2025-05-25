@@ -20,7 +20,7 @@ struct Origin: Codable, Identifiable {
     var classification: Classification
     var status: PublishStatus
     var createdAt: Date
-    var priority: Int = .max
+    var priority: Int = -1
 }
 
 extension Origin {
@@ -85,12 +85,16 @@ extension Origin: DatabaseModel {
             t.column(Columns.sourceId.name, .integer)
                 .indexed()
                 .references(Source.databaseTableName, onDelete: .setNull)
+            
+            // Ensure no duplicate priority values for the same manga
+            t.uniqueKey([Columns.priority.name, Columns.mangaId.name], onConflict: .fail)
+            
+            // Ensure no duplicate sources for the same manga
+            t.uniqueKey([Columns.sourceId.name, Columns.mangaId.name], onConflict: .fail)
         })
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
         // Nothing for now
-        
-        // TODO: Create unique index (no duplicate priority values per mangaId)
     }
 }

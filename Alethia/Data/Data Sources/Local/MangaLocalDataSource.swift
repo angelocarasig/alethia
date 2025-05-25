@@ -169,6 +169,25 @@ final class MangaLocalDataSource {
         }
     }
     
+    func addMangaOrigin(payload: DetailDTO, mangaId: Int64, sourceId: Int64?) throws {
+        try self.database.write { db in
+            guard let sourceId = sourceId else {
+                throw SourceError.notFound
+            }
+            
+            guard try Manga.fetchOne(db, key: mangaId) != nil else {
+                throw MangaError.notFound
+            }
+            
+            try self.insertRelatedEntities(
+                for: payload,
+                mangaId: mangaId,
+                sourceId: sourceId,
+                db: db
+            )
+        }
+    }
+    
     func getMangaRecommendations(mangaId: Int64) throws -> RecommendedEntries {
         return try database.read { db in
             // Get the target manga to ensure it exists
@@ -430,14 +449,27 @@ private extension MangaLocalDataSource {
     
     private func insertTitles(_ titles: [String], mangaId: Int64, db: Database) throws {
         for title in titles {
+            // if title already exists in manga-title kvp it will just silently fail
             try Title(title: title, mangaId: mangaId).insert(db)
         }
     }
     
     private func insertCovers(_ coverUrls: [String], mangaId: Int64, db: Database) throws {
+        guard !coverUrls.isEmpty else { return }
+        
+        // Check if manga already has covers
+        let existingCoversCount = try Cover
+            .filter(Cover.Columns.mangaId == mangaId)
+            .fetchCount(db)
+        
+        let hasExistingCovers = existingCoversCount > 0
+        
         for (index, coverUrl) in coverUrls.enumerated() {
+            // Only set the first cover as active if there are no existing covers
+            let shouldBeActive = !hasExistingCovers && index == 0
+            
             try Cover(
-                active: index == 0, // First one is active
+                active: shouldBeActive,
                 url: coverUrl,
                 path: coverUrl,
                 mangaId: mangaId
@@ -463,7 +495,17 @@ private extension MangaLocalDataSource {
         }
     }
     
+    /// Origin insertion fn needs to manage origin priority
     private func insertOrigin(_ originPayload: OriginDTO, mangaId: Int64, sourceId: Int64, db: Database) throws -> Origin {
+        // Get existing origins for this manga to determine next priority
+        let existingOrigins = try Origin
+            .filter(Origin.Columns.mangaId == mangaId)
+            .order(Origin.Columns.priority.asc)
+            .fetchAll(db)
+        
+        // Determine the next available priority
+        let nextPriority = (existingOrigins.last?.priority ?? -1) + 1
+        
         return try Origin(
             mangaId: mangaId,
             sourceId: sourceId,
@@ -472,26 +514,58 @@ private extension MangaLocalDataSource {
             referer: originPayload.referer,
             classification: Classification(rawValue: originPayload.classification) ?? .Unknown,
             status: PublishStatus(rawValue: originPayload.status) ?? .Unknown,
-            createdAt: Date.javascriptDate(originPayload.creation)
+            createdAt: Date.javascriptDate(originPayload.creation),
+            priority: nextPriority
         ).insertAndFetch(db)
     }
     
+    /// Chapter insertion fn need to manage scanlator priority
     private func insertChapters(_ chapterPayloads: [ChapterDTO], originId: Int64, db: Database) throws {
-        for chapterPayload in chapterPayloads {
-            let scanlator = try Scanlator.findOrCreate(
-                db,
-                instance: Scanlator(originId: originId, name: chapterPayload.scanlator)
-            )
+        // Group chapters by scanlator to process them efficiently
+        let chaptersByScanlator = Dictionary(grouping: chapterPayloads) { $0.scanlator }
+        
+        // Get existing scanlators for this origin to determine next priority
+        let existingScanlators = try Scanlator
+            .filter(Scanlator.Columns.originId == originId)
+            .order(Scanlator.Columns.priority.asc)
+            .fetchAll(db)
+        
+        // Track the highest priority so far
+        var nextPriority = existingScanlators.last?.priority ?? -1 // -1 so if none found it increments to 0 (highest priority)
+        
+        // Process each scanlator group
+        for (scanlatorName, chapters) in chaptersByScanlator {
+            // Try to find existing scanlator for this origin
+            let existingScanlator = existingScanlators.first { $0.name == scanlatorName }
             
-            if let scanlatorId = scanlator.id {
-                try Chapter(
+            let scanlator: Scanlator
+            if let existing = existingScanlator {
+                // Use existing scanlator
+                scanlator = existing
+            } else {
+                // Create new scanlator with next available priority
+                nextPriority += 1
+                var newScanlator = Scanlator(
                     originId: originId,
-                    scanlatorId: scanlatorId,
-                    title: chapterPayload.title,
-                    slug: chapterPayload.slug,
-                    number: chapterPayload.number,
-                    date: Date.javascriptDate(chapterPayload.date)
-                ).insert(db)
+                    name: scanlatorName,
+                    priority: nextPriority
+                )
+                newScanlator = try newScanlator.insertAndFetch(db)
+                scanlator = newScanlator
+            }
+            
+            // Insert all chapters for this scanlator
+            if let scanlatorId = scanlator.id {
+                for chapterPayload in chapters {
+                    try Chapter(
+                        originId: originId,
+                        scanlatorId: scanlatorId,
+                        title: chapterPayload.title,
+                        slug: chapterPayload.slug,
+                        number: chapterPayload.number,
+                        date: Date.javascriptDate(chapterPayload.date)
+                    ).insert(db)
+                }
             }
         }
     }

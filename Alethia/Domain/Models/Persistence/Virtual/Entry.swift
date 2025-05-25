@@ -28,7 +28,7 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
     }
 
     var transitionId: String {
-        title
+        id
     }
 
     var mangaId: Int64?

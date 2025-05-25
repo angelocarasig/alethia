@@ -50,6 +50,13 @@ extension MangaRepositoryImpl: MangaRepository {
         try local.updateMangaOrientation(mangaId: mangaId, newValue: newValue)
     }
     
+    func addMangaOrigin(entry: Entry, mangaId: Int64) async throws {
+        // First in remote get new origin payload
+        let payload: DetailDTO = try await remote.fetchMangaDetail(entry: entry)
+        
+        try local.addMangaOrigin(payload: payload, mangaId: mangaId, sourceId: entry.sourceId)
+    }
+    
     func getMangaRecommendations(mangaId: Int64) throws -> RecommendedEntries {
         return try local.getMangaRecommendations(mangaId: mangaId)
     }

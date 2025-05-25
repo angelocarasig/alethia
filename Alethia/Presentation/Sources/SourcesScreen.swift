@@ -295,14 +295,20 @@ private struct SourceRow: View {
     }
     
     private func performPing() async {
-        pingStatus = .loading
+        withAnimation {
+            pingStatus = .loading
+        }
         
         do {
             let result = try await vm.pingSource(source)
-            pingTime = result
-            pingStatus = .success
+            withAnimation {
+                pingTime = result
+                pingStatus = .success
+            }
         } catch {
-            pingStatus = .failed
+            withAnimation {
+                pingStatus = .failed
+            }
         }
     }
 }

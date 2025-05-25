@@ -32,17 +32,14 @@ struct ActionButtonsView: View {
             .actionButton(vm.details?.manga.inLibrary ?? false)
             
             Button {
-                print("TODO: Adding Origin!")
+                Task {
+                    await vm.addOrigin()
+                }
             } label: {
                 OriginButton()
             }
             .actionButton(vm.sourcePresent)
-            .disabled(
-                vm.details != nil &&
-                !vm.details!.manga.inLibrary
-                // TODO: new way to figure out source
-                // vm.entry.fetchUrl == nil
-            )
+            .disabled(vm.addingOrigin || (vm.details != nil && !vm.details!.manga.inLibrary))
             
             QuickButtonsView()
         }
@@ -60,12 +57,17 @@ struct ActionButtonsView: View {
     
     @ViewBuilder
     private func OriginButton() -> some View {
-        HStack {
-            Image(systemName: "plus.square.dashed")
-            Text(vm.inLibrary ?
-                 "^[\(vm.details?.origins.count ?? 0) Source](inflected: true)" :
-                    "Add Source"
-            )
+        if !vm.addingOrigin {
+            HStack {
+                Image(systemName: "plus.square.dashed")
+                Text(vm.inLibrary ?
+                     "^[\(vm.details?.origins.count ?? 0) Source](inflect: true)" :
+                        "Add Source"
+                )
+            }
+        }
+        else {
+            ProgressView()
         }
     }
 }

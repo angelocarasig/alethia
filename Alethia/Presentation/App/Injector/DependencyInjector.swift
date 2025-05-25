@@ -53,6 +53,10 @@ extension DependencyInjector {
         return UpdateMangaOrientationUseCaseImpl(repository: mangaRepository)
     }
     
+    func makeAddMangaOriginUseCase() -> AddMangaOriginUseCase {
+        return AddMangaOriginUseCaseImpl(repository: mangaRepository)
+    }
+    
     func makeGetRecommendationsUseCase() -> GetRecommendationsUseCase {
         return GetRecommendationsUseCaseImpl(repository: mangaRepository)
     }

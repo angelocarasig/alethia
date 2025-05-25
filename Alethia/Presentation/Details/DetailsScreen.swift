@@ -220,7 +220,7 @@ extension DetailsScreen {
                         .background(BackgroundGradientView())
                     }
                     .refreshable {
-                        // TODO: 
+                        // TODO: Refresh chapters
                     }
                 }
                 

@@ -43,7 +43,7 @@ extension MangaTag: DatabaseModel {
                 .indexed()
                 .references(Manga.databaseTableName, onDelete: .cascade)
             
-            t.primaryKey([Columns.tagId.name, Columns.mangaId.name])
+            t.primaryKey([Columns.tagId.name, Columns.mangaId.name], onConflict: .ignore)
         })
     }
     

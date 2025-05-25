@@ -54,6 +54,7 @@ extension Title: DatabaseModel {
                 .indexed()
                 .references(Manga.databaseTableName, onDelete: .cascade)
             
+            // If same manga-title key already exists it'll just ignore it
             t.uniqueKey([Columns.title.name, Columns.mangaId.name], onConflict: .ignore)
         })
     }

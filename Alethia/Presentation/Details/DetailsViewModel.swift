@@ -12,6 +12,7 @@ import Combine
 final class DetailsViewModel: ObservableObject {
     // MARK: - Published Properties
     @Published private(set) var state: ViewState = .loading
+    @Published private(set) var addingOrigin: Bool = false
     @Published var confirmationRequest: ConfirmationRequest? = nil
     
     // MARK: - Properties
@@ -25,6 +26,7 @@ final class DetailsViewModel: ObservableObject {
     private let getMangaDetailUseCase: GetMangaDetailUseCase
     private let resolveMangaOrientationUseCase: ResolveMangaOrientationUseCase
     private let toggleMangaInLibraryUseCase: ToggleMangaInLibraryUseCase
+    private let addMangaOriginUseCase: AddMangaOriginUseCase
     private let markAllChaptersUseCase: MarkAllChaptersUseCase
     private let updateChapterProgressUseCase: UpdateChapterProgressUseCase
     
@@ -33,11 +35,15 @@ final class DetailsViewModel: ObservableObject {
         self.entry = entry
         self.context = context
         
-        self.getMangaDetailUseCase = DependencyInjector.shared.makeGetMangaDetailUseCase()
-        self.resolveMangaOrientationUseCase = DependencyInjector.shared.makeResolveMangaOrientationUseCase()
-        self.toggleMangaInLibraryUseCase = DependencyInjector.shared.makeToggleMangaInLibraryUseCase()
-        self.markAllChaptersUseCase = DependencyInjector.shared.makeMarkAllChaptersUseCase()
-        self.updateChapterProgressUseCase = DependencyInjector.shared.makeUpdateChapterProgressUseCase()
+        print("Entry: \(entry)")
+        
+        let injector = DependencyInjector.shared
+        self.getMangaDetailUseCase = injector.makeGetMangaDetailUseCase()
+        self.resolveMangaOrientationUseCase = injector.makeResolveMangaOrientationUseCase()
+        self.toggleMangaInLibraryUseCase = injector.makeToggleMangaInLibraryUseCase()
+        self.addMangaOriginUseCase = injector.makeAddMangaOriginUseCase()
+        self.markAllChaptersUseCase = injector.makeMarkAllChaptersUseCase()
+        self.updateChapterProgressUseCase = injector.makeUpdateChapterProgressUseCase()
     }
 }
 
@@ -171,6 +177,31 @@ extension DetailsViewModel {
                 newValue: !details.manga.inLibrary
             )
         } catch {
+            state = .error(error)
+        }
+    }
+    
+    @MainActor
+    func addOrigin() async -> Void {
+        guard
+            !sourcePresent,
+            let details = details,
+            let mangaId = details.manga.id
+        else { return }
+        defer {
+            withAnimation {
+                addingOrigin = false
+            }
+        }
+        
+        withAnimation {
+            addingOrigin = true
+        }
+        
+        do {
+            try await addMangaOriginUseCase.execute(entry: self.entry, mangaId: mangaId)
+        }
+        catch {
             state = .error(error)
         }
     }

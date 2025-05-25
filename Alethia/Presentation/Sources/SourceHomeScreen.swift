@@ -113,10 +113,10 @@ private struct RowView: View {
         } else {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: Constants.Spacing.minimal) {
-                    ForEach(content, id: \.self) { entry in
+                    ForEach(content, id: \.id) { entry in
                         SourceCardView(namespace: namespace, source: source, entry: entry)
                             .frame(width: 150)
-                            .id(entry.id)
+                            .id("\(route.path)/\(entry.id)")
                     }
                 }
             }
