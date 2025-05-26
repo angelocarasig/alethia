@@ -195,9 +195,67 @@ private struct ChapterRow: View {
         }
     }
     
+    private var isChapterDownloaded: Bool {
+        let hasDownloadCompleted = vm.downloadProgressFor(item.chapter)?.status == .completed
+        return item.chapter.downloaded || hasDownloadCompleted
+    }
+    
     @ViewBuilder
     private func DownloadButton() -> some View {
-        Text("DL")
+        let size: CGFloat = 20
+        let chapterProgress = vm.downloadProgressFor(item.chapter)
+        let isDownloading = vm.isDownloading(item.chapter)
+        let progressValue = chapterProgress?.percentage ?? 0.0
+        
+        Group {
+            ZStack {
+                if !isChapterDownloaded {
+                    Circle()
+                        .stroke(lineWidth: 2)
+                        .opacity(progressValue > 0 ? 0.3 : 0)
+                        .foregroundColor(.gray)
+                    
+                    Circle()
+                        .trim(from: 0.0, to: progressValue)
+                        .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                        .foregroundColor(.accentColor)
+                        .rotationEffect(Angle(degrees: 270.0))
+                        .opacity(progressValue > 0 ? 1 : 0)
+                    
+                    Button {
+                        if isDownloading {
+                            // Cancel download
+                            vm.cancelDownload(for: item.chapter)
+                        } else {
+                            // Start download
+                            vm.downloadChapter(item.chapter)
+                        }
+                    } label: {
+                        Image(systemName: isDownloading ? "arrowtriangle.down.circle"  : "arrow.down.circle.fill")
+                            .font(.system(size: size))
+                            .foregroundStyle(Color.accentColor)
+                            .opacity(chapterProgress?.status == .failed ? 0 : 1)
+                    }
+                    
+                    if chapterProgress?.status == .failed {
+                        Button {
+                            vm.downloadChapter(item.chapter)
+                        } label: {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .font(.system(size: size))
+                                .foregroundStyle(.red)
+                        }
+                    }
+                } else {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: size))
+                        .foregroundStyle(.green)
+                }
+            }
+            .frame(width: size, height: size)
+        }
+        .animation(.easeInOut, value: item.chapter.downloaded)
+        .animation(.spring(response: 0.3), value: progressValue)
     }
     
     @ViewBuilder

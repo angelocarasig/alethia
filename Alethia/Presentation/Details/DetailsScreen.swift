@@ -230,9 +230,11 @@ extension DetailsScreen {
         
         @ViewBuilder
         private func LoadedDetails(details: Detail) -> some View {
-            HeaderView()
-            
-            ActionButtonsView()
+            VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+                HeaderView()
+                
+                ActionButtonsView()
+            }
             
             SynopsisView()
             

@@ -16,4 +16,6 @@ protocol ChapterRepository {
     func markChapterRead(chapter: Chapter) throws -> Void
     
     func markAllChapters(chapters: [Chapter], asRead: Bool) throws -> Void
+    
+    func downloadChapter(chapter: Chapter) -> AsyncStream<QueueJobState>
 }

@@ -12,6 +12,10 @@ final class DependencyInjector {
     
     private init() {}
     
+    private lazy var queueActor: QueueActor = {
+        return QueueActor()
+    }()
+    
     private lazy var mangaRepository: MangaRepository = {
         let local = MangaLocalDataSource()
         let remote = MangaRemoteDataSource()
@@ -30,7 +34,7 @@ final class DependencyInjector {
         let local = ChapterLocalDataSource()
         let remote = ChapterRemoteDataSource()
         
-        return ChapterRepositoryImpl(local: local, remote: remote)
+        return ChapterRepositoryImpl(local: local, remote: remote, actor: queueActor)
     }()
 }
 
@@ -127,5 +131,9 @@ extension DependencyInjector {
     
     func makeMarkAllChaptersUseCase() -> MarkAllChaptersUseCase {
         return MarkAllChaptersUseCaseImpl(repository: chapterRepository)
+    }
+    
+    func makeDownloadChapterUseCase() -> DownloadChapterUseCase {
+        return DownloadChapterUseCaseImpl(repository: chapterRepository)
     }
 }

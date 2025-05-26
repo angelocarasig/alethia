@@ -9,8 +9,8 @@
 /* Begin PBXBuildFile section */
 		174FAAAC2DD237D600AD7BE3 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 174FAAAB2DD237D300AD7BE3 /* README.md */; };
 		176C40592DCB380A00B521AD /* Flow in Frameworks */ = {isa = PBXBuildFile; productRef = 176C40582DCB380A00B521AD /* Flow */; };
-		17951B7B2DCCA80500528C58 /* SwiftUIIntrospect in Frameworks */ = {isa = PBXBuildFile; productRef = 17951B7A2DCCA80500528C58 /* SwiftUIIntrospect */; };
 		179E8D752DA6A3DE00F43EBC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 179E8D742DA6A3DE00F43EBC /* GRDB */; };
+		17B0AC7B2DE43C1500B11B76 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 17B0AC7A2DE43C1500B11B76 /* ZIPFoundation */; };
 		17EAA3E02DB3281F00CB9EE5 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 17EAA3DF2DB3281F00CB9EE5 /* Kingfisher */; };
 /* End PBXBuildFile section */
 
@@ -70,8 +70,8 @@
 			files = (
 				176C40592DCB380A00B521AD /* Flow in Frameworks */,
 				17EAA3E02DB3281F00CB9EE5 /* Kingfisher in Frameworks */,
-				17951B7B2DCCA80500528C58 /* SwiftUIIntrospect in Frameworks */,
 				179E8D752DA6A3DE00F43EBC /* GRDB in Frameworks */,
+				17B0AC7B2DE43C1500B11B76 /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -143,7 +143,7 @@
 				179E8D742DA6A3DE00F43EBC /* GRDB */,
 				17EAA3DF2DB3281F00CB9EE5 /* Kingfisher */,
 				176C40582DCB380A00B521AD /* Flow */,
-				17951B7A2DCCA80500528C58 /* SwiftUIIntrospect */,
+				17B0AC7A2DE43C1500B11B76 /* ZIPFoundation */,
 			);
 			productName = Alethia;
 			productReference = 17D458CE2DA6A34700CF3BA4 /* Alethia.app */;
@@ -181,7 +181,7 @@
 				179E8D732DA6A3DE00F43EBC /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 				17EAA3DD2DB3280E00CB9EE5 /* XCRemoteSwiftPackageReference "Kingfisher" */,
 				176C40572DCB37DF00B521AD /* XCRemoteSwiftPackageReference "SwiftUI-Flow" */,
-				17951B792DCCA80500528C58 /* XCRemoteSwiftPackageReference "swiftui-introspect" */,
+				17B0AC792DE43C1500B11B76 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 17D458CF2DA6A34700CF3BA4 /* Products */;
@@ -510,20 +510,20 @@
 				minimumVersion = 3.0.2;
 			};
 		};
-		17951B792DCCA80500528C58 /* XCRemoteSwiftPackageReference "swiftui-introspect" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/siteline/swiftui-introspect";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.3.0;
-			};
-		};
 		179E8D732DA6A3DE00F43EBC /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/groue/GRDB.swift.git";
 			requirement = {
 				branch = master;
 				kind = branch;
+			};
+		};
+		17B0AC792DE43C1500B11B76 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.19;
 			};
 		};
 		17EAA3DD2DB3280E00CB9EE5 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
@@ -542,15 +542,15 @@
 			package = 176C40572DCB37DF00B521AD /* XCRemoteSwiftPackageReference "SwiftUI-Flow" */;
 			productName = Flow;
 		};
-		17951B7A2DCCA80500528C58 /* SwiftUIIntrospect */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 17951B792DCCA80500528C58 /* XCRemoteSwiftPackageReference "swiftui-introspect" */;
-			productName = SwiftUIIntrospect;
-		};
 		179E8D742DA6A3DE00F43EBC /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 179E8D732DA6A3DE00F43EBC /* XCRemoteSwiftPackageReference "GRDB.swift" */;
 			productName = GRDB;
+		};
+		17B0AC7A2DE43C1500B11B76 /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 17B0AC792DE43C1500B11B76 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
 		};
 		17EAA3DF2DB3281F00CB9EE5 /* Kingfisher */ = {
 			isa = XCSwiftPackageProductDependency;

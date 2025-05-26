@@ -6,14 +6,17 @@
 //
 
 import Foundation
+import UIKit.UIApplication
 
 final class ChapterRepositoryImpl {
     private let local: ChapterLocalDataSource
     private let remote: ChapterRemoteDataSource
+    private let actor: QueueActor
     
-    init(local: ChapterLocalDataSource, remote: ChapterRemoteDataSource) {
+    init(local: ChapterLocalDataSource, remote: ChapterRemoteDataSource, actor: QueueActor) {
         self.local = local
         self.remote = remote
+        self.actor = actor
     }
 }
 
@@ -32,5 +35,34 @@ extension ChapterRepositoryImpl: ChapterRepository {
     
     func markAllChapters(chapters: [Chapter], asRead: Bool) throws {
         try local.markAllChapters(chapters: chapters, asRead: asRead)
+    }
+    
+    func downloadChapter(chapter: Chapter) -> AsyncStream<QueueJobState> {
+        /// 1. Prepare location in filesystem
+        /// 2. Get chapter contents
+        /// 3. Download contents async
+        /// 4. Wait for everything to finish
+        /// 5. Zip contents to .cbz
+        /// 6. Place .cbz in prepared location
+        AsyncStream { continuation in
+            Task {
+                let backgroundTask = await UIApplication.shared.beginBackgroundTask {
+                    continuation.yield(.failure(DownloadError.backgroundTimeExpired))
+                }
+                
+                await actor.downloadChapter(
+                    chapter: chapter,
+                    remote: remote,
+                    local: local,
+                    continuation: continuation
+                )
+                
+                continuation.finish()
+                
+                await MainActor.run {
+                    UIApplication.shared.endBackgroundTask(backgroundTask)
+                }
+            }
+        }
     }
 }

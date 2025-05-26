@@ -23,7 +23,7 @@ struct ActionButtonsView: View {
     @EnvironmentObject var vm: DetailsViewModel
     
     var body: some View {
-        HStack(spacing: Constants.Spacing.large) {
+        HStack(spacing: Constants.Spacing.regular) {
             Button {
                 vm.toggleInLibrary()
             } label: {

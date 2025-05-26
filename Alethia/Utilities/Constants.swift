@@ -82,5 +82,28 @@ extension Constants {
                 fatalError(FilesystemError.fileNotFound("Could not create database file path").localizedDescription)
             }
         }()
+        
+        static let DownloadsPath: URL = {
+            let fileManager = FileManager.default
+            guard let containerURL = fileManager.containerURL(
+                forSecurityApplicationGroupIdentifier: "group.alethia.app"
+            ) else {
+                fatalError("App Group 'group.alethia.app' not configured.")
+            }
+            
+            do {
+                let downloadsFolderURL = containerURL
+                    .appendingPathComponent("Downloads", isDirectory: true)
+                
+                try fileManager.createDirectory(
+                    at: downloadsFolderURL,
+                    withIntermediateDirectories: true
+                )
+                
+                return downloadsFolderURL
+            } catch {
+                fatalError(FilesystemError.fileNotFound("Could not create database file path").localizedDescription)
+            }
+        }()
     }
 }
