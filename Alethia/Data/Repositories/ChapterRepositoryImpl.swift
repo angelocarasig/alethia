@@ -21,8 +21,12 @@ final class ChapterRepositoryImpl {
 }
 
 extension ChapterRepositoryImpl: ChapterRepository {    
-    func getChapterContents(chapter: Chapter) async throws -> [String] {
-        return try await remote.getChapterContents(chapter: chapter)
+    func getChapterContents(chapter: Chapter, forceRemote: Bool) async throws -> [String] {
+        let shouldUseLocal = !forceRemote && chapter.downloaded
+        
+        return shouldUseLocal
+        ? try local.getChapterContents(chapter: chapter)
+        : try await remote.getChapterContents(chapter: chapter)
     }
     
     func markChapterRead(chapter: Chapter) throws {

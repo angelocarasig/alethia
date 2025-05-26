@@ -23,7 +23,7 @@ extension QueueActor {
             let chapterFolder: URL = try prepareChapterDirectory(for: chapter)
             continuation.yield(.pending(0.1))
             
-            // Step 2: Get chapter contents
+            // Step 2: Get chapter contents from remote
             let pages: [String] = try await remote.getChapterContents(chapter: chapter)
             
             guard !pages.isEmpty else {

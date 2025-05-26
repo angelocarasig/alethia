@@ -9,7 +9,7 @@ import Foundation
 import Combine
 
 protocol ChapterRepository {
-    func getChapterContents(chapter: Chapter) async throws -> [String]
+    func getChapterContents(chapter: Chapter, forceRemote: Bool) async throws -> [String]
     
     func updateChapterProgress(chapter: Chapter, newProgress: Double, override: Bool) throws -> Void
     

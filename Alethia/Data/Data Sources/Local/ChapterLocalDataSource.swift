@@ -7,6 +7,7 @@
 
 import Foundation
 import GRDB
+import ZIPFoundation
 
 final class ChapterLocalDataSource {
     init() { }
@@ -49,6 +50,69 @@ final class ChapterLocalDataSource {
                 try updatedChapter.update(db)
             }
         }
+    }
+    
+    func getChapterContents(chapter: Chapter) throws -> [String] {
+        guard let localPath = chapter.localPath else {
+            throw ChapterError.notDownloaded
+        }
+        
+        let cbzURL = URL(fileURLWithPath: localPath)
+        
+        guard FileManager.default.fileExists(atPath: cbzURL.path) else {
+            throw ChapterError.fileNotFound
+        }
+        
+        /// Temp directory should be fine - it should be removed automatically after
+        /// a while anyway, which is what's intended
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cbz-\(UUID().uuidString)")
+        
+        try FileManager.default.createDirectory(
+            at: tempDirectoryURL,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+        
+        let archive = try Archive(url: cbzURL, accessMode: .read)
+        
+        var extractedFiles: [(filename: String, url: URL)] = []
+        
+        for entry in archive {
+            let fileName = entry.path
+            let lowercased = fileName.lowercased()
+            
+            guard lowercased.hasSuffix(".jpg") ||
+                    lowercased.hasSuffix(".jpeg") ||
+                    lowercased.hasSuffix(".png") ||
+                    lowercased.hasSuffix(".webp") else {
+                continue
+            }
+            
+            guard !fileName.contains("ComicInfo.xml") &&
+                    !fileName.hasPrefix(".") else {
+                continue
+            }
+            
+            let cleanFileName = (fileName as NSString).lastPathComponent
+            let destinationURL = tempDirectoryURL.appendingPathComponent(cleanFileName)
+            
+            _ = try archive.extract(entry, to: destinationURL)
+            extractedFiles.append((filename: cleanFileName, url: destinationURL))
+        }
+        
+        extractedFiles.sort { file1, file2 in
+            return file1.filename.localizedStandardCompare(file2.filename) == .orderedAscending
+        }
+        
+        let pageURLs = extractedFiles.map { $0.url.absoluteString }
+        
+        guard !pageURLs.isEmpty else {
+            try? FileManager.default.removeItem(at: tempDirectoryURL)
+            throw ChapterError.noContent
+        }
+        
+        return pageURLs
     }
 }
 

@@ -8,7 +8,13 @@
 import Foundation
 
 protocol GetChapterContentsUseCase {
-    func execute(chapter: Chapter) async throws -> [String]
+    func execute(chapter: Chapter, forceRemote: Bool) async throws -> [String]
+}
+
+extension GetChapterContentsUseCase {
+    func execute(chapter: Chapter) async throws -> [String] {
+        return try await execute(chapter: chapter, forceRemote: false)
+    }
 }
 
 final class GetChapterContentsUseCaseImpl: GetChapterContentsUseCase {
@@ -18,7 +24,7 @@ final class GetChapterContentsUseCaseImpl: GetChapterContentsUseCase {
         self.repository = repository
     }
     
-    func execute(chapter: Chapter) async throws -> [String] {
-        return try await repository.getChapterContents(chapter: chapter)
+    func execute(chapter: Chapter, forceRemote: Bool) async throws -> [String] {
+        return try await repository.getChapterContents(chapter: chapter, forceRemote: forceRemote)
     }
 }
