@@ -51,8 +51,39 @@ final class ChapterLocalDataSource {
             }
         }
     }
-    
-    func getChapterContents(chapter: Chapter) throws -> [String] {
+
+    func getChapterContentsWithFallback(
+        chapter: Chapter,
+        fallbackToRemote: () async throws -> [String]
+    ) async throws -> [String] {
+        // Get fresh chapter data from database
+        guard let chapterId = chapter.id else {
+            throw ChapterError.notFound
+        }
+        
+        let currentChapter = try await DatabaseProvider.shared.reader.read { db in
+            guard let chapter = try Chapter.fetchOne(db, key: chapterId) else {
+                throw ChapterError.notFound
+            }
+            return chapter
+        }
+        
+        // Check if downloaded
+        guard currentChapter.downloaded else {
+            return try await fallbackToRemote()
+        }
+        
+        // Try local retrieval
+        do {
+            return try getChapterContents(chapter: currentChapter)
+        } catch {
+            // Fallback to remote on local failure
+            print("Local chapter retrieval failed: \(error). Falling back to remote...")
+            return try await fallbackToRemote()
+        }
+    }
+
+    private func getChapterContents(chapter: Chapter) throws -> [String] {
         guard let localPath = chapter.localPath else {
             throw ChapterError.notDownloaded
         }

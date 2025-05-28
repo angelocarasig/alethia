@@ -113,6 +113,7 @@ extension DetailsViewModel {
                         self.state = .conflict(received)
                     } else if let first = received.first {
                         self.options = []
+                        print("Details Updated!")
                         self.state = .success(first)
                         self.resolvedOrientation = self.resolveMangaOrientationUseCase.execute(detail: first)
                     } else {

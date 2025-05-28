@@ -22,11 +22,16 @@ final class ChapterRepositoryImpl {
 
 extension ChapterRepositoryImpl: ChapterRepository {    
     func getChapterContents(chapter: Chapter, forceRemote: Bool) async throws -> [String] {
-        let shouldUseLocal = !forceRemote && chapter.downloaded
+        if forceRemote {
+            return try await remote.getChapterContents(chapter: chapter)
+        }
         
-        return shouldUseLocal
-        ? try local.getChapterContents(chapter: chapter)
-        : try await remote.getChapterContents(chapter: chapter)
+        return try await local.getChapterContentsWithFallback(
+            chapter: chapter,
+            fallbackToRemote: { [remote] in
+                try await remote.getChapterContents(chapter: chapter)
+            }
+        )
     }
     
     func markChapterRead(chapter: Chapter) throws {
