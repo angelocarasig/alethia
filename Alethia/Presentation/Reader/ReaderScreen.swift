@@ -161,12 +161,13 @@ extension ReaderScreen {
                         url: page.pageUrl,
                         referer: page.pageReferer
                     )
-                    .id(page.pageNumber)
-                    .onScrollVisibilityChange { isVisible in
-                        if !vm.didScrollScrubber && isVisible {
+                    // onappear easier for vertical reader here
+                    .onAppear {
+                        if !vm.didScrollScrubber {
                             vm.updateCurrentPage(page: page)
                         }
                     }
+                    .id(page.pageNumber)
                     .containerRelativeFrame(
                         vm.orientation == Orientation.Vertical ? .vertical : .horizontal,
                         count: 1,

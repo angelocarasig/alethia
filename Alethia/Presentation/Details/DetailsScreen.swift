@@ -223,8 +223,6 @@ extension DetailsScreen {
                         // TODO: Refresh chapters
                     }
                 }
-                
-                ContinueReadingView()
             }
         }
         

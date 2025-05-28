@@ -194,10 +194,11 @@ extension ReaderOverlay {
                 .font(.headline)
                 .fontWeight(.medium)
         }
-        .padding(Constants.Padding.regular)
+        .padding(Constants.Padding.screen)
         .frame(maxWidth: .infinity)
         .background(.bar)
         .cornerRadius(Constants.Corner.Radius.panel)
         .padding()
+        .padding(.bottom, Constants.Padding.regular)
     }
 }

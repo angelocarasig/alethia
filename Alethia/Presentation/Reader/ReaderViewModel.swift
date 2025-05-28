@@ -209,6 +209,28 @@ extension ReaderViewModel {
         }
     }
     
+    func updateCurrentPage(pageNumber: Int?) -> Void {
+        guard let pageNumber = pageNumber else { return }
+        
+        // Check if we're already on this page
+        if let current = currentPage, current.pageNumber == pageNumber {
+            return
+        }
+        
+        // Find the page with this number
+        guard case .loaded(let pages) = state,
+              let page = pages.first(where: { $0.pageNumber == pageNumber }) else {
+            return
+        }
+        
+        currentPage = page
+        
+        // Prefetch on main queue
+        DispatchQueue.main.async { [weak self] in
+            self?.prefetch()
+        }
+    }
+    
     func updateChapterProgress(didCompleteChapter: Bool, completion: (() -> Void)? = nil) -> Void {
         do {
             if didCompleteChapter {
