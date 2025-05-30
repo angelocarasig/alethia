@@ -114,7 +114,7 @@ extension ReaderOverlay {
     
     @ViewBuilder
     private func ChapterListMenu() -> some View {
-        let allChapters = vm.chapters.toArray()
+        let allChapters = vm.chapters.toArray().sorted { $0.chapter.number > $1.chapter.number }
         
         ForEach(allChapters, id: \.chapter.id) { chapter in
             Button {

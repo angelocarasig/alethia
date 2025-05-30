@@ -71,11 +71,12 @@ final class ReaderViewModel: ObservableObject {
         self.currentChapter = currentChapter
         self.chapters = ChapterList(chapters: chapters)
         
-        self.getChapterContentsUseCase = DependencyInjector.shared.makeGetChapterContentsUseCase()
-        self.updateMangaOrientationUseCase = DependencyInjector.shared.makeUpdateMangaOrientationUseCase()
-        self.updateChapterProgressUseCase = DependencyInjector.shared.makeUpdateChapterProgressUseCase()
-        self.markChapterReadUseCase = DependencyInjector.shared.makeMarkChapterReadUseCase()
-        self.getRecommendationsUseCase = DependencyInjector.shared.makeGetRecommendationsUseCase()
+        let injector = DependencyInjector.shared
+        self.getChapterContentsUseCase = injector.makeGetChapterContentsUseCase()
+        self.updateMangaOrientationUseCase = injector.makeUpdateMangaOrientationUseCase()
+        self.updateChapterProgressUseCase = injector.makeUpdateChapterProgressUseCase()
+        self.markChapterReadUseCase = injector.makeMarkChapterReadUseCase()
+        self.getRecommendationsUseCase = injector.makeGetRecommendationsUseCase()
         
         setupControls()
     }

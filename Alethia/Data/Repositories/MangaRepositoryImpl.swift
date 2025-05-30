@@ -64,6 +64,10 @@ extension MangaRepositoryImpl: MangaRepository {
     func resolveMangaOrientation(detail: Detail) -> Orientation {
         return local.resolveMangaOrientation(detail: detail)
     }
+    
+    func updateMangaCover(mangaId: Int64, coverId: Int64) throws {
+        try local.updateMangaCover(mangaId: mangaId, coverId: coverId)
+    }
 }
 
 // MARK: Helpers

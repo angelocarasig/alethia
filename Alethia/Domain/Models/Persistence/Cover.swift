@@ -8,7 +8,8 @@
 import Foundation
 import GRDB
 
-struct Cover: Codable, Identifiable {
+struct Cover: Codable, Identifiable, Equatable {
+    
     var id: Int64?
     
     var active: Bool

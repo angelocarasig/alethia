@@ -11,10 +11,10 @@ import Kingfisher
 fileprivate let BACKGROUND_GRADIENT_BREAKPOINT: CGFloat = 600
 
 struct BackdropView: View {
-    let cover: Cover?
+    @EnvironmentObject private var vm: DetailsViewModel
     
     var body: some View {
-        let cover = cover?.url ?? ""
+        let cover = vm.activeCover?.url ?? ""
         GeometryReader { geometry in
             KFImage(URL(string: cover))
                 .placeholder { Color.secondary.shimmer() }

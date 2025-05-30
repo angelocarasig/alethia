@@ -200,7 +200,7 @@ extension DetailsScreen {
         
         var body: some View {
             ZStack {
-                BackdropView(cover: vm.details?.covers.first)
+                BackdropView()
                 
                 GeometryReader { geometry in
                     ScrollView(.vertical, showsIndicators: false) {

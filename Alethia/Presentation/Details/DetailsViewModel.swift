@@ -12,7 +12,7 @@ import Combine
 final class DetailsViewModel: ObservableObject {
     // MARK: - Published Properties
     @Published private(set) var state: ViewState = .loading
-    @Published private(set) var addingOrigin: Bool = false
+    @Published private(set) var addingOrigin: Bool = false // loading state while an origin is being added
     @Published var confirmationRequest: ConfirmationRequest? = nil
     
     typealias ChapterId = Int64
@@ -32,6 +32,7 @@ final class DetailsViewModel: ObservableObject {
     private let addMangaOriginUseCase: AddMangaOriginUseCase
     private let markAllChaptersUseCase: MarkAllChaptersUseCase
     private let updateChapterProgressUseCase: UpdateChapterProgressUseCase
+    private let updateMangaCoverUseCase: UpdateMangaCoverUseCase
     // MARK: - Downloading
     private let downloadChapterUseCase: DownloadChapterUseCase
     
@@ -49,6 +50,7 @@ final class DetailsViewModel: ObservableObject {
         self.markAllChaptersUseCase = injector.makeMarkAllChaptersUseCase()
         self.updateChapterProgressUseCase = injector.makeUpdateChapterProgressUseCase()
         self.downloadChapterUseCase = injector.makeDownloadChapterUseCase()
+        self.updateMangaCoverUseCase = injector.makeUpdateMangaCoverUseCase()
         
         setupDownloadObservers()
     }
@@ -74,6 +76,10 @@ extension DetailsViewModel {
     
     var inLibrary: Bool {
         details?.manga.inLibrary ?? false
+    }
+    
+    var activeCover: Cover? {
+        details?.covers.first(where: { $0.active })
     }
     
     var chapters: [ChapterExtended] {
@@ -237,6 +243,17 @@ extension DetailsViewModel {
             )
         }
         catch {
+            state = .error(error)
+        }
+    }
+    
+    func updateMangaCover(_ cover: Cover) {
+        guard let mangaId = details?.manga.id,
+              let coverId = cover.id else { return }
+        
+        do {
+            try updateMangaCoverUseCase.execute(mangaId: mangaId, coverId: coverId)
+        } catch {
             state = .error(error)
         }
     }

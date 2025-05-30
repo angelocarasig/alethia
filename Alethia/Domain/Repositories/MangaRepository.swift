@@ -20,6 +20,8 @@ protocol MangaRepository {
     
     func addMangaOrigin(entry: Entry, mangaId: Int64) async throws -> Void
     
+    func updateMangaCover(mangaId: Int64, coverId: Int64) throws -> Void
+    
     func getMangaRecommendations(mangaId: Int64) throws -> RecommendedEntries
     
     func resolveMangaOrientation(detail: Detail) -> Orientation

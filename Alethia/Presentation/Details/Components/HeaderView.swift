@@ -10,12 +10,8 @@ import Kingfisher
 
 struct HeaderView: View {
     @EnvironmentObject private var vm: DetailsViewModel
-    
+    @State private var showArtwork: Bool = false
     @State private var imageSize: CGSize = .zero
-    
-    var cover: Cover? {
-        vm.details?.covers.first(where: { $0.active })
-    }
     
     var title: String {
         vm.details?.manga.title ?? "No Title"
@@ -50,7 +46,7 @@ struct HeaderView: View {
     
     var body: some View {
         VStack(alignment: .leading) {
-            KFImage(URL(string: cover?.url ?? ""))
+            KFImage(URL(string: vm.activeCover?.url ?? ""))
                 .onSuccess { result in
                     imageSize = result.image.size
                 }
@@ -58,6 +54,7 @@ struct HeaderView: View {
                 .resizable()
                 .frame(width: displaySize.width, height: displaySize.height)
                 .clipShape(.rect(cornerRadius: Constants.Corner.Radius.regular, style: .continuous))
+                .onTapGesture { showArtwork = true }
             
             Text(title)
                 .font(.title2)
@@ -66,6 +63,9 @@ struct HeaderView: View {
             Text(authors.map { $0.name }.joined(separator: ", "))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
+        }
+        .sheet(isPresented: $showArtwork) {
+            ArtworkListView()
         }
     }
 }

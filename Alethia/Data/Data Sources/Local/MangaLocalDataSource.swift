@@ -230,7 +230,7 @@ final class MangaLocalDataSource {
             "vertical",
             "scroll",
             "scrolling",
-            "webcomic",
+//            "webcomic", <-- tends to be like twitter shorts so uncommented
             "digitalcomic",
             "mobilecomic",
             "korean",
@@ -258,6 +258,31 @@ final class MangaLocalDataSource {
         }
         
         return .LeftToRight
+    }
+    
+    func updateMangaCover(mangaId: Int64, coverId: Int64) throws {
+        try database.write { db in
+            // First, verify the manga exists
+            guard try Manga.fetchOne(db, key: mangaId) != nil else {
+                throw MangaError.notFound
+            }
+            
+            // Verify the cover exists and belongs to this manga
+            guard let newActiveCover = try Cover.fetchOne(db, key: coverId),
+                  newActiveCover.mangaId == mangaId else {
+                throw MangaError.notFound
+            }
+            
+            // Deactivate all covers for this manga
+            try Cover
+                .filter(Cover.Columns.mangaId == mangaId)
+                .updateAll(db, Cover.Columns.active.set(to: false))
+            
+            // Activate the selected cover
+            var updatedCover = newActiveCover
+            updatedCover.active = true
+            try updatedCover.update(db)
+        }
     }
 }
 
