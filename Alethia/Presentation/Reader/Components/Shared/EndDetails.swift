@@ -13,26 +13,23 @@ struct EndDetails: View {
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            Spacer().frame(height: 150)
-            
-            ContentSection()
-            
-            Spacer()
-            
-            // TODO: Redesign
-//            ChapterSelectionSection()
-            
-            TrackerSection()
-            
-            Spacer()
-            
-            if let recommendations = vm.recommendations {
-                Recommendations(recommendations: recommendations)
+            VStack(spacing: Constants.Spacing.large) {
+                // Top padding
+                Spacer().frame(height: 60)
+                
+                ContentSection()
+                
+                TrackerSection()
+                
+                if let recommendations = vm.recommendations {
+                    Recommendations(recommendations: recommendations)
+                }
+                
+                // Bottom padding
+                Spacer().frame(height: 100)
             }
-            
-            Spacer().frame(height: 150)
+            .padding(.horizontal)
         }
-        .padding(.horizontal, Constants.Padding.screen)
         .frame(width: UIScreen.main.bounds.width)
     }
 }
@@ -43,83 +40,276 @@ extension EndDetails {
     private func ContentSection() -> some View {
         let chapterNumber = "Chapter \(vm.currentChapter.chapter.number.toString())"
         let chapterTitle = vm.currentChapter.chapter.title
+        let buttonSectionHeight: CGFloat = 65
+        
         VStack(spacing: Constants.Spacing.large) {
-            HStack {
-                Image(systemName: "checkmark.circle")
-                    .fontWeight(.semibold)
+            // Success indicator
+            VStack(spacing: Constants.Spacing.regular) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 56))
                     .foregroundStyle(.green)
+                    .symbolRenderingMode(.hierarchical)
+                    .imageScale(.medium)
+                    .symbolEffect(.pulse, options: .repeating.speed(0.5))
                 
                 Text("Finished Reading")
+                    .font(.title)
                     .fontWeight(.bold)
             }
-            .font(.title)
             
-            VStack(spacing: Constants.Spacing.large) {
+            // Chapter info
+            VStack(spacing: Constants.Padding.regular) {
                 Text(chapterNumber)
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
                 
                 if chapterNumber.localizedCaseInsensitiveCompare(chapterTitle) != .orderedSame {
                     Text(chapterTitle)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .lineLimit(3, reservesSpace: true)
+                        .font(.title3)
+                        .lineLimit(3)
                         .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .fontWeight(.semibold)
             
             Spacer().frame(height: 50)
             
-            GeometryReader { geometry in
-                HStack {
-                    Button {
-                        vm.updateChapterProgress(didCompleteChapter: true) {
-                            dismiss()
-                        }
-                    } label: {
-                        Text("Exit")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.white)
-                            .padding()
-                            .frame(width: geometry.size.width * 0.35, alignment: .center)
-                            .frame(maxHeight: .infinity)
-                            .background(Color.accentColor)
-                            .cornerRadius(Constants.Corner.Radius.button)
+            // Action buttons
+            HStack {
+                Button {
+                    vm.updateChapterProgress(didCompleteChapter: true) {
+                        dismiss()
                     }
-                    .buttonStyle(.plain)
-                    
-                    // TODO: Add banner if next chapter skips a value:
-                    // - If next chapter is non-decimal and not a by-1 increment
-                    // - If next chapter is decimal but >= 2 value difference
-                    
-                    Button {
+                } label: {
+                    VStack(spacing: Constants.Spacing.minimal) {
+                        Image(systemName: "house.fill")
+                        Text("Exit")
+                    }
+                }
+                .buttonStyle(.plain)
+                .font(.headline)
+                .fontWeight(.semibold)
+                .padding()
+                .frame(width: 150, height: buttonSectionHeight)
+                .background(Color.secondary.opacity(0.2))
+                .foregroundStyle(Color.primary)
+                .cornerRadius(Constants.Corner.Radius.button)
+                
+                // TODO: Add banner if next chapter skips a value:
+                // - If next chapter is non-decimal and not a by-1 increment
+                // - If next chapter is decimal but >= 2 value difference
+                
+                Button {
+                    if vm.canGoForward {
                         vm.updateChapterProgress(didCompleteChapter: true) {
                             Task {
                                 await vm.loadNextChapter()
                             }
                         }
-                    } label: {
-                        HStack {
-                            Text(vm.canGoForward ? "Next Chapter" : "No Next Chapter")
-                            Image(systemName: "chevron.right")
-                        }
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(Color.text)
-                        .padding()
-                        .frame(width: geometry.size.width * 0.6, alignment: .center)
-                        .frame(maxHeight: .infinity)
-                        .background(Color.tint)
-                        .cornerRadius(Constants.Corner.Radius.button)
-                        .disabled(!vm.canGoForward)
                     }
-                    .buttonStyle(.plain)
+                } label: {
+                    HStack {
+                        Text(vm.canGoForward ? "Next Chapter" : "No Next Chapter.")
+                        if vm.canGoForward {
+                            Image(systemName: "chevron.right")
+                                .imageScale(.medium)
+                                .symbolEffect(.pulse, options: .repeating.speed(0.25))
+                        }
+                    }
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: buttonSectionHeight)
+                    .foregroundStyle(vm.canGoForward ? Color.text : Color.secondary)
+                    .background(vm.canGoForward ? Color.accentColor : Color.tint.opacity(0.65))
+                    .cornerRadius(Constants.Corner.Radius.button)
+                    .disabled(!vm.canGoForward)
                 }
-                .padding(.bottom, 15)
+                .buttonStyle(.plain)
             }
-            .frame(height: 75)
+            .padding(.bottom, Constants.Padding.regular)
         }
+        .padding(.vertical)
+    }
+}
+
+// MARK: - Tracker Section
+extension EndDetails {
+    @ViewBuilder
+    private func TrackerSection() -> some View {
+        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+            Text("Tracking")
+                .font(.title3)
+                .fontWeight(.semibold)
+                .foregroundStyle(.primary)
+            
+            GroupBox {
+                HStack(spacing: Constants.Spacing.regular) {
+                    // Tracker icon
+                    Image("AniList")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 44, height: 44)
+                        .clipShape(RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular, style: .continuous))
+                    
+                    // Tracker info
+                    VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
+                        Text(vm.mangaTitle)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .lineLimit(1)
+                        
+                        Text("Last synced: May 21, 2021")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    // Sync status
+                    VStack(alignment: .trailing, spacing: Constants.Spacing.minimal) {
+                        SyncStatusBadge()
+                        
+                        Text("1/999")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, Constants.Padding.minimal)
+            }
+            .groupBoxStyle(CompactGroupBoxStyle())
+        }
+    }
+    
+    @ViewBuilder
+    private func SyncStatusBadge() -> some View {
+        let badgeColor: Color = Color.accentColor
+        
+        HStack(spacing: Constants.Spacing.minimal) {
+            ProgressView()
+                .scaleEffect(0.7)
+            Text("Syncing")
+                .font(.caption)
+        }
+        .padding(.horizontal, Constants.Padding.regular)
+        .padding(.vertical, Constants.Padding.minimal)
+        .foregroundStyle(.white)
+        .background(badgeColor.opacity(0.75))
+        .clipShape(.capsule)
+        .overlay(
+            Capsule()
+                .strokeBorder(badgeColor.opacity(0.2), lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Recommendations
+extension EndDetails {
+    @ViewBuilder
+    private func Recommendations(recommendations: RecommendedEntries) -> some View {
+        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+            if !recommendations.withSimilarTags.isEmpty {
+                RecommendationSection(
+                    title: "You Might Like",
+                    systemImage: "sparkles",
+                    items: recommendations.withSimilarTags
+                )
+            }
+            
+            if !recommendations.fromSameCollection.isEmpty {
+                RecommendationSection(
+                    title: "Similar Collections",
+                    systemImage: "books.vertical",
+                    items: recommendations.fromSameCollection
+                )
+            }
+            
+            if !recommendations.otherWorksByAuthor.isEmpty {
+                RecommendationSection(
+                    title: "More by Author",
+                    systemImage: "person.crop.circle",
+                    items: recommendations.otherWorksByAuthor
+                )
+            }
+            
+            if !recommendations.otherSeriesByScanlator.isEmpty {
+                RecommendationSection(
+                    title: "More by Scanlator",
+                    systemImage: "doc.text.magnifyingglass",
+                    items: recommendations.otherSeriesByScanlator
+                )
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func RecommendationSection(title: String, systemImage: String, items: [Entry]) -> some View {
+        VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+            // Section header
+            Label(title, systemImage: systemImage)
+                .font(.title3)
+                .fontWeight(.semibold)
+                .foregroundStyle(.primary)
+            
+            // Horizontal scroll
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: Constants.Spacing.regular) {
+                    ForEach(items, id: \.id) { entry in
+                        NavigationLink {
+                            DetailsScreen(entry: entry, source: nil)
+                        } label: {
+                            RecommendationCard(entry: entry)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func RecommendationCard(entry: Entry) -> some View {
+        EntryView(item: entry, downsample: true, lineLimit: 2)
+            .frame(width: 125)
+    }
+}
+
+// MARK: - Alternative Sync Status Components
+extension EndDetails {
+    @ViewBuilder
+    private func SyncedBadge() -> some View {
+        let badgeColor: Color = Color.green
+        
+        Label("Synced", systemImage: "checkmark.circle.fill")
+            .font(.caption)
+            .padding(.horizontal, Constants.Padding.regular)
+            .padding(.vertical, Constants.Padding.minimal)
+            .foregroundStyle(.white)
+            .background(badgeColor.opacity(0.75))
+            .clipShape(.capsule)
+            .overlay(
+                Capsule()
+                    .strokeBorder(badgeColor.opacity(0.2), lineWidth: 1)
+            )
+    }
+    
+    @ViewBuilder
+    private func ErrorBadge() -> some View {
+        let badgeColor: Color = Color.red
+        
+        Label("Error", systemImage: "exclamationmark.triangle.fill")
+            .font(.caption)
+            .padding(.horizontal, Constants.Padding.regular)
+            .padding(.vertical, Constants.Padding.minimal)
+            .foregroundStyle(.white)
+            .background(badgeColor.opacity(0.75))
+            .clipShape(.capsule)
+            .overlay(
+                Capsule()
+                    .strokeBorder(badgeColor.opacity(0.2), lineWidth: 1)
+            )
     }
 }
 
@@ -127,37 +317,24 @@ extension EndDetails {
 extension EndDetails {
     @ViewBuilder
     private func ChapterSelectionSection() -> some View {
-        let allChapters = vm.chapters.toArray()
-        
-        VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
-            Text("CHAPTERS")
-                .font(.footnote)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
-                .padding(.bottom, Constants.Padding.regular)
+        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+            Label("Chapters", systemImage: "list.bullet")
+                .font(.headline)
             
-            ScrollView(.vertical, showsIndicators: true) {
-                LazyVStack(spacing: 0) {
-                    ForEach(allChapters, id: \.chapter.id) { chapter in
-                        ChapterRow(chapter: chapter)
-                    }
+            List {
+                ForEach(vm.chapters.toArray(), id: \.chapter.id) { chapter in
+                    ChapterListRow(chapter: chapter)
                 }
             }
-            .frame(maxHeight: 500)
-            .background(Color.background)
-            .cornerRadius(Constants.Corner.Radius.regular)
-            .overlay(
-                RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-            )
+            .listStyle(.insetGrouped)
+            .frame(maxHeight: 400)
+            .scrollContentBackground(.hidden)
         }
-        .padding(.vertical, Constants.Padding.regular)
     }
     
     @ViewBuilder
-    private func ChapterRow(chapter: ChapterExtended) -> some View {
+    private func ChapterListRow(chapter: ChapterExtended) -> some View {
         let isCurrentChapter = chapter.chapter.id == vm.currentChapter.chapter.id
-        let isBeforeCurrentChapter = chapter.chapter.number < vm.currentChapter.chapter.number
         
         Button {
             if !isCurrentChapter {
@@ -167,16 +344,15 @@ extension EndDetails {
             }
         } label: {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Chapter \(chapter.chapter.number.toString())")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                    }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Chapter \(chapter.chapter.number.toString())")
+                        .font(.subheadline)
+                        .fontWeight(isCurrentChapter ? .semibold : .regular)
                     
                     if chapter.chapter.title != chapter.chapter.number.toString() {
                         Text(chapter.chapter.title)
                             .font(.caption)
+                            .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
                 }
@@ -185,188 +361,32 @@ extension EndDetails {
                 
                 if isCurrentChapter {
                     Text("Current")
-                        .font(.caption)
+                        .font(.caption2)
                         .fontWeight(.medium)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Color.accentColor)
                         .foregroundStyle(.white)
-                        .cornerRadius(4)
+                        .clipShape(Capsule())
                 }
             }
-            .padding(.horizontal, Constants.Padding.regular)
-            .padding(.vertical, 12)
-            .background(isCurrentChapter ? Color.accentColor.opacity(0.1) : Color.clear)
-            .opacity(isBeforeCurrentChapter ? 0.5 : 1.0)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(isCurrentChapter)
+        .listRowBackground(
+            isCurrentChapter ? Color.accentColor.opacity(0.1) : Color.clear
+        )
     }
 }
 
-// MARK: - Tracker Section
-extension EndDetails {
-    @ViewBuilder
-    private func TrackerSection() -> some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
-            Text("TRACKERS")
-                .font(.footnote)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
-                .padding(.bottom, Constants.Padding.regular)
-            
-            HStack {
-                // TODO: Use non-stubbed info
-                Image("AniList")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 60, height: 60)
-                    .cornerRadius(Constants.Corner.Radius.regular)
-                
-                VStack(alignment: .leading) {
-                    // TODO: Use title from anilist fetch instead
-                    Text(vm.mangaTitle)
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .lineLimit(1)
-                    
-                    Text("Last Updated \n Mon 21st May, 2021")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing) {
-                    SyncingLabel()
-                    
-                    Text("1/\(999) Chapters")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            }
+private struct CompactGroupBoxStyle: GroupBoxStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            configuration.content
+                .padding(Constants.Padding.screen)
         }
-    }
-}
-
-// MARK: - Recommendations
-extension EndDetails {
-    @ViewBuilder
-    private func Recommendations(recommendations: RecommendedEntries) -> some View {
-        VStack(spacing: Constants.Spacing.large) {
-            if recommendations.withSimilarTags.count > 0 {
-                RecommendationRow(title: "YOU MIGHT LIKE", content: recommendations.withSimilarTags)
-            }
-            
-            if recommendations.fromSameCollection.count > 0 {
-                RecommendationRow(title: "IN SIMILAR COLLECTIONS", content: recommendations.fromSameCollection)
-            }
-            
-            if recommendations.otherWorksByAuthor.count > 0 {
-                RecommendationRow(title: "AUTHORS OTHER WORKS", content: recommendations.otherWorksByAuthor)
-            }
-            
-            if recommendations.otherSeriesByScanlator.count > 0 {
-                RecommendationRow(title: "SCANLATORS OTHER SERIES", content: recommendations.otherSeriesByScanlator)
-            }
-        }
-        .padding(.vertical, Constants.Padding.screen)
-    }
-    
-    @ViewBuilder
-    private func RecommendationRow(title: String, content: [Entry]) -> some View {
-        VStack(alignment: .leading) {
-            Text(title)
-                .font(.footnote)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
-                .padding(.top, Constants.Padding.regular)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: Constants.Spacing.minimal) {
-                    ForEach(content, id: \.self) { entry in
-                        NavigationLink {
-                            DetailsScreen(entry: entry, source: nil)
-                        } label: {
-                            EntryView(
-                                item: entry,
-                                downsample: true,
-                                lineLimit: 2
-                            )
-                        }
-                        .frame(width: 150)
-                        .id(entry.id)
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Sync Status Labels
-extension EndDetails {
-    @ViewBuilder
-    private func SyncingLabel() -> some View {
-        HStack {
-            Text("Syncing")
-                .font(.headline)
-                .padding(Constants.Padding.regular)
-                .background(
-                    RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-                        .fill(Color.blue.opacity(0.5))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-                                .stroke(Color.blue.opacity(0.9), lineWidth: 2)
-                        )
-                )
-                .foregroundColor(Color.blue)
-                .cornerRadius(Constants.Corner.Radius.regular)
-        }
-    }
-    
-    @ViewBuilder
-    private func SyncedLabel() -> some View {
-        HStack {
-            Text("Synced")
-                .font(.headline)
-                .padding(Constants.Padding.regular)
-                .background(
-                    RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-                        .fill(Color.green.opacity(0.5))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-                                .stroke(Color.green.opacity(0.9), lineWidth: 2)
-                        )
-                )
-                .foregroundColor(Color.green)
-                .cornerRadius(Constants.Corner.Radius.regular)
-            
-            Image(systemName: "checkmark.circle")
-                .foregroundColor(Color.green)
-        }
-    }
-    
-    @ViewBuilder
-    private func ErrorLabel() -> some View {
-        HStack {
-            Text("Error")
-                .font(.headline)
-                .padding(Constants.Padding.regular)
-                .background(
-                    RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-                        .fill(Color.red.opacity(0.5))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-                                .stroke(Color.red.opacity(0.9), lineWidth: 2)
-                        )
-                )
-                .foregroundColor(Color.red)
-                .cornerRadius(Constants.Corner.Radius.regular)
-            
-            Image(systemName: "arrow.trianglehead.counterclockwise")
-                .foregroundColor(Color.red)
-        }
+        .background(Color.secondary.opacity(0.2))
+        .clipShape(RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular, style: .continuous))
     }
 }

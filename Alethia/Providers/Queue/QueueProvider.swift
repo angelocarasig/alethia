@@ -15,9 +15,10 @@ protocol QueueOperationIdentifiable {
     var queueOperationId: QueueOperationId { get }
 }
 
+/// The type of operation a queue operation object contains
 enum QueueOperationType {
     case chapterDownload(Chapter)
-    case metadataRefresh
+    case metadataRefresh(Manga)
 }
 
 enum QueueOperationState: Equatable {
@@ -27,7 +28,6 @@ enum QueueOperationState: Equatable {
     case cancelled
     case failed(Error)
     
-    // Equatable conformance for Error case
     static func == (lhs: QueueOperationState, rhs: QueueOperationState) -> Bool {
         switch (lhs, rhs) {
         case (.pending, .pending),
@@ -96,7 +96,7 @@ final class QueueOperation: ObservableObject, Identifiable {
 final class QueueProvider: ObservableObject {
     static var shared = QueueProvider()
     
-    @Published private(set) var operations: OrderedDictionary<QueueOperationId, QueueOperation> = [:]
+    @Published private(set) var operations = OrderedDictionary<QueueOperationId, QueueOperation>()
     
     private var cancellables = Set<AnyCancellable>()
     private let downloadChapterUseCase: DownloadChapterUseCase
@@ -160,12 +160,12 @@ extension QueueProvider {
             return false
         }.count
         
-        guard ongoingCount < 5 else { return }
+        guard ongoingCount < Constants.Queue.ConcurrentOperationsCount else { return }
         
         /// get available pending operations
         
         let pendingOperations = operations.values.filter { $0.state == .pending }
-        let slotsAvailable = 5 - ongoingCount
+        let slotsAvailable = Constants.Queue.ConcurrentOperationsCount - ongoingCount
         
         /// for available pending operations start their action
         

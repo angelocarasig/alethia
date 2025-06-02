@@ -94,6 +94,14 @@ extension ReaderViewModel {
 
 // MARK: Computed
 extension ReaderViewModel {
+    var nextChapter: ChapterExtended? {
+        if let chapter = currentPage?.underlyingChapter {
+            return chapters.findNode(for: chapter)?.next?.chapter
+        }
+        
+        return nil
+    }
+    
     var canGoForward: Bool {
         if let chapter = currentPage?.underlyingChapter {
             return chapters.findNode(for: chapter)?.next != nil

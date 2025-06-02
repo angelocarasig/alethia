@@ -107,3 +107,9 @@ extension Constants {
         }()
     }
 }
+
+extension Constants {
+    struct Queue {
+        static let ConcurrentOperationsCount: Int = 5
+    }
+}

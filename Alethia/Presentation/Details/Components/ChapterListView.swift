@@ -118,6 +118,7 @@ struct ChapterListView: View {
                 .buttonStyle(.plain)
             }
         }
+        .padding(.bottom, Constants.Padding.screen)
     }
 }
 
