@@ -269,13 +269,13 @@ private struct ChapterRow: View {
             .disabled(item.chapter.read)
             
             Button {
-                
+                vm.markAllChaptersAbove(from: item, asRead: true)
             } label: {
                 Label("Read Above", systemImage: "arrow.up.square.fill")
             }
             
             Button {
-                
+                vm.markAllChaptersBelow(from: item, asRead: true)
             } label: {
                 Label("Read Below", systemImage: "arrow.down.square.fill")
             }
@@ -290,13 +290,13 @@ private struct ChapterRow: View {
             .disabled(!item.chapter.read)
             
             Button {
-                
+                vm.markAllChaptersAbove(from: item, asRead: false)
             } label: {
                 Label("Unread Above", systemImage: "arrow.up.square")
             }
             
             Button {
-                
+                vm.markAllChaptersBelow(from: item, asRead: false)
             } label: {
                 Label("Unread Below", systemImage: "arrow.down.square")
             }
@@ -304,6 +304,7 @@ private struct ChapterRow: View {
         
         ControlGroup {
             Button {
+                vm.downloadChapter(item.chapter)
             } label: {
                 Label("Start Chapter Download", systemImage: "arrow.down")
             }

@@ -1,5 +1,5 @@
 {
-  "originHash" : "f80fbac31e5c51dc06611e5a3f349c3f6e9c6263da76258921851c3c2d9baa1e",
+  "originHash" : "5e1a9501cb81eb7db4218b08203023ca0ffb496c5dee838569b22d48d8918128",
   "pins" : [
     {
       "identity" : "grdb.swift",
@@ -17,6 +17,15 @@
       "state" : {
         "revision" : "7deda23bbdca612076c5c315003d8638a08ed0f1",
         "version" : "8.3.2"
+      }
+    },
+    {
+      "identity" : "queuer",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/FabrizioBrancati/Queuer.git",
+      "state" : {
+        "revision" : "8bf0b4cae3893f970e733025646d07fe8a39fb15",
+        "version" : "3.0.1"
       }
     },
     {

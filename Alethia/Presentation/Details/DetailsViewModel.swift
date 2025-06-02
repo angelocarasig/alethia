@@ -247,6 +247,42 @@ extension DetailsViewModel {
         }
     }
     
+    func markAllChaptersAbove(from chapter: ChapterExtended, asRead: Bool) {
+        guard !chapters.isEmpty else { return }
+        
+        // Find all chapters with number >= target chapter number
+        let chaptersInRange = chapters
+            .map { $0.chapter }
+            .filter { $0.number >= chapter.chapter.number }
+        
+        guard !chaptersInRange.isEmpty else { return }
+        
+        markAllChaptersInRange(chapters: chaptersInRange, asRead: asRead)
+    }
+    
+    func markAllChaptersBelow(from chapter: ChapterExtended, asRead: Bool) {
+        guard !chapters.isEmpty else { return }
+        
+        // Find all chapters with number <= target chapter number
+        let chaptersInRange = chapters
+            .map { $0.chapter }
+            .filter { $0.number <= chapter.chapter.number }
+        
+        guard !chaptersInRange.isEmpty else { return }
+        
+        markAllChaptersInRange(chapters: chaptersInRange, asRead: asRead)
+    }
+    
+    /// chapters passed should be calculated
+    private func markAllChaptersInRange(chapters: [Chapter], asRead: Bool) {
+        do {
+            try markAllChaptersUseCase.execute(chapters: chapters, asRead: asRead)
+        }
+        catch {
+            state = .error(error)
+        }
+    }
+    
     func updateMangaCover(_ cover: Cover) {
         guard let mangaId = details?.manga.id,
               let coverId = cover.id else { return }
