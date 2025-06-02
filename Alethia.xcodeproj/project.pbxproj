@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		17165EA52DED3BF200915ACC /* Queuer in Frameworks */ = {isa = PBXBuildFile; productRef = 17165EA42DED3BF200915ACC /* Queuer */; };
+		17165EB12DED698300915ACC /* Collections in Frameworks */ = {isa = PBXBuildFile; productRef = 17165EB02DED698300915ACC /* Collections */; };
 		174FAAAC2DD237D600AD7BE3 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 174FAAAB2DD237D300AD7BE3 /* README.md */; };
 		176C40592DCB380A00B521AD /* Flow in Frameworks */ = {isa = PBXBuildFile; productRef = 176C40582DCB380A00B521AD /* Flow */; };
 		179E8D752DA6A3DE00F43EBC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 179E8D742DA6A3DE00F43EBC /* GRDB */; };
@@ -69,6 +70,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				17165EB12DED698300915ACC /* Collections in Frameworks */,
 				17165EA52DED3BF200915ACC /* Queuer in Frameworks */,
 				176C40592DCB380A00B521AD /* Flow in Frameworks */,
 				17EAA3E02DB3281F00CB9EE5 /* Kingfisher in Frameworks */,
@@ -147,6 +149,7 @@
 				176C40582DCB380A00B521AD /* Flow */,
 				17B0AC7A2DE43C1500B11B76 /* ZIPFoundation */,
 				17165EA42DED3BF200915ACC /* Queuer */,
+				17165EB02DED698300915ACC /* Collections */,
 			);
 			productName = Alethia;
 			productReference = 17D458CE2DA6A34700CF3BA4 /* Alethia.app */;
@@ -186,6 +189,7 @@
 				176C40572DCB37DF00B521AD /* XCRemoteSwiftPackageReference "SwiftUI-Flow" */,
 				17B0AC792DE43C1500B11B76 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 				17165EA32DED3BF200915ACC /* XCRemoteSwiftPackageReference "Queuer" */,
+				17165EAF2DED698300915ACC /* XCRemoteSwiftPackageReference "swift-collections" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 17D458CF2DA6A34700CF3BA4 /* Products */;
@@ -514,6 +518,14 @@
 				minimumVersion = 3.0.1;
 			};
 		};
+		17165EAF2DED698300915ACC /* XCRemoteSwiftPackageReference "swift-collections" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-collections.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.2.0;
+			};
+		};
 		176C40572DCB37DF00B521AD /* XCRemoteSwiftPackageReference "SwiftUI-Flow" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/tevelee/SwiftUI-Flow.git";
@@ -553,6 +565,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 17165EA32DED3BF200915ACC /* XCRemoteSwiftPackageReference "Queuer" */;
 			productName = Queuer;
+		};
+		17165EB02DED698300915ACC /* Collections */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 17165EAF2DED698300915ACC /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = Collections;
 		};
 		176C40582DCB380A00B521AD /* Flow */ = {
 			isa = XCSwiftPackageProductDependency;

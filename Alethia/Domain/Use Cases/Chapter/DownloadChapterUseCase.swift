@@ -8,7 +8,7 @@
 import Foundation
 
 protocol DownloadChapterUseCase {
-    func execute(chapter: Chapter) -> AsyncStream<QueueJobState>
+    func execute(chapter: Chapter) -> AsyncStream<QueueOperationState>
 }
 
 final class DownloadChapterUseCaseImpl: DownloadChapterUseCase {
@@ -18,7 +18,7 @@ final class DownloadChapterUseCaseImpl: DownloadChapterUseCase {
         self.repository = repository
     }
     
-    func execute(chapter: Chapter) -> AsyncStream<QueueJobState> {
+    func execute(chapter: Chapter) -> AsyncStream<QueueOperationState> {
         return repository.downloadChapter(chapter: chapter)
     }
 }

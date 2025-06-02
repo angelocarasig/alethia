@@ -18,5 +18,5 @@ protocol ChapterRepository {
     // can be reused for all chapters above/below too
     func markAllChapters(chapters: [Chapter], asRead: Bool) throws -> Void
     
-    func downloadChapter(chapter: Chapter) -> AsyncStream<QueueJobState>
+    func downloadChapter(chapter: Chapter) -> AsyncStream<QueueOperationState>
 }

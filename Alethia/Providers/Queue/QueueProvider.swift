@@ -7,117 +7,178 @@
 
 import Foundation
 import Combine
+import Collections
 
-@MainActor
-final class QueueProvider: ObservableObject {
-    static let shared = QueueProvider()
+typealias QueueOperationId = String
+
+protocol QueueOperationIdentifiable {
+    var queueOperationId: QueueOperationId { get }
+}
+
+enum QueueOperationType {
+    case chapterDownload(Chapter)
+    case metadataRefresh
+}
+
+enum QueueOperationState: Equatable {
+    case pending
+    case ongoing(Double) // where double is progress -> 0.0 to 1.0
+    case completed
+    case cancelled
+    case failed(Error)
     
-    // MARK: - Published Properties
-    @Published private(set) var activeJobs: [UUID: QueueJob] = [:]
-    @Published private(set) var jobProgress: [UUID: QueueJobProgress] = [:]
-    
-    // MARK: - Use-cases
-    private let downloadChapterUseCase: DownloadChapterUseCase
-    private var cancellables = Set<AnyCancellable>()
-    private var activeTasks: [UUID: Task<Void, Never>] = [:]
-    
-    private init() {
-        self.downloadChapterUseCase = DependencyInjector.shared.makeDownloadChapterUseCase()
+    // Equatable conformance for Error case
+    static func == (lhs: QueueOperationState, rhs: QueueOperationState) -> Bool {
+        switch (lhs, rhs) {
+        case (.pending, .pending),
+            (.completed, .completed),
+            (.cancelled, .cancelled):
+            return true
+        case let (.ongoing(p1), .ongoing(p2)):
+            return p1 == p2
+        case let (.failed(e1), .failed(e2)):
+            return (e1 as NSError) == (e2 as NSError)
+        default:
+            return false
+        }
     }
 }
 
-// MARK: - Chapter Downloading
+final class QueueOperation: ObservableObject, Identifiable {
+    let id: String
+    let type: QueueOperationType
+    
+    @Published private(set) var state: QueueOperationState
+    @Published private(set) var progress: Double
+    private var task: Task<Void, Never>?
+    
+    // expose state publisher
+    var publisher: AnyPublisher<QueueOperationState, Never> {
+        $state.eraseToAnyPublisher()
+    }
+    
+    init(item: any QueueOperationIdentifiable, type: QueueOperationType) {
+        self.id = item.queueOperationId
+        self.type = type
+        self.state = .pending
+        self.progress = 0.0
+    }
+    
+    @MainActor
+    func updateState(_ newState: QueueOperationState) {
+        self.state = newState
+
+        switch newState {
+        case .pending, .failed, .cancelled:
+            self.progress = 0.0
+        case .ongoing(let progressValue):
+            self.progress = progressValue
+        case .completed:
+            self.progress = 1.0
+        }
+    }
+    
+    func start(with stream: AsyncStream<QueueOperationState>) {
+        task = Task {
+            for await newState in stream {
+                await updateState(newState)
+            }
+        }
+    }
+    
+    @MainActor
+    func cancel() {
+        task?.cancel()
+        updateState(.cancelled)
+    }
+}
+
+final class QueueProvider: ObservableObject {
+    static var shared = QueueProvider()
+    
+    @Published private(set) var operations: OrderedDictionary<QueueOperationId, QueueOperation> = [:]
+    
+    private var cancellables = Set<AnyCancellable>()
+    private let downloadChapterUseCase: DownloadChapterUseCase
+    
+    private init() {
+        let injector = DependencyInjector.shared
+        self.downloadChapterUseCase = injector.makeDownloadChapterUseCase()
+    }
+}
+
+// MARK: - Getters
 extension QueueProvider {
-    func downloadChapter(_ chapter: Chapter, priority: QueuePriority = .normal) {
-        let job = QueueJob(
-            action: .downloadChapter(chapter),
-            priority: priority,
-            date: Date()
-        )
-        
-        // Add to active jobs
-        activeJobs[job.id] = job
-        
-        // Initialize progress
-        jobProgress[job.id] = QueueJobProgress(
-            jobId: job.id,
-            completed: 0,
-            total: 100,
-            status: .pending,
-            error: nil,
-            startedAt: nil,
-            completedAt: nil
-        )
-        
-        // Start download task
-        let task = Task { [weak self] in
-            guard let self = self else { return }
-            
-            // Update status to running
-            self.jobProgress[job.id]?.status = .running
-            self.jobProgress[job.id]?.startedAt = Date()
-            
-            // Execute download
-            for await state in self.downloadChapterUseCase.execute(chapter: chapter) {
-                self.handleJobState(state, for: job.id)
-            }
-            
-            // Clean up active task
-            self.activeTasks[job.id] = nil
+    func getOperation(for id: QueueOperationId) -> QueueOperation? {
+        return self.operations[id]
+    }
+}
+
+// MARK: - Use-cases
+extension QueueProvider {
+    func downloadChapter(_ chapter: Chapter) {
+        guard operations[chapter.queueOperationId] == nil else {
+            return
         }
         
-        activeTasks[job.id] = task
-    }
-    
-    func cancelDownload(jobId: UUID) {
-        // Cancel the task
-        activeTasks[jobId]?.cancel()
-        activeTasks[jobId] = nil
+        // create new operation and add it
+        let operation = QueueOperation(item: chapter, type: .chapterDownload(chapter))
+        operations[chapter.queueOperationId] = operation
         
-        // Update status
-        jobProgress[jobId]?.status = .cancelled
-        jobProgress[jobId]?.completedAt = Date()
-        
-        // Remove from active jobs and progress
-        activeJobs[jobId] = nil
-        jobProgress[jobId] = nil
-    }
-    
-    private func handleJobState(_ state: QueueJobState, for jobId: UUID) {
-        switch state {
-        case .pending(let progress):
-            jobProgress[jobId]?.completed = Int(progress * 100)
-            
-        case .success:
-            jobProgress[jobId]?.status = .completed
-            jobProgress[jobId]?.completedAt = Date()
-            jobProgress[jobId]?.completed = 100
-            
-        case .failure(let error):
-            jobProgress[jobId]?.status = .failed
-            jobProgress[jobId]?.error = error
-            jobProgress[jobId]?.completedAt = Date()
-        }
-    }
-    
-    // MARK: - Convenience Methods
-    func isDownloading(_ chapter: Chapter) -> Bool {
-        activeJobs.values.contains { job in
-            if case .downloadChapter(let ch) = job.action {
-                return ch.id == chapter.id
+        // when value changes, notify main provider so that views can listen
+        operation.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
             }
+            .store(in: &cancellables)
+        
+        // start subscription to handle queue
+        operation.publisher
+            .sink { [weak self] state in
+                switch state {
+                case .completed, .failed, .cancelled:
+                    self?.updateQueue()
+                default:
+                    break
+                }
+            }
+            .store(in: &cancellables)
+        
+        // once subscription started, try updating queue
+        updateQueue()
+    }
+}
+
+
+// MARK: - Internal
+extension QueueProvider {
+    private func updateQueue() {
+        /// Check if there is > 5 queue operations currently ongoing
+        
+        let ongoingCount = operations.values.filter {
+            if case .ongoing = $0.state { return true }
             return false
-        }
-    }
-    
-    func progressForChapter(_ chapter: Chapter) -> QueueJobProgress? {
-        guard let job = activeJobs.values.first(where: { job in
-            if case .downloadChapter(let ch) = job.action {
-                return ch.id == chapter.id
-            }
-            return false
-        }) else { return nil }
+        }.count
         
-        return jobProgress[job.id]
+        guard ongoingCount < 5 else { return }
+        
+        /// get available pending operations
+        
+        let pendingOperations = operations.values.filter { $0.state == .pending }
+        let slotsAvailable = 5 - ongoingCount
+        
+        /// for available pending operations start their action
+        
+        // ordered dictionary so using .prefix should retrieve in FIFO order
+        for operation in pendingOperations.prefix(slotsAvailable) {
+            switch operation.type {
+            case .chapterDownload(let chapter):
+                let stream = downloadChapterUseCase.execute(chapter: chapter)
+                operation.start(with: stream)
+                
+            case .metadataRefresh:
+                break
+            }
+        }
     }
 }

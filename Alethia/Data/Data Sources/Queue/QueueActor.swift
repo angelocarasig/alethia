@@ -16,12 +16,12 @@ extension QueueActor {
         chapter: Chapter,
         remote: ChapterRemoteDataSource,
         local: ChapterLocalDataSource,
-        continuation: AsyncStream<QueueJobState>.Continuation
+        continuation: AsyncStream<QueueOperationState>.Continuation
     ) async {
         do {
             // Step 1: Prepare location in filesystem
             let chapterFolder: URL = try prepareChapterDirectory(for: chapter)
-            continuation.yield(.pending(0.1))
+            continuation.yield(.ongoing(0.1))
             
             // Step 2: Get chapter contents from remote
             let pages: [String] = try await remote.getChapterContents(chapter: chapter)
@@ -29,31 +29,32 @@ extension QueueActor {
             guard !pages.isEmpty else {
                 throw ChapterError.noContent
             }
-            continuation.yield(.pending(0.15))
+            continuation.yield(.ongoing(0.15))
             
             // Step 3: Download contents async
             // index - page number
             // data - page data
             let downloadedPages: [(index: Int, data: Data)] = try await downloadPages(pages, to: chapterFolder) { progress in
-                continuation.yield(.pending(progress))
+                continuation.yield(.ongoing(progress))
             }
             
             // Step 4: Wait for everything to finish (already handled by TaskGroup)
-            continuation.yield(.pending(0.9))
+            continuation.yield(.ongoing(0.9))
             
             // Step 5: Zip contents to .cbz
             let metadata: CBZMetadata = try local.getCBZMetadata(for: chapter, with: downloadedPages.count)
+            
+            // Step 5.5: Place .cbz in designated location
             let cbzPath = try await createCBZ(from: downloadedPages, for: chapter, metadata: metadata, in: chapterFolder)
-            continuation.yield(.pending(0.95))
+            continuation.yield(.ongoing(0.95))
             
-            // Step 6: Place .cbz in prepared location
+            // Step 6: Update local path for chapter to the location of the .cbz's prepared location
             try local.updateChapterLocalPath(chapter: chapter, localPath: cbzPath.path)
-            continuation.yield(.pending(1.0))
+            continuation.yield(.ongoing(1.0))
             
-            continuation.yield(.success(cbzPath.path.data(using: .utf8)))
-            
+            continuation.yield(.completed)
         } catch {
-            continuation.yield(.failure(error))
+            continuation.yield(.failed(error))
         }
     }
     

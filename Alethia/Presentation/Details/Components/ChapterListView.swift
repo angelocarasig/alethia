@@ -8,32 +8,14 @@
 import SwiftUI
 import Kingfisher
 
-struct ChapterListView: View {
-    @EnvironmentObject private var vm: DetailsViewModel
-    
-    var body: some View {
-        LazyVStack {
-            ChapterHeaderView()
-                .padding(.bottom, Constants.Padding.minimal)
-            
-            ForEach(Array(vm.chapters.enumerated()), id: \.element.chapter.id) { index, chapter in
-                Divider()
-                
-                NavigationLink {
-                    ReaderScreen(
-                        mangaId: vm.details?.manga.id ?? -1,
-                        mangaTitle: vm.details?.manga.title ?? "Unknown Title",
-                        orientation: vm.resolvedOrientation ?? .LeftToRight,
-                        currentChapter: chapter,
-                        chapters: vm.details?.chapters ?? []
-                    )
-                } label: {
-                    ChapterRow(item: chapter)
-                        .id("\(chapter.chapter.title)-\(chapter.chapter.progress)")
-                }
-                .buttonStyle(.plain)
-            }
-        }
+private extension View {
+    func badgeStyle(_ color: Color) -> some View {
+        self.font(.caption)
+            .foregroundStyle(.white)
+            .padding(.vertical, Constants.Padding.minimal)
+            .padding(.horizontal, Constants.Padding.regular)
+            .background(color)
+            .cornerRadius(Constants.Corner.Radius.regular)
     }
 }
 
@@ -73,8 +55,7 @@ private struct ChapterHeaderView: View {
                             currentChapter: chapter,
                             chapters: vm.details?.chapters ?? []
                         )
-                    }
-                    else {
+                    } else {
                         EmptyView()
                     }
                 } label: {
@@ -92,7 +73,7 @@ private struct ChapterHeaderView: View {
                 .buttonStyle(.borderedProminent)
                 
                 NavigationLink {
-                    
+                    // Preferences screen (not yet implemented)
                 } label: {
                     Image(systemName: "gearshape.fill")
                         .font(.system(size: 16, weight: .semibold))
@@ -107,9 +88,48 @@ private struct ChapterHeaderView: View {
     }
 }
 
-private struct ChapterRow: View {
+struct ChapterListView: View {
     @EnvironmentObject private var vm: DetailsViewModel
+    @ObservedObject private var queue = QueueProvider.shared
+    
+    var body: some View {
+        LazyVStack {
+            ChapterHeaderView()
+                .padding(.bottom, Constants.Padding.minimal)
+            
+            ForEach(Array(vm.chapters.enumerated()), id: \.element.chapter.id) { index, chapter in
+                Divider()
+                
+                NavigationLink {
+                    ReaderScreen(
+                        mangaId: vm.details?.manga.id ?? -1,
+                        mangaTitle: vm.details?.manga.title ?? "Unknown Title",
+                        orientation: vm.resolvedOrientation ?? .LeftToRight,
+                        currentChapter: chapter,
+                        chapters: vm.details?.chapters ?? []
+                    )
+                } label: {
+                    ChapterRow(
+                        item: chapter,
+                        operationId: chapter.chapter.queueOperationId
+                    )
+                    .id("\(chapter.chapter.title)-\(chapter.chapter.progress)")
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+struct ChapterRow: View {
+    @EnvironmentObject private var vm: DetailsViewModel
+    @ObservedObject private var queue = QueueProvider.shared
     let item: ChapterExtended
+    let operationId: String
+    
+    var operation: QueueOperation? {
+        queue.operations[operationId]
+    }
     
     var read: Bool {
         item.chapter.progress >= 1.0
@@ -121,10 +141,7 @@ private struct ChapterRow: View {
                 .placeholder { Color.tint.shimmer() }
                 .resizable()
                 .scaledToFit()
-                .frame(
-                    width: 50,
-                    height: 50
-                )
+                .frame(width: 50, height: 50)
                 .cornerRadius(Constants.Corner.Radius.regular)
                 .padding(.trailing, Constants.Padding.regular)
             
@@ -135,30 +152,17 @@ private struct ChapterRow: View {
                     Text(item.chapter.date.toRelativeString()).foregroundColor(.secondary)
                     
                     if item.chapter.date >= Calendar.current.date(byAdding: .day, value: -3, to: Date())! {
-                        Text("NEW")
-                            .font(.caption)
-                            .foregroundStyle(.white)
-                            .padding(.vertical, Constants.Padding.minimal)
-                            .padding(.horizontal, Constants.Padding.regular)
-                            .background(Color.appRed)
-                            .cornerRadius(Constants.Corner.Radius.regular)
+                        Text("NEW").badgeStyle(.appRed)
                     }
                     
                     if read {
-                        Text("Read")
-                            .font(.caption)
-                            .foregroundStyle(.white)
-                            .padding(.vertical, Constants.Padding.minimal)
-                            .padding(.horizontal, Constants.Padding.regular)
-                            .background(Color.appOrange)
-                            .cornerRadius(Constants.Corner.Radius.regular)
+                        Text("Read").badgeStyle(.appOrange)
                     }
                 }
                 .font(.subheadline)
                 
                 Text(item.chapter.title)
                     .lineLimit(2)
-                    .multilineTextAlignment(.leading)
                     .font(.headline)
                     .fontWeight(.semibold)
                 
@@ -167,95 +171,30 @@ private struct ChapterRow: View {
                     .foregroundColor(.secondary)
                 
                 if item.chapter.progress > 0 && item.chapter.progress != 1 {
-                    Spacer()
-                    
                     ProgressView(value: item.chapter.progress)
                         .tint(Color.accentColor)
                         .frame(height: 3)
                         .clipShape(Capsule())
-                        .opacity(item.chapter.progress > 0.0 ? 1.0 : 0.0)
                 }
             }
+            
             Spacer()
-            DownloadButton()
+            
+            ChapterDownloadButton(
+                chapter: item.chapter,
+                operationId: operationId
+            )
         }
         .padding(.vertical, Constants.Padding.minimal)
         .overlay {
             if read {
-                ZStack(alignment: .topTrailing) {
-                    Color.background.opacity(0.3)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-                .allowsHitTesting(false) // pass through to next hittable element
+                Color.background.opacity(0.3)
             }
         }
         .contentShape(.rect)
         .contextMenu {
             ContextMenu()
         }
-    }
-    
-    private var isChapterDownloaded: Bool {
-        let hasDownloadCompleted = vm.downloadProgressFor(item.chapter)?.status == .completed
-        return item.chapter.downloaded || hasDownloadCompleted
-    }
-    
-    @ViewBuilder
-    private func DownloadButton() -> some View {
-        let size: CGFloat = 20
-        let chapterProgress = vm.downloadProgressFor(item.chapter)
-        let isDownloading = vm.isDownloading(item.chapter)
-        let progressValue = chapterProgress?.percentage ?? 0.0
-        
-        Group {
-            ZStack {
-                if !isChapterDownloaded {
-                    Circle()
-                        .stroke(lineWidth: 2)
-                        .opacity(progressValue > 0 ? 0.3 : 0)
-                        .foregroundColor(.gray)
-                    
-                    Circle()
-                        .trim(from: 0.0, to: progressValue)
-                        .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                        .foregroundColor(.accentColor)
-                        .rotationEffect(Angle(degrees: 270.0))
-                        .opacity(progressValue > 0 ? 1 : 0)
-                    
-                    Button {
-                        if isDownloading {
-                            // Cancel download
-                            vm.cancelDownload(for: item.chapter)
-                        } else {
-                            // Start download
-                            vm.downloadChapter(item.chapter)
-                        }
-                    } label: {
-                        Image(systemName: isDownloading ? "arrowtriangle.down.circle"  : "arrow.down.circle.fill")
-                            .font(.system(size: size))
-                            .foregroundStyle(Color.accentColor)
-                            .opacity(chapterProgress?.status == .failed ? 0 : 1)
-                    }
-                    
-                    if chapterProgress?.status == .failed {
-                        Button {
-                            vm.downloadChapter(item.chapter)
-                        } label: {
-                            Image(systemName: "exclamationmark.circle.fill")
-                                .font(.system(size: size))
-                                .foregroundStyle(.red)
-                        }
-                    }
-                } else {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: size))
-                        .foregroundStyle(.green)
-                }
-            }
-            .frame(width: size, height: size)
-        }
-        .animation(.easeInOut, value: item.chapter.downloaded)
-        .animation(.spring(response: 0.3), value: progressValue)
     }
     
     @ViewBuilder
@@ -265,8 +204,7 @@ private struct ChapterRow: View {
                 vm.markChapter(asRead: true, for: item)
             } label: {
                 Label("Mark Read", systemImage: "book.closed")
-            }
-            .disabled(item.chapter.read)
+            }.disabled(item.chapter.read)
             
             Button {
                 vm.markAllChaptersAbove(from: item, asRead: true)
@@ -286,8 +224,7 @@ private struct ChapterRow: View {
                 vm.markChapter(asRead: false, for: item)
             } label: {
                 Label("Mark Unread", systemImage: "book")
-            }
-            .disabled(!item.chapter.read)
+            }.disabled(!item.chapter.read)
             
             Button {
                 vm.markAllChaptersAbove(from: item, asRead: false)
@@ -307,14 +244,102 @@ private struct ChapterRow: View {
                 vm.downloadChapter(item.chapter)
             } label: {
                 Label("Start Chapter Download", systemImage: "arrow.down")
-            }
-            .disabled(item.chapter.downloaded)
+            }.disabled(item.chapter.downloaded || operation != nil)
             
             Button(role: .destructive) {
+                // TODO: Implement remove download
             } label: {
                 Label("Remove Chapter Download", systemImage: "trash.fill")
-            }
-            .disabled(!item.chapter.downloaded)
+            }.disabled(!item.chapter.downloaded)
         }
+    }
+}
+
+struct ChapterDownloadButton: View {
+    @EnvironmentObject private var vm: DetailsViewModel
+    @ObservedObject private var queue = QueueProvider.shared
+    let chapter: Chapter
+    let operationId: String
+    
+    private let size: CGFloat = 20
+    
+    var operation: QueueOperation? {
+        queue.operations[operationId]
+    }
+    
+    // Computed properties for state
+    private var isChapterDownloaded: Bool {
+        chapter.downloaded || operation?.state == .completed
+    }
+    
+    private var isDownloading: Bool {
+        if let op = operation, case .ongoing = op.state {
+            return true
+        }
+        return false
+    }
+    
+    private var downloadProgress: Double {
+        operation?.progress ?? 0.0
+    }
+    
+    private var downloadFailed: Bool {
+        if let op = operation, case .failed = op.state {
+            return true
+        }
+        return false
+    }
+    
+    var body: some View {
+        ZStack {
+            if !isChapterDownloaded {
+                // Progress circle background
+                Circle()
+                    .stroke(lineWidth: 2)
+                    .opacity(downloadProgress > 0 ? 0.3 : 0)
+                    .foregroundColor(.gray)
+                
+                // Progress circle
+                Circle()
+                    .trim(from: 0.0, to: downloadProgress)
+                    .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                    .foregroundColor(.accentColor)
+                    .rotationEffect(Angle(degrees: 270.0))
+                    .opacity(downloadProgress > 0 ? 1 : 0)
+                
+                // Download/Cancel button
+                Button {
+                    if isDownloading, let op = operation {
+                        op.cancel()
+                    } else {
+                        vm.downloadChapter(chapter)
+                    }
+                } label: {
+                    Image(systemName: isDownloading ? "arrowtriangle.down.circle" : "arrow.down.circle.fill")
+                        .font(.system(size: size))
+                        .foregroundStyle(Color.accentColor)
+                        .opacity(downloadFailed ? 0 : 1)
+                }
+                
+                // Failed state
+                if downloadFailed {
+                    Button {
+                        vm.downloadChapter(chapter)
+                    } label: {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .font(.system(size: size))
+                            .foregroundStyle(.red)
+                    }
+                }
+            } else {
+                // Completed state
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: size))
+                    .foregroundStyle(.green)
+            }
+        }
+        .frame(width: size, height: size)
+        .animation(.easeInOut, value: isChapterDownloaded)
+        .animation(.spring(response: 0.3), value: downloadProgress)
     }
 }

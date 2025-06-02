@@ -46,7 +46,7 @@ extension ChapterRepositoryImpl: ChapterRepository {
         try local.markAllChapters(chapters: chapters, asRead: asRead)
     }
     
-    func downloadChapter(chapter: Chapter) -> AsyncStream<QueueJobState> {
+    func downloadChapter(chapter: Chapter) -> AsyncStream<QueueOperationState> {
         /// 1. Prepare location in filesystem
         /// 2. Get chapter contents
         /// 3. Download contents async
@@ -56,7 +56,7 @@ extension ChapterRepositoryImpl: ChapterRepository {
         AsyncStream { continuation in
             Task {
                 let backgroundTask = await UIApplication.shared.beginBackgroundTask {
-                    continuation.yield(.failure(DownloadError.backgroundTimeExpired))
+                    continuation.yield(.failed(DownloadError.backgroundTimeExpired))
                 }
                 
                 await actor.downloadChapter(

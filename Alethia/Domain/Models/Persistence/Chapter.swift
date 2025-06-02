@@ -8,8 +8,11 @@
 import Foundation
 import GRDB
 
-struct Chapter: Codable, Identifiable {
+struct Chapter: Codable, Identifiable, QueueOperationIdentifiable {
     var id: Int64?
+    var queueOperationId: QueueOperationId {
+        "chapter-\(id ?? -1)"
+    }
     
     var originId: Int64
     var scanlatorId: Int64

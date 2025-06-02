@@ -16,7 +16,6 @@ final class DetailsViewModel: ObservableObject {
     @Published var confirmationRequest: ConfirmationRequest? = nil
     
     typealias ChapterId = Int64
-    @Published private(set) var downloadProgress: [ChapterId: QueueJobProgress] = [:]
     
     // MARK: - Properties
     private(set) var entry: Entry
@@ -51,8 +50,6 @@ final class DetailsViewModel: ObservableObject {
         self.updateChapterProgressUseCase = injector.makeUpdateChapterProgressUseCase()
         self.downloadChapterUseCase = injector.makeDownloadChapterUseCase()
         self.updateMangaCoverUseCase = injector.makeUpdateMangaCoverUseCase()
-        
-        setupDownloadObservers()
     }
 }
 
@@ -298,56 +295,7 @@ extension DetailsViewModel {
 // MARK: - Downloads
 extension DetailsViewModel {
     func downloadChapter(_ chapter: Chapter) {
-        Task {
-            await QueueProvider.shared.downloadChapter(chapter)
-        }
-    }
-    
-    func cancelDownload(for chapter: Chapter) {
-        guard let chapterId = chapter.id,
-              let progress = downloadProgress[chapterId] else { return }
-        
-        Task {
-            await QueueProvider.shared.cancelDownload(jobId: progress.jobId)
-        }
-    }
-    
-    func isDownloading(_ chapter: Chapter) -> Bool {
-        guard let chapterId = chapter.id else { return false }
-        return downloadProgress[chapterId]?.status == .running
-    }
-    
-    func downloadProgressFor(_ chapter: Chapter) -> QueueJobProgress? {
-        guard let chapterId = chapter.id else { return nil }
-        return downloadProgress[chapterId]
-    }
-    
-    private func setupDownloadObservers() {
-        Task {
-            // Observe job progress changes
-            await QueueProvider.shared.$jobProgress
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] allProgress in
-                    self?.updateDownloadProgress(from: allProgress)
-                }
-                .store(in: &cancellables)
-        }
-    }
-    
-    private func updateDownloadProgress(from allProgress: [UUID: QueueJobProgress]) {
-        Task { @MainActor in
-            var newProgress: [Int64: QueueJobProgress] = [:]
-            
-            for (_, progress) in allProgress {
-                if let job = QueueProvider.shared.activeJobs[progress.jobId],
-                   case .downloadChapter(let chapter) = job.action,
-                   let chapterId = chapter.id {
-                    newProgress[chapterId] = progress
-                }
-            }
-            
-            downloadProgress = newProgress
-        }
+        QueueProvider.shared.downloadChapter(chapter)
     }
 }
 
