@@ -10,7 +10,9 @@ import Combine
 import Kingfisher
 
 struct SourceHomeScreen: View {
-    @State private var headerEntries: [Entry] = []
+    @State private var headerArtwork: [String] = []
+    @State private var showNavTitle = false
+    @StateObject private var headerViewModel = HeaderViewModel()
     
     var source: Source
     
@@ -21,25 +23,28 @@ struct SourceHomeScreen: View {
         }) ?? []
     }
     
-    var images: [String] {
-        headerEntries
-            .filter { $0.cover != nil }
-            .map { $0.cover! }
-    }
-    
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: -69) {  // Negative spacing to overlap
-                SourceHeaderView(source: source, images: images)
+            VStack {  // Negative spacing to overlap
+                SourceHeaderView(source: source, artworkUrls: headerViewModel.artworkUrls)
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear
+                                .onChange(of: geo.frame(in: .global).minY) { _, newValue in
+                                    // Show nav title when header is scrolled up
+                                    withAnimation {
+                                        showNavTitle = newValue < -100
+                                    }
+                                }
+                        }
+                    )
                 
                 VStack {
                     ForEach(routes) { route in
                         RowView(
                             source: source,
                             route: route,
-                            onRandom: { entry in
-                                headerEntries.append(entry)
-                            }
+                            headerViewModel: headerViewModel
                         )
                     }
                 }
@@ -47,8 +52,13 @@ struct SourceHomeScreen: View {
         }
         .navigationBarTitle(source.name)
         .navigationBarTitleDisplayMode(.inline)
-        .edgesIgnoringSafeArea(.top)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(source.name)
+                    .font(.headline)
+                    .opacity(showNavTitle ? 1 : 0)
+            }
+            
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: Constants.Spacing.toolbar) {
                     NavigationLink(destination: SearchSourceView(source: source)) {
@@ -61,17 +71,36 @@ struct SourceHomeScreen: View {
                 }
             }
         }
+        .edgesIgnoringSafeArea(.top)
+        .scrollBounceBehavior(.basedOnSize)
+    }
+}
+
+// Shared ViewModel for collecting artwork
+private final class HeaderViewModel: ObservableObject {
+    @Published var artworkUrls: [String] = []
+    private var maxArtwork = 10
+    
+    func addArtwork(from entries: [Entry]) {
+        guard artworkUrls.count < maxArtwork else { return }
+        
+        // Add random artwork from entries that have covers
+        let availableCovers = entries.compactMap { $0.cover }.filter { !artworkUrls.contains($0) }
+        if let randomCover = availableCovers.randomElement() {
+            withAnimation {
+                artworkUrls.append(randomCover)
+            }
+        }
     }
 }
 
 private struct RowView: View {
     @Namespace private var namespace
     @StateObject private var vm = ViewModel()
-    @State private var didSend: Lock = .unlocked
     
     var source: Source
     var route: SourceRoute
-    let onRandom: (Entry) -> Void
+    var headerViewModel: HeaderViewModel
     
     var body: some View {
         VStack(alignment: .leading) {
@@ -86,9 +115,7 @@ private struct RowView: View {
         }
         .padding(.horizontal, 10)
         .onReceive(vm.$items) { items in
-            guard !items.isEmpty, !didSend else { return }
-            didSend = .locked
-            onRandom(items.randomElement()!)
+            headerViewModel.addArtwork(from: items)
         }
         .task {
             guard vm.firstLoad else { return }
@@ -211,24 +238,38 @@ private final class ViewModel: ObservableObject {
     
     @MainActor
     func load(with id: Int64) async {
-        withAnimation { loading = true }
+        withAnimation {
+            loading = true
+        }
         
         do {
             let results = try await getSourceRouteContentUseCase.execute(sourceRouteId: id)
             raw = results
-            bind()
+            
+            if results.isEmpty {
+                // If no results, we can set loading = false immediately
+                withAnimation {
+                    loading = false
+                    firstLoad = false
+                }
+            } else {
+                // If we have results, don't set loading = false yet
+                // Let the bind() method handle it when matched entries arrive
+                firstLoad = false
+                bind()
+            }
         } catch {
-            print("Error: \(error)")
-        }
-        
-        withAnimation {
-            loading = false
-            firstLoad = false
+            withAnimation {
+                loading = false
+                firstLoad = false
+            }
         }
     }
     
     private func bind() {
-        guard !raw.isEmpty else { return }
+        guard !raw.isEmpty else {
+            return
+        }
         
         cancellables.removeAll()
         
@@ -238,6 +279,7 @@ private final class ViewModel: ObservableObject {
             .sink { [weak self] updated in
                 withAnimation {
                     self?.items = updated
+                    self?.loading = false
                 }
             }
             .store(in: &cancellables)

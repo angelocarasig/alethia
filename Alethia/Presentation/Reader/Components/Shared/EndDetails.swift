@@ -30,6 +30,7 @@ struct EndDetails: View {
             }
             .padding(.horizontal)
         }
+        .scrollBounceBehavior(.basedOnSize)
         .frame(width: UIScreen.main.bounds.width)
     }
 }

@@ -61,6 +61,7 @@ where Data: RandomAccessCollection,
                 }
             }
         }
+        .contentMargins(.trailing, Constants.Padding.regular, for: .scrollContent)
         .onScrollGeometryChange(for: Bool.self) { geometry in
             let bottomEdge = geometry.contentOffset.y + geometry.containerSize.height
             let contentHeight = geometry.contentSize.height
