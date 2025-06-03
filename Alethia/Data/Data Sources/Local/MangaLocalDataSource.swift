@@ -9,28 +9,18 @@ import Foundation
 import Combine
 import GRDB
 
-private extension LibraryDate {
-    func apply<T>(to request: QueryInterfaceRequest<T>, column: Column) -> QueryInterfaceRequest<T> {
-        switch self {
-        case .none:
-            return request
-        case .before(let date):
-            return request.filter(column <= date)
-        case .after(let date):
-            return request.filter(column >= date)
-        case .between(let start, let end):
-            return request.filter(column >= start).filter(column <= end)
-        }
-    }
-}
-
 final class MangaLocalDataSource {
     private let database: DatabaseWriter
     
     init(database: DatabaseWriter = DatabaseProvider.shared.writer) {
         self.database = database
     }
-    
+}
+
+// MARK: - Public Methods
+
+// MARK: Library Operations
+extension MangaLocalDataSource {
     func getLibrary(filters: LibraryFilters) -> AnyPublisher<[Entry], Error> {
         let search = filters.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         
@@ -70,6 +60,20 @@ final class MangaLocalDataSource {
             .eraseToAnyPublisher()
     }
     
+    func toggleMangaInLibrary(mangaId: Int64, newValue: Bool) throws {
+        try database.write { db in
+            guard var manga = try Manga.fetchOne(db, key: mangaId) else {
+                throw MangaError.notFound
+            }
+            
+            manga.inLibrary = newValue
+            try manga.update(db)
+        }
+    }
+}
+
+// MARK: Manga CRUD Operations
+extension MangaLocalDataSource {
     func saveNewManga(payload: DetailDTO, with sourceId: Int64?) -> AnyPublisher<Detail, Error> {
         return Deferred {
             Future<Detail, Error> { [weak self] promise in
@@ -138,35 +142,10 @@ final class MangaLocalDataSource {
             }
             
             return details
-            
-            //            let manga = try Manga.fetchAll(db)
-            //            return try manga.map { try self.fetchDetailWithChapters(db: db, manga: $0)! }
         }
         .publisher(in: database, scheduling: .immediate)
         .catch { _ in Just([]) }
         .eraseToAnyPublisher()
-    }
-    
-    func toggleMangaInLibrary(mangaId: Int64, newValue: Bool) throws {
-        try database.write { db in
-            guard var manga = try Manga.fetchOne(db, key: mangaId) else {
-                throw MangaError.notFound
-            }
-            
-            manga.inLibrary = newValue
-            try manga.update(db)
-        }
-    }
-    
-    func updateMangaOrientation(mangaId: Int64, newValue: Orientation) throws {
-        try database.write { db in
-            guard var manga = try Manga.fetchOne(db, key: mangaId) else {
-                throw MangaError.notFound
-            }
-            
-            manga.orientation = newValue
-            try manga.update(db)
-        }
     }
     
     func addMangaOrigin(payload: DetailDTO, mangaId: Int64, sourceId: Int64?) throws {
@@ -187,32 +166,43 @@ final class MangaLocalDataSource {
             )
         }
     }
+}
+
+// MARK: Manga Metadata Operations
+extension MangaLocalDataSource {
+    func updateMangaOrientation(mangaId: Int64, newValue: Orientation) throws {
+        try database.write { db in
+            guard var manga = try Manga.fetchOne(db, key: mangaId) else {
+                throw MangaError.notFound
+            }
+            
+            manga.orientation = newValue
+            try manga.update(db)
+        }
+    }
     
-    func getMangaRecommendations(mangaId: Int64) throws -> RecommendedEntries {
-        return try database.read { db in
-            // Get the target manga to ensure it exists
+    func updateMangaCover(mangaId: Int64, coverId: Int64) throws {
+        try database.write { db in
+            // First, verify the manga exists
             guard try Manga.fetchOne(db, key: mangaId) != nil else {
                 throw MangaError.notFound
             }
             
-            // 1. Similar tags - manga that share tags with the target manga
-            let withSimilarTags = try fetchSimilarTaggedManga(db: db, mangaId: mangaId)
+            // Verify the cover exists and belongs to this manga
+            guard let newActiveCover = try Cover.fetchOne(db, key: coverId),
+                  newActiveCover.mangaId == mangaId else {
+                throw MangaError.notFound
+            }
             
-            // 2. Same collection - manga in the same collections
-            let fromSameCollection = try fetchSameCollectionManga(db: db, mangaId: mangaId)
+            // Deactivate all covers for this manga
+            try Cover
+                .filter(Cover.Columns.mangaId == mangaId)
+                .updateAll(db, Cover.Columns.active.set(to: false))
             
-            // 3. Same author - other works by the same authors
-            let otherWorksByAuthor = try fetchSameAuthorManga(db: db, mangaId: mangaId)
-            
-            // 4. Same scanlator - other series by the same scanlators
-            let otherSeriesByScanlator = try fetchSameScanlatorManga(db: db, mangaId: mangaId)
-            
-            return RecommendedEntries(
-                withSimilarTags: withSimilarTags,
-                fromSameCollection: fromSameCollection,
-                otherWorksByAuthor: otherWorksByAuthor,
-                otherSeriesByScanlator: otherSeriesByScanlator
-            )
+            // Activate the selected cover
+            var updatedCover = newActiveCover
+            updatedCover.active = true
+            try updatedCover.update(db)
         }
     }
     
@@ -230,7 +220,6 @@ final class MangaLocalDataSource {
             "vertical",
             "scroll",
             "scrolling",
-//            "webcomic", <-- tends to be like twitter shorts so uncommented
             "digitalcomic",
             "mobilecomic",
             "korean",
@@ -259,38 +248,44 @@ final class MangaLocalDataSource {
         
         return .LeftToRight
     }
-    
-    func updateMangaCover(mangaId: Int64, coverId: Int64) throws {
-        try database.write { db in
-            // First, verify the manga exists
+}
+
+// MARK: Recommendation Operations
+extension MangaLocalDataSource {
+    func getMangaRecommendations(mangaId: Int64) throws -> RecommendedEntries {
+        return try database.read { db in
+            // Get the target manga to ensure it exists
             guard try Manga.fetchOne(db, key: mangaId) != nil else {
                 throw MangaError.notFound
             }
             
-            // Verify the cover exists and belongs to this manga
-            guard let newActiveCover = try Cover.fetchOne(db, key: coverId),
-                  newActiveCover.mangaId == mangaId else {
-                throw MangaError.notFound
-            }
+            // 1. Similar tags - manga that share tags with the target manga
+            let withSimilarTags = try fetchSimilarTaggedManga(db: db, mangaId: mangaId)
             
-            // Deactivate all covers for this manga
-            try Cover
-                .filter(Cover.Columns.mangaId == mangaId)
-                .updateAll(db, Cover.Columns.active.set(to: false))
+            // 2. Same collection - manga in the same collections
+            let fromSameCollection = try fetchSameCollectionManga(db: db, mangaId: mangaId)
             
-            // Activate the selected cover
-            var updatedCover = newActiveCover
-            updatedCover.active = true
-            try updatedCover.update(db)
+            // 3. Same author - other works by the same authors
+            let otherWorksByAuthor = try fetchSameAuthorManga(db: db, mangaId: mangaId)
+            
+            // 4. Same scanlator - other series by the same scanlators
+            let otherSeriesByScanlator = try fetchSameScanlatorManga(db: db, mangaId: mangaId)
+            
+            return RecommendedEntries(
+                withSimilarTags: withSimilarTags,
+                fromSameCollection: fromSameCollection,
+                otherWorksByAuthor: otherWorksByAuthor,
+                otherSeriesByScanlator: otherSeriesByScanlator
+            )
         }
     }
 }
 
+// MARK: - Private Methods
 
-// MARK: Private helpers
-
+// MARK: Library Filtering Helpers
 private extension MangaLocalDataSource {
-    private func applyPublishStatusFilter(
+    func applyPublishStatusFilter(
         to request: QueryInterfaceRequest<Entry>,
         statuses: [PublishStatus]
     ) -> QueryInterfaceRequest<Entry> {
@@ -318,7 +313,7 @@ private extension MangaLocalDataSource {
         )
     }
     
-    private func applyClassificationFilter(
+    func applyClassificationFilter(
         to request: QueryInterfaceRequest<Entry>,
         classifications: [Classification]
     ) -> QueryInterfaceRequest<Entry> {
@@ -346,7 +341,7 @@ private extension MangaLocalDataSource {
         )
     }
     
-    private func applySearchFilter(
+    func applySearchFilter(
         to request: QueryInterfaceRequest<Entry>,
         search: String
     ) -> QueryInterfaceRequest<Entry> {
@@ -365,7 +360,7 @@ private extension MangaLocalDataSource {
         )
     }
     
-    private func applySorting(
+    func applySorting(
         to request: QueryInterfaceRequest<Entry>,
         type: LibrarySortType,
         direction: LibrarySortDirection
@@ -389,8 +384,11 @@ private extension MangaLocalDataSource {
         
         return request.order(useAscending ? sortColumn.asc : sortColumn.desc)
     }
-    
-    private func findMangasByTitle(db: Database, title: String) throws -> [Manga] {
+}
+
+// MARK: Data Fetching Helpers
+private extension MangaLocalDataSource {
+    func findMangasByTitle(db: Database, title: String) throws -> [Manga] {
         var results: [Manga] = []
         var foundIds: Set<Int64> = []
         
@@ -424,7 +422,7 @@ private extension MangaLocalDataSource {
         return results
     }
     
-    private func fetchDetailWithChapters(db: Database, manga: Manga) throws -> Detail? {
+    func fetchDetailWithChapters(db: Database, manga: Manga) throws -> Detail? {
         let titles: [Title] = try manga.titles.order(Title.Columns.title).fetchAll(db)
         let covers: [Cover] = try manga.covers.fetchAll(db)
         let authors: [Author] = try manga.authors.fetchAll(db)
@@ -444,8 +442,36 @@ private extension MangaLocalDataSource {
             chapters: chapters
         )
     }
-    
-    private func insertRelatedEntities(
+}
+
+// MARK: Data Update Helpers
+private extension MangaLocalDataSource {
+    func updateMangaUpdatedAt(mangaId: Int64, db: Database) throws {
+        // Get the most recent chapter date across all origins for this manga
+        let sql = """
+        SELECT MAX(c.date) as latestDate
+        FROM chapter c
+        JOIN origin o ON c.originId = o.id
+        WHERE o.mangaId = ?
+        """
+        
+        let latestChapterDate = try Date.fetchOne(db, sql: sql, arguments: [mangaId])
+        
+        // Only update if we found a date
+        if let date = latestChapterDate {
+            guard var manga = try Manga.fetchOne(db, key: mangaId) else {
+                throw MangaError.notFound
+            }
+            
+            manga.updatedAt = date
+            try manga.update(db)
+        }
+    }
+}
+
+// MARK: Data Insertion Helpers
+private extension MangaLocalDataSource {
+    func insertRelatedEntities(
         for payload: DetailDTO,
         mangaId: Int64,
         sourceId: Int64,
@@ -470,16 +496,19 @@ private extension MangaLocalDataSource {
         if let originId = origin.id {
             try insertChapters(payload.chapters, originId: originId, db: db)
         }
+        
+        // Update manga updated at prop
+        try updateMangaUpdatedAt(mangaId: mangaId, db: db)
     }
     
-    private func insertTitles(_ titles: [String], mangaId: Int64, db: Database) throws {
+    func insertTitles(_ titles: [String], mangaId: Int64, db: Database) throws {
         for title in titles {
             // if title already exists in manga-title kvp it will just silently fail
             try Title(title: title, mangaId: mangaId).insert(db)
         }
     }
     
-    private func insertCovers(_ coverUrls: [String], mangaId: Int64, db: Database) throws {
+    func insertCovers(_ coverUrls: [String], mangaId: Int64, db: Database) throws {
         guard !coverUrls.isEmpty else { return }
         
         // Check if manga already has covers
@@ -502,7 +531,7 @@ private extension MangaLocalDataSource {
         }
     }
     
-    private func insertAuthors(_ authorNames: [String], mangaId: Int64, db: Database) throws {
+    func insertAuthors(_ authorNames: [String], mangaId: Int64, db: Database) throws {
         for authorName in authorNames {
             let author = try Author.findOrCreate(db, instance: Author(name: authorName))
             if let authorId = author.id {
@@ -511,7 +540,7 @@ private extension MangaLocalDataSource {
         }
     }
     
-    private func insertTags(_ tagNames: [String], mangaId: Int64, db: Database) throws {
+    func insertTags(_ tagNames: [String], mangaId: Int64, db: Database) throws {
         for tagName in tagNames {
             let tag = try Tag.findOrCreate(db, instance: Tag(name: tagName))
             if let tagId = tag.id {
@@ -521,7 +550,7 @@ private extension MangaLocalDataSource {
     }
     
     /// Origin insertion fn needs to manage origin priority
-    private func insertOrigin(_ originPayload: OriginDTO, mangaId: Int64, sourceId: Int64, db: Database) throws -> Origin {
+    func insertOrigin(_ originPayload: OriginDTO, mangaId: Int64, sourceId: Int64, db: Database) throws -> Origin {
         // Get existing origins for this manga to determine next priority
         let existingOrigins = try Origin
             .filter(Origin.Columns.mangaId == mangaId)
@@ -545,7 +574,7 @@ private extension MangaLocalDataSource {
     }
     
     /// Chapter insertion fn need to manage scanlator priority
-    private func insertChapters(_ chapterPayloads: [ChapterDTO], originId: Int64, db: Database) throws {
+    func insertChapters(_ chapterPayloads: [ChapterDTO], originId: Int64, db: Database) throws {
         // Group chapters by scanlator to process them efficiently
         let chaptersByScanlator = Dictionary(grouping: chapterPayloads) { $0.scanlator }
         
@@ -594,8 +623,11 @@ private extension MangaLocalDataSource {
             }
         }
     }
-    
-    private func fetchSimilarTaggedManga(db: Database, mangaId: Int64) throws -> [Entry] {
+}
+
+// MARK: Recommendation Query Helpers
+private extension MangaLocalDataSource {
+    func fetchSimilarTaggedManga(db: Database, mangaId: Int64) throws -> [Entry] {
         return try Manga.entry
             .filter(Manga.Columns.inLibrary)
             .filter(Manga.Columns.id != mangaId)
@@ -615,7 +647,7 @@ private extension MangaLocalDataSource {
             .fetchAll(db)
     }
     
-    private func fetchSameCollectionManga(db: Database, mangaId: Int64) throws -> [Entry] {
+    func fetchSameCollectionManga(db: Database, mangaId: Int64) throws -> [Entry] {
         return try Manga.entry
             .filter(Manga.Columns.inLibrary)
             .filter(Manga.Columns.id != mangaId)
@@ -635,7 +667,7 @@ private extension MangaLocalDataSource {
             .fetchAll(db)
     }
     
-    private func fetchSameAuthorManga(db: Database, mangaId: Int64) throws -> [Entry] {
+    func fetchSameAuthorManga(db: Database, mangaId: Int64) throws -> [Entry] {
         return try Manga.entry
             .filter(Manga.Columns.inLibrary)
             .filter(Manga.Columns.id != mangaId)
@@ -655,7 +687,7 @@ private extension MangaLocalDataSource {
             .fetchAll(db)
     }
     
-    private func fetchSameScanlatorManga(db: Database, mangaId: Int64) throws -> [Entry] {
+    func fetchSameScanlatorManga(db: Database, mangaId: Int64) throws -> [Entry] {
         return try Manga.entry
             .filter(Manga.Columns.inLibrary)
             .filter(Manga.Columns.id != mangaId)
@@ -675,5 +707,21 @@ private extension MangaLocalDataSource {
         """, arguments: [mangaId, mangaId])
             .limit(10)
             .fetchAll(db)
+    }
+}
+
+// MARK: - LibraryDate Extension
+private extension LibraryDate {
+    func apply<T>(to request: QueryInterfaceRequest<T>, column: Column) -> QueryInterfaceRequest<T> {
+        switch self {
+        case .none:
+            return request
+        case .before(let date):
+            return request.filter(column <= date)
+        case .after(let date):
+            return request.filter(column >= date)
+        case .between(let start, let end):
+            return request.filter(column >= start).filter(column <= end)
+        }
     }
 }

@@ -88,7 +88,7 @@ extension Manga: FetchableRecord { }
 extension Manga: PersistableRecord { }
 
 extension Manga: DatabaseModel {
-    static var version: Version = Version(1, 0, 0)
+    static var version: Version = Version(1, 0, 1)
     
     static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
@@ -149,6 +149,29 @@ extension Manga: DatabaseModel {
                 """
                 
                 try db.execute(sql: sql)
+            }
+        }
+        
+        if version < Version(1, 0, 1) {
+            migrator.registerMigration("update manga updatedAt from chapters") { db in
+                // Get all manga IDs
+                let allMangaIds = try Int64.fetchAll(db, sql: "SELECT id FROM manga")
+                
+                for mangaId in allMangaIds {
+                    let sql = """
+                UPDATE manga
+                SET updatedAt = COALESCE(
+                    (SELECT MAX(c.date)
+                     FROM chapter c
+                     JOIN origin o ON c.originId = o.id
+                     WHERE o.mangaId = ?),
+                    updatedAt
+                )
+                WHERE id = ?
+            """
+                    
+                    try db.execute(sql: sql, arguments: [mangaId, mangaId])  // Use mangaId, not id
+                }
             }
         }
     }

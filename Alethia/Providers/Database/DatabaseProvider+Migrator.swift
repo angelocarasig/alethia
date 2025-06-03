@@ -14,7 +14,7 @@ extension DatabaseProvider {
             var migrator = DatabaseMigrator()
             
             #if DEBUG
-            migrator.eraseDatabaseOnSchemaChange = true
+//            migrator.eraseDatabaseOnSchemaChange = true
             #endif
             
             migrator.registerMigration("initial") { db in
