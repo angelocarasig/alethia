@@ -27,8 +27,16 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
         "\(mangaId ?? sourceId ?? -1)-\(title)-\(unread)"
     }
 
+    /// A computed property that represents the unique identifier for a transition.
+    /// This identifier is used to track and manage transitions within the system.
     var transitionId: String {
         id
+    }
+    
+    /// A computed property that returns the identifier of the source view associated with this entry.
+    /// This identifier is typically used to track or reference the view from which the entry originates.
+    var sourceViewId: String {
+        "\(id)-\(match)"
     }
 
     var mangaId: Int64?

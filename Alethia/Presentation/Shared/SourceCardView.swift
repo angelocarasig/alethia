@@ -24,5 +24,6 @@ struct SourceCardView: View {
             )
             .matchedTransitionSource(id: entry.transitionId, in: namespace)
         }
+        .id("\(entry.id)-\(entry.match)")
     }
 }

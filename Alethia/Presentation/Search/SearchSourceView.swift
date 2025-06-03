@@ -33,6 +33,7 @@ struct SearchSourceView: View {
                 } else {
                     CollectionViewGrid(
                         data: vm.items,
+                        id: \.sourceViewId,
                         columns: 3,
                         spacing: Constants.Spacing.minimal,
                         onReachedBottom: {

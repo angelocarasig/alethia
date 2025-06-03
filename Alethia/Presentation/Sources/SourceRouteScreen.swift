@@ -47,6 +47,7 @@ struct SourceRouteScreen: View {
     private var contentView: some View {
         CollectionViewGrid(
             data: viewModel.items,
+            id: \.sourceViewId,
             columns: 3,
             spacing: Constants.Spacing.minimal,
             onReachedBottom: {
@@ -58,6 +59,7 @@ struct SourceRouteScreen: View {
                     source: source,
                     entry: entry
                 )
+                .id("\(entry.id)-\(entry.match)")
             },
             footer: {
                 bottomStatusView

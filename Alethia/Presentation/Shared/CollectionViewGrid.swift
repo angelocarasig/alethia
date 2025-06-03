@@ -7,10 +7,17 @@
 
 import SwiftUI
 
-struct CollectionViewGrid<Data, Content, Footer>: View where Data: RandomAccessCollection, Data.Element: Identifiable, Content: View, Footer: View {
+struct CollectionViewGrid<Data, ID, Content, Footer>: View
+where Data: RandomAccessCollection,
+      Data.Element: Identifiable,
+      ID: Hashable,
+      Content: View,
+      Footer: View {
+    
     // Data
     let data: Data
     let content: (Data.Element) -> Content
+    let id: KeyPath<Data.Element, ID>?
     
     // Layout
     var columns: Int = 3
@@ -37,8 +44,14 @@ struct CollectionViewGrid<Data, Content, Footer>: View where Data: RandomAccessC
         ScrollView(.vertical, showsIndicators: showsScrollIndicator) {
             VStack(spacing: 0) {
                 LazyVGrid(columns: gridColumns, spacing: spacing) {
-                    ForEach(data) { item in
-                        content(item)
+                    if let idPath = id {
+                        ForEach(data, id: idPath) { item in
+                            content(item)
+                        }
+                    } else {
+                        ForEach(data) { item in
+                            content(item)
+                        }
                     }
                 }
                 
@@ -49,11 +62,9 @@ struct CollectionViewGrid<Data, Content, Footer>: View where Data: RandomAccessC
             }
         }
         .onScrollGeometryChange(for: Bool.self) { geometry in
-            // Calculate if we've reached near the bottom
             let bottomEdge = geometry.contentOffset.y + geometry.containerSize.height
             let contentHeight = geometry.contentSize.height
             
-            // Check if content is scrollable and if we're near bottom
             guard contentHeight > geometry.containerSize.height else { return false }
             
             return bottomEdge >= (contentHeight - 100)
@@ -66,22 +77,82 @@ struct CollectionViewGrid<Data, Content, Footer>: View where Data: RandomAccessC
     
     private func triggerBottomReachedIfNeeded() {
         let now = Date()
-        
-        // Check if we should throttle
         if let lastTime = lastTriggerTime {
             let timeSinceLastTrigger = now.timeIntervalSince(lastTime)
             guard timeSinceLastTrigger >= throttleInterval else { return }
         }
-        
-        // Update last trigger time and call the callback
         lastTriggerTime = now
         onReachedBottom?()
     }
 }
 
-// MARK: - Convenience Initializers
+// MARK: - Convenience Initializers for Default ID
+extension CollectionViewGrid where ID == Data.Element.ID {
+    init(data: Data,
+         columns: Int = 3,
+         spacing: CGFloat = Constants.Spacing.minimal,
+         showsScrollIndicator: Bool = true,
+         footer: Footer?,
+         onReachedBottom: (() -> Void)? = nil,
+         @ViewBuilder content: @escaping (Data.Element) -> Content) {
+        self.init(
+            data: data,
+            content: content,
+            id: nil,
+            columns: columns,
+            spacing: spacing,
+            showsScrollIndicator: showsScrollIndicator,
+            footer: footer,
+            onReachedBottom: onReachedBottom
+        )
+    }
+}
+
+// MARK: - Convenience Initializers for Custom ID (Refactored)
+extension CollectionViewGrid {
+    init(data: Data,
+         id: KeyPath<Data.Element, ID>,
+         columns: Int = 3,
+         spacing: CGFloat = Constants.Spacing.minimal,
+         showsScrollIndicator: Bool = true,
+         footer: Footer?,
+         onReachedBottom: (() -> Void)? = nil,
+         @ViewBuilder content: @escaping (Data.Element) -> Content) {
+        self.init(
+            data: data,
+            content: content,
+            id: id,
+            columns: columns,
+            spacing: spacing,
+            showsScrollIndicator: showsScrollIndicator,
+            footer: footer,
+            onReachedBottom: onReachedBottom
+        )
+    }
+}
+
+// MARK: - Empty Footer Convenience Initializers
 extension CollectionViewGrid where Footer == EmptyView {
     init(data: Data,
+         columns: Int = 3,
+         spacing: CGFloat = Constants.Spacing.minimal,
+         showsScrollIndicator: Bool = true,
+         onReachedBottom: (() -> Void)? = nil,
+         @ViewBuilder content: @escaping (Data.Element) -> Content) where ID == Data.Element.ID {
+        self.init(
+            data: data,
+            content: content,
+            id: nil,
+            columns: columns,
+            spacing: spacing,
+            showsScrollIndicator: showsScrollIndicator,
+            footer: nil,
+            onReachedBottom: onReachedBottom
+        )
+    }
+    
+    init(data: Data,
+         id: KeyPath<Data.Element, ID>,
          columns: Int = 3,
          spacing: CGFloat = Constants.Spacing.minimal,
          showsScrollIndicator: Bool = true,
@@ -90,6 +161,7 @@ extension CollectionViewGrid where Footer == EmptyView {
         self.init(
             data: data,
             content: content,
+            id: id,
             columns: columns,
             spacing: spacing,
             showsScrollIndicator: showsScrollIndicator,
@@ -99,7 +171,8 @@ extension CollectionViewGrid where Footer == EmptyView {
     }
 }
 
-extension CollectionViewGrid {
+// MARK: - With Footer Builder Convenience Initializers
+extension CollectionViewGrid where ID == Data.Element.ID {
     init(data: Data,
          columns: Int = 3,
          spacing: CGFloat = Constants.Spacing.minimal,
@@ -110,6 +183,29 @@ extension CollectionViewGrid {
         self.init(
             data: data,
             content: content,
+            id: nil,
+            columns: columns,
+            spacing: spacing,
+            showsScrollIndicator: showsScrollIndicator,
+            footer: footer(),
+            onReachedBottom: onReachedBottom
+        )
+    }
+}
+
+extension CollectionViewGrid {
+    init(data: Data,
+         id: KeyPath<Data.Element, ID>,
+         columns: Int = 3,
+         spacing: CGFloat = Constants.Spacing.minimal,
+         showsScrollIndicator: Bool = true,
+         onReachedBottom: (() -> Void)? = nil,
+         @ViewBuilder content: @escaping (Data.Element) -> Content,
+         @ViewBuilder footer: () -> Footer) {
+        self.init(
+            data: data,
+            content: content,
+            id: id,
             columns: columns,
             spacing: spacing,
             showsScrollIndicator: showsScrollIndicator,
