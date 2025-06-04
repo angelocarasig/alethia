@@ -243,6 +243,7 @@ struct ArtworkListView: View {
     @ViewBuilder
     private func ThumbnailView(cover: Cover, isSelected: Bool, index: Int) -> some View {
         KFImage(URL(string: cover.url))
+            .setProcessor(DownsamplingImageProcessor(size: CGSize(width: 420, height: 420)))
             .placeholder { Color.tint.shimmer() }
             .resizable()
             .scaledToFill()
