@@ -25,6 +25,7 @@ private struct UnreadBadgeModifier: ViewModifier {
                 
                 Text(unreadAmount)
                     .font(.caption)
+                    .fontWeight(.semibold)
                     .foregroundColor(.white)
                     .padding(.horizontal, Constants.Padding.regular)
                     .padding(.vertical, Constants.Padding.minimal)

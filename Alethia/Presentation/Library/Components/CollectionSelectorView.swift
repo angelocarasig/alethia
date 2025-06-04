@@ -26,7 +26,14 @@ struct CollectionSelectorView: View {
                 //                }
             }
             .scrollTargetLayout()
-            .padding(.horizontal)
+            .padding(
+                EdgeInsets(
+                    top: 4,
+                    leading: Constants.Padding.screen,
+                    bottom: Constants.Padding.screen,
+                    trailing: Constants.Padding.screen
+                )
+            )
         }
         .scrollDismissesKeyboard(.immediately)
         .scrollBounceBehavior(.basedOnSize)
