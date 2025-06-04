@@ -15,6 +15,10 @@ struct CollectionsView: View {
         GridItem(.flexible(), spacing: Constants.Spacing.large),
     ]
     
+    private var collections: [Collection] {
+        vm.details?.collections ?? []
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
             NavigationLink(destination: ManageCollectionsView()) {
@@ -30,13 +34,30 @@ struct CollectionsView: View {
             }
             .buttonStyle(.plain)
             
-            LazyVGrid(columns: columns, spacing: Constants.Spacing.regular) {
-                ForEach(vm.details?.collections ?? [], id: \.id) { collection in
-                    CollectionCard(collection: collection)
+            if collections.isEmpty {
+                ContentUnavailableView {
+                    Label("No Collections", systemImage: "folder.badge.plus")
+                } description: {
+                    Text("This manga isn't part of any collections yet")
+                } actions: {
+                    NavigationLink(destination: ManageCollectionsView()) {
+                        Text("Manage Collections")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(Constants.Padding.minimal)
+                    }
+                }
+                .frame(minHeight: 120)
+            } else {
+                LazyVGrid(columns: columns, spacing: Constants.Spacing.regular) {
+                    ForEach(collections, id: \.id) { collection in
+                        CollectionCard(collection: collection)
+                    }
                 }
             }
         }
         .opacity(vm.inLibrary ? 1 : 0.5)
+        .disabled(!vm.inLibrary)
     }
     
     @ViewBuilder

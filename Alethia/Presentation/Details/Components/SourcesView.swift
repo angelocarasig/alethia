@@ -29,7 +29,6 @@ struct SourcesView: View {
                 }
             }
             .buttonStyle(.plain)
-            .disabled(!vm.inLibrary)
             
             VStack(spacing: Constants.Spacing.large) {
                 ForEach(origins) { origin in
@@ -38,6 +37,7 @@ struct SourcesView: View {
                 }
             }
         }
+        .disabled(!vm.inLibrary)
         .opacity(vm.inLibrary ? 1 : 0.5)
     }
     
@@ -89,6 +89,7 @@ struct SourcesView: View {
                 .padding(.leading, Constants.Padding.regular)
             }
         }
+        .disabled(sourceDisabled)
         .opacity(sourceDisabled ? 0.5 : 1.0)
         .foregroundStyle(sourceDisabled ? .gray : .text)
         .contextMenu {

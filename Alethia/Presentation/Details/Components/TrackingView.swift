@@ -33,9 +33,13 @@ struct TrackingView: View {
                     Text(vm.details?.manga.title ?? "Unknown Title")
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                    Text((vm.details?.authors ?? []).map { $0.name }.joined(separator: ", "))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    
+                    Text({
+                        let authors = vm.details?.authors ?? []
+                        return authors.isEmpty ? "Unknown Author" : authors.map { $0.name }.joined(separator: ", ")
+                    }())
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 }
                 
                 Spacer()
