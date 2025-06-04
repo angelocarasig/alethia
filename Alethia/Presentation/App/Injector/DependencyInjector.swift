@@ -36,6 +36,12 @@ final class DependencyInjector {
         
         return ChapterRepositoryImpl(local: local, remote: remote, actor: queueActor)
     }()
+    
+    private lazy var collectionRepository: CollectionRepository = {
+        let local = CollectionLocalDataSource()
+        
+        return CollectionRepositoryImpl(local: local)
+    }()
 }
 
 // MARK: Manga
@@ -49,8 +55,12 @@ extension DependencyInjector {
         return GetMangaDetailUseCaseImpl(repository: mangaRepository)
     }
     
-    func makeToggleMangaInLibraryUseCase() -> ToggleMangaInLibraryUseCase {
-        return ToggleMangaInLibraryUserCaseImpl(repository: mangaRepository)
+    func makeAddMangaToLibraryUseCase() -> AddMangaToLibraryUseCase {
+        return AddMangaToLibraryUseCaseImpl(repository: mangaRepository)
+    }
+    
+    func makeRemoveMangaFromLibraryUseCase() -> RemoveMangaFromLibraryUseCase {
+        return RemoveMangaFromLibraryUseCaseImpl(repository: mangaRepository)
     }
     
     func makeUpdateMangaOrientationUseCase() -> UpdateMangaOrientationUseCase {
@@ -139,5 +149,17 @@ extension DependencyInjector {
     
     func makeDownloadChapterUseCase() -> DownloadChapterUseCase {
         return DownloadChapterUseCaseImpl(repository: chapterRepository)
+    }
+}
+
+// MARK: Collections
+
+extension DependencyInjector {
+    func makeAddCollectionUseCase() -> AddCollectionUseCase {
+        return AddCollectionUseCaseImpl(repository: collectionRepository)
+    }
+    
+    func makeGetAllCollectionsUseCase() -> GetAllCollectionsUseCase {
+        return GetAllCollectionsUseCaseImpl(repository: collectionRepository)
     }
 }

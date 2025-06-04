@@ -22,14 +22,24 @@ private extension Button {
 struct ActionButtonsView: View {
     @EnvironmentObject var vm: DetailsViewModel
     
+    @State private var addingToLibrary: Bool = false
+    
     var body: some View {
         HStack(spacing: Constants.Spacing.regular) {
             Button {
-                vm.toggleInLibrary()
+                if vm.inLibrary {
+                    vm.removeFromLibrary()
+                }
+                else {
+                    addingToLibrary = true
+                }
             } label: {
                 LibraryButton()
             }
-            .actionButton(vm.details?.manga.inLibrary ?? false)
+            .actionButton(vm.inLibrary)
+            .sheet(isPresented: $addingToLibrary) {
+                AddToLibrarySheet()
+            }
             
             Button {
                 Task {
@@ -39,12 +49,12 @@ struct ActionButtonsView: View {
                 OriginButton()
             }
             .actionButton(vm.sourcePresent)
-            .disabled(vm.addingOrigin || (vm.details != nil && !vm.details!.manga.inLibrary))
+            .disabled(vm.addingOrigin || (vm.details != nil && !vm.inLibrary))
             
             QuickButtonsView()
         }
         .frame(height: 50)
-        .animation(.easeInOut(duration: 0.3), value: vm.details?.manga.inLibrary)
+        .animation(.easeInOut(duration: 0.3), value: vm.inLibrary)
     }
     
     @ViewBuilder

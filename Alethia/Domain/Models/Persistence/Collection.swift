@@ -12,6 +12,8 @@ struct Collection: Codable, Identifiable, Equatable {
     var id: Int64?
     
     var name: String
+    var color: String // hex color string (e.g., "#FF0000")
+    var icon: String  // sf symbol icon
 }
 
 extension Collection {
@@ -23,6 +25,8 @@ extension Collection: TableRecord {
     enum Columns {
         static let id = Column(CodingKeys.id)
         static let name = Column(CodingKeys.name)
+        static let color = Column(CodingKeys.color)
+        static let icon = Column(CodingKeys.icon)
     }
 }
 
@@ -35,7 +39,7 @@ extension Collection: DatabaseUnique {
 }
 
 extension Collection: DatabaseModel {
-    static var version: Version = Version(1, 0, 0)
+    static var version: Version = Version(1, 0, 2)
     
     static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
@@ -46,10 +50,30 @@ extension Collection: DatabaseModel {
                 .unique()
                 .collate(.nocase)
                 .indexed()
+            
+            t.column(Columns.color.name, .text)
+                .notNull()
+                .defaults(to: "#007AFF") // iOS blue
+            
+            t.column(Columns.icon.name, .text)
+                .notNull()
+                .defaults(to: "square.inset.filled")
         })
     }
     
     static func migrate(with migrator: inout GRDB.DatabaseMigrator, from version: Version) throws {
-        // Nothing for now
+        if version < Version(1, 0, 2) {
+            migrator.registerMigration("collection icons and colors") { db in
+                try db.alter(table: databaseTableName) { t in
+                    t.add(column: Columns.color.name, .text)
+                        .notNull()
+                        .defaults(to: "#007AFF")
+                    
+                    t.add(column: Columns.icon.name, .text)
+                        .notNull()
+                        .defaults(to: "square.inset.filled")
+                }
+            }
+        }
     }
 }

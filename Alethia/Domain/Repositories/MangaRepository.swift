@@ -14,7 +14,9 @@ protocol MangaRepository {
     // Returns array for view to handle when multiple matches are found
     func getMangaDetail(entry: Entry) -> AnyPublisher<[Detail], Error>
     
-    func toggleMangaInLibrary(mangaId: Int64, newValue: Bool) throws -> Void
+    func addMangaToLibrary(mangaId: Int64, collections: [Int64]) throws -> Void
+    
+    func removeMangaFromLibrary(mangaId: Int64) throws -> Void
     
     func updateMangaOrientation(mangaId: Int64, newValue: Orientation) throws -> Void
     

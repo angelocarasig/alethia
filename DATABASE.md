@@ -107,6 +107,8 @@ erDiagram
     Collection {
         int64 id PK
         string name UK
+        String color
+        String icon
     }
     
     Origin {

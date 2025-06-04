@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.2] - 2025-06-04
+
+### Database Migration
+- **Version**: 1.0.1 → 1.0.2
+- **Tables Affected**: `collection`
+- **Migration**: Add icon and color props to collection
+- **Reason**: Introducing collection grouping functionality, adding some personalisation fields
+
+### Changed
+- PATCH Updated collection with added `icon` and `color` properties
+- Added according database migration from 1.0.1 to 1.0.2 for affected tables
+
+---
+
 ## [1.0.1] - 2025-01-07
 
 ### Database Migration
@@ -128,6 +142,8 @@ erDiagram
     Collection {
         int64 id PK
         string name UK
+        String color
+        String icon
     }
     
     Origin {

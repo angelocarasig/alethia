@@ -14,8 +14,7 @@ final class DetailsViewModel: ObservableObject {
     @Published private(set) var state: ViewState = .loading
     @Published private(set) var addingOrigin: Bool = false // loading state while an origin is being added
     @Published var confirmationRequest: ConfirmationRequest? = nil
-    
-    typealias ChapterId = Int64
+    @Published var collections: [Collection] = []
     
     // MARK: - Properties
     private(set) var entry: Entry
@@ -27,11 +26,17 @@ final class DetailsViewModel: ObservableObject {
     // MARK: - Use Cases
     private let getMangaDetailUseCase: GetMangaDetailUseCase
     private let resolveMangaOrientationUseCase: ResolveMangaOrientationUseCase
-    private let toggleMangaInLibraryUseCase: ToggleMangaInLibraryUseCase
+    private let addMangaToLibraryUseCase: AddMangaToLibraryUseCase
+    private let removeMangaFromLibraryUseCase: RemoveMangaFromLibraryUseCase
     private let addMangaOriginUseCase: AddMangaOriginUseCase
     private let markAllChaptersUseCase: MarkAllChaptersUseCase
     private let updateChapterProgressUseCase: UpdateChapterProgressUseCase
     private let updateMangaCoverUseCase: UpdateMangaCoverUseCase
+    
+    // MARK: - Collections
+    private let getAllCollectionsUseCase: GetAllCollectionsUseCase
+    private let addCollectionUseCase: AddCollectionUseCase
+    
     // MARK: - Downloading
     private let downloadChapterUseCase: DownloadChapterUseCase
     
@@ -44,12 +49,17 @@ final class DetailsViewModel: ObservableObject {
         let injector = DependencyInjector.shared
         self.getMangaDetailUseCase = injector.makeGetMangaDetailUseCase()
         self.resolveMangaOrientationUseCase = injector.makeResolveMangaOrientationUseCase()
-        self.toggleMangaInLibraryUseCase = injector.makeToggleMangaInLibraryUseCase()
+        self.addMangaToLibraryUseCase = injector.makeAddMangaToLibraryUseCase()
+        self.removeMangaFromLibraryUseCase = injector.makeRemoveMangaFromLibraryUseCase()
         self.addMangaOriginUseCase = injector.makeAddMangaOriginUseCase()
         self.markAllChaptersUseCase = injector.makeMarkAllChaptersUseCase()
         self.updateChapterProgressUseCase = injector.makeUpdateChapterProgressUseCase()
-        self.downloadChapterUseCase = injector.makeDownloadChapterUseCase()
         self.updateMangaCoverUseCase = injector.makeUpdateMangaCoverUseCase()
+        
+        self.getAllCollectionsUseCase = injector.makeGetAllCollectionsUseCase()
+        self.addCollectionUseCase = injector.makeAddCollectionUseCase()
+        
+        self.downloadChapterUseCase = injector.makeDownloadChapterUseCase()
     }
 }
 
@@ -99,6 +109,9 @@ extension DetailsViewModel {
     func loadDetails() {
         state = .loading
         
+        // just load collections here
+        loadCollections()
+        
         getMangaDetailUseCase.execute(entry: entry)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] completion in
@@ -124,6 +137,15 @@ extension DetailsViewModel {
                         self.state = .empty
                     }
                 }
+            }
+            .store(in: &cancellables)
+    }
+    
+    func loadCollections() {
+        getAllCollectionsUseCase.execute()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] collections in
+                self?.collections = collections
             }
             .store(in: &cancellables)
     }
@@ -178,17 +200,34 @@ extension DetailsViewModel {
 
 // MARK: - Use-Cases | Library Actions
 extension DetailsViewModel {
-    func toggleInLibrary() {
+    func addToLibrary(collections: [Int64], onSuccess: (() -> Void)? = nil) {
         guard case let .success(details) = state,
-              let mangaId = details.manga.id else { return }
+              let mangaId = details.manga.id,
+              !details.manga.inLibrary else { return }
         
         do {
-            try toggleMangaInLibraryUseCase.execute(
-                mangaId: mangaId,
-                newValue: !details.manga.inLibrary
-            )
+            // Add to library with no collections (empty array)
+            try addMangaToLibraryUseCase.execute(mangaId: mangaId, collections: collections)
+            onSuccess?()
         } catch {
-            state = .error(error)
+            withAnimation {
+                state = .error(error)
+            }
+        }
+    }
+    
+    func removeFromLibrary() {
+        guard case let .success(details) = state,
+              let mangaId = details.manga.id,
+              details.manga.inLibrary else { return }
+        
+        do {
+            // Remove from library (automatically removes from all collections)
+            try removeMangaFromLibraryUseCase.execute(mangaId: mangaId)
+        } catch {
+            withAnimation {
+                state = .error(error)
+            }
         }
     }
     
@@ -213,7 +252,9 @@ extension DetailsViewModel {
             try await addMangaOriginUseCase.execute(entry: self.entry, mangaId: mangaId)
         }
         catch {
-            state = .error(error)
+            withAnimation {
+                state = .error(error)
+            }
         }
     }
     
@@ -226,7 +267,9 @@ extension DetailsViewModel {
             )
         }
         catch {
-            state = .error(error)
+            withAnimation {
+                state = .error(error)
+            }
         }
     }
     
@@ -240,7 +283,9 @@ extension DetailsViewModel {
             )
         }
         catch {
-            state = .error(error)
+            withAnimation {
+                state = .error(error)
+            }
         }
     }
     
@@ -276,7 +321,9 @@ extension DetailsViewModel {
             try markAllChaptersUseCase.execute(chapters: chapters, asRead: asRead)
         }
         catch {
-            state = .error(error)
+            withAnimation {
+                state = .error(error)
+            }
         }
     }
     
@@ -287,8 +334,14 @@ extension DetailsViewModel {
         do {
             try updateMangaCoverUseCase.execute(mangaId: mangaId, coverId: coverId)
         } catch {
-            state = .error(error)
+            withAnimation {
+                state = .error(error)
+            }
         }
+    }
+    
+    func addCollection(name: String, color: String, icon: String) throws -> Void {
+        try addCollectionUseCase.execute(name: name, color: color, icon: icon)
     }
 }
 

@@ -15,18 +15,6 @@ struct CollectionsView: View {
         GridItem(.flexible(), spacing: Constants.Spacing.large),
     ]
     
-    let collections: [Collection] = [
-        Collection(name: """
-            a really really really really really really really really really really 
-            really really really really really really really really really really 
-            really really really really really really really really really really 
-            long name
-        """),
-        Collection(name: "1234"),
-        Collection(name: "1235"),
-        Collection(name: "1236")
-    ]
-    
     var body: some View {
         VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
             NavigationLink(destination: ManageCollectionsView()) {
@@ -43,25 +31,44 @@ struct CollectionsView: View {
             .buttonStyle(.plain)
             
             LazyVGrid(columns: columns, spacing: Constants.Spacing.regular) {
-                ForEach(collections, id: \.name) { collection in
-                    HStack(spacing: Constants.Spacing.regular) {
-                        Image(systemName: "square.grid.2x2.fill")
-                        
-                        Text(collection.name)
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .lineLimit(3)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(Constants.Padding.regular)
-                    .padding(.vertical, Constants.Padding.regular)
-                    .background(.tint.opacity(0.5))
-                    .cornerRadius(Constants.Corner.Radius.regular)
+                ForEach(vm.details?.collections ?? [], id: \.id) { collection in
+                    CollectionCard(collection: collection)
                 }
             }
         }
         .opacity(vm.inLibrary ? 1 : 0.5)
+    }
+    
+    @ViewBuilder
+    private func CollectionCard(collection: Collection) -> some View {
+        HStack(spacing: Constants.Spacing.regular) {
+            let selectedColor = Color(hex: collection.color)
+            ZStack {
+                Circle()
+                    .fill(selectedColor.opacity(0.15))
+                    .frame(width: 50, height: 50)
+                
+                Image(systemName: collection.icon)
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundStyle(selectedColor)
+            }
+            
+            Text(collection.name)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(Constants.Padding.regular)
+        .padding(.vertical, Constants.Padding.regular)
+        .background(Color(hex: collection.color).opacity(0.1))
+        .overlay(
+            RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
+                .stroke(Color(hex: collection.color).opacity(0.3), lineWidth: 1)
+        )
+        .cornerRadius(Constants.Corner.Radius.regular)
     }
 }
 

@@ -70,6 +70,43 @@ extension MangaLocalDataSource {
             try manga.update(db)
         }
     }
+    
+    func addMangaToLibrary(mangaId: Int64, collections: [Int64]) throws {
+        try database.write { db in
+            guard var manga = try Manga.fetchOne(db, key: mangaId) else {
+                throw MangaError.notFound
+            }
+            
+            for collectionId in collections {
+                guard try Collection.fetchOne(db, key: collectionId) != nil else {
+                    throw CollectionError.notFound(collectionId)
+                }
+                
+                try MangaCollection(mangaId: mangaId, collectionId: collectionId)
+                    .insert(db, onConflict: .ignore)
+            }
+            
+            manga.inLibrary = true
+            try manga.update(db)
+        }
+    }
+    
+    func removeMangaFromLibrary(mangaId: Int64) throws {
+        try database.write { db in
+            guard var manga = try Manga.fetchOne(db, key: mangaId) else {
+                throw MangaError.notFound
+            }
+            
+            // Remove from all collections first
+            try MangaCollection
+                .filter(MangaCollection.Columns.mangaId == mangaId)
+                .deleteAll(db)
+            
+            // after successful collection removal set manga as not in library
+            manga.inLibrary = false
+            try manga.update(db)
+        }
+    }
 }
 
 // MARK: Manga CRUD Operations
@@ -432,6 +469,8 @@ private extension MangaLocalDataSource {
         // Use the chapters query interface request from the Manga model
         let chapters = try manga.chapters.fetchAll(db)
         
+        let collections = try manga.collections.fetchAll(db)
+        
         return Detail(
             manga: manga,
             titles: titles,
@@ -439,7 +478,8 @@ private extension MangaLocalDataSource {
             authors: authors,
             tags: tags,
             origins: origins,
-            chapters: chapters
+            chapters: chapters,
+            collections: collections
         )
     }
 }

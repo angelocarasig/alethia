@@ -27,6 +27,7 @@ extension Constants {
     
     struct Corner {
         struct Radius {
+            static let checkbox: CGFloat = 4
             static let card: CGFloat = 6
             static let regular: CGFloat = 8
             static let button: CGFloat = 12
