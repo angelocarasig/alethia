@@ -13,7 +13,7 @@ protocol GetSourceRouteContentUseCase {
 
 extension GetSourceRouteContentUseCase {
     func execute(sourceRouteId: Int64) async throws -> [Entry] {
-        try await execute(sourceRouteId: sourceRouteId, page: 0)
+        try await execute(sourceRouteId: sourceRouteId, page: 1)
     }
 }
 

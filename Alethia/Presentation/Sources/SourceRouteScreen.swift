@@ -11,7 +11,7 @@ import Combine
 // MARK: - Main View
 struct SourceRouteScreen: View {
     @Namespace private var namespace
-    @StateObject private var viewModel: SourceRouteViewModel
+    @StateObject private var vm: SourceRouteViewModel
     
     let source: Source
     let route: SourceRoute
@@ -19,12 +19,12 @@ struct SourceRouteScreen: View {
     init(source: Source, route: SourceRoute) {
         self.source = source
         self.route = route
-        self._viewModel = StateObject(wrappedValue: SourceRouteViewModel(routeId: route.id!))
+        self._vm = StateObject(wrappedValue: SourceRouteViewModel(routeId: route.id!))
     }
     
     var body: some View {
         Group {
-            switch viewModel.viewState {
+            switch vm.viewState {
             case .loading:
                 SourceRouteSkeletonView()
             case .empty:
@@ -33,25 +33,25 @@ struct SourceRouteScreen: View {
                 contentView
             case .error(let message):
                 ErrorStateView(message: message) {
-                    Task { await viewModel.refresh() }
+                    Task { await vm.refresh() }
                 }
             }
         }
         .navigationTitle(route.name)
         .task {
-            await viewModel.loadInitialContent()
+            await vm.loadInitialContent()
         }
     }
     
     // MARK: - Content View
     private var contentView: some View {
         CollectionViewGrid(
-            data: viewModel.items,
+            data: vm.items,
             id: \.sourceViewId,
             columns: 3,
             spacing: Constants.Spacing.minimal,
             onReachedBottom: {
-                Task { await viewModel.loadNextPage() }
+                Task { await vm.loadNextPage() }
             },
             content: { entry in
                 SourceCardView(
@@ -66,18 +66,18 @@ struct SourceRouteScreen: View {
             }
         )
         .refreshable {
-            await viewModel.refresh()
+            await vm.refresh()
         }
     }
     
     // MARK: - Bottom Status View
     @ViewBuilder
     private var bottomStatusView: some View {
-        if viewModel.isLoadingMore {
+        if vm.isLoadingMore {
             ProgressView()
                 .padding()
         }
-        else if viewModel.hasReachedEnd {
+        else if vm.hasReachedEnd {
             Text("No More Results")
                 .font(.headline)
                 .fontWeight(.semibold)
@@ -107,7 +107,7 @@ final class SourceRouteViewModel: ObservableObject {
     
     // MARK: - Private Properties
     private let routeId: Int64
-    private var currentPage = 0
+    private var currentPage = 1
     private var rawEntries: [Entry] = []
     private var cancellables = Set<AnyCancellable>()
     private var loadTask: Task<Void, Never>?

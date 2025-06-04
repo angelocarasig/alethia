@@ -118,7 +118,7 @@ private final class ViewModel: ObservableObject {
     @Published var search: String
     
     // Pagination + state
-    @Published var page: Int = 0
+    @Published var page: Int = 1
     @Published var items: [Entry] = []
     @Published var loading: Bool = false
     @Published var refreshing: Bool = false
@@ -149,7 +149,7 @@ private final class ViewModel: ObservableObject {
         currentTask?.cancel()
         
         withAnimation(.easeInOut) {
-            page = 0
+            page = 1
             items.removeAll()
             raw.removeAll()
             noMoreContent = false
@@ -164,7 +164,7 @@ private final class ViewModel: ObservableObject {
         currentTask?.cancel()
         
         withAnimation(.easeInOut) {
-            page = 0
+            page = 1
             refreshing = true
             items.removeAll()
             raw.removeAll()
