@@ -110,6 +110,15 @@ extension Constants {
 }
 
 extension Constants {
+    struct Library {
+        static let bannedCollectionNames: [String] = [
+            "default",
+            "new"
+        ]
+    }
+}
+
+extension Constants {
     struct Reader {
         static let minimumPageCountForInfinite: Int = 3
     }

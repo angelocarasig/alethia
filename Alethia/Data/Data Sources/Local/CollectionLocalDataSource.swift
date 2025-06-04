@@ -28,9 +28,19 @@ extension CollectionLocalDataSource {
         }
     }
     
-    func getAllCollections() -> AnyPublisher<[Collection], Never> {
+    func getAllCollections() -> AnyPublisher<[CollectionExtended], Never> {
         return ValueObservation.tracking { db in
-            return try Collection.fetchAll(db)
+            let sql = """
+            SELECT 
+                collection.*,
+                COALESCE(COUNT(mc.mangaId), 0) as itemCount
+            FROM collection
+            LEFT JOIN mangaCollection mc ON mc.collectionId = collection.id
+            GROUP BY collection.id
+            ORDER BY collection.name ASC
+        """
+            
+            return try CollectionExtended.fetchAll(db, sql: sql)
         }
         .publisher(in: database, scheduling: .immediate)
         .catch { _ in Just([]) }

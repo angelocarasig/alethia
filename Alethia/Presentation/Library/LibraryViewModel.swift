@@ -16,12 +16,17 @@ final class LibraryViewModel: ObservableObject {
     @Published var filters: LibraryFilters = .init()
     @Published private(set) var state: ViewState = .loading
     
-    @Published private(set) var collections: [Collection] = []
+    @Published private(set) var collections: [CollectionExtended] = []
     @Published private(set) var activeCollection: Collection? = nil
     
     // MARK: - Properties
     private var cancellables: Set<AnyCancellable> = []
+    private var _items: [Entry] = []
+    
+    // MARK: - Use Cases
     private let getLibraryUseCase: GetLibraryUseCase
+    private let getAllCollectionsUseCase: GetAllCollectionsUseCase
+    private let addCollectionUseCase: AddCollectionUseCase
     
     // MARK: - View State
     enum ViewState {
@@ -41,44 +46,48 @@ final class LibraryViewModel: ObservableObject {
         }
     }
     
-    private var _items: [Entry] = []
-    
     // MARK: - Initialization
     init() {
-        self.getLibraryUseCase = DependencyInjector.shared.makeGetLibraryUseCase()
+        let injector = DependencyInjector.shared
+        self.getLibraryUseCase = injector.makeGetLibraryUseCase()
+        self.getAllCollectionsUseCase = injector.makeGetAllCollectionsUseCase()
+        self.addCollectionUseCase = injector.makeAddCollectionUseCase()
     }
-    
-    // MARK: - Lifecycle
+}
+
+// MARK: - Lifecycle
+extension LibraryViewModel {
     func onAppear() {
         guard cancellables.isEmpty else { return }
         bind()
     }
     
-    func setActiveCollection(_ collection: Collection?) -> Void {
-        activeCollection = collection
-    }
-    
-    func refreshCollection() -> Void {
+    func refreshCollection() {
         state = .loading
         // Trigger refresh by updating filters
         filters = filters
     }
     
-    // MARK: - Private Methods
-    private func bind() -> Void {
+    private func bind() {
         state = .loading
         
-        // switchToLatest ensure we're always using the latest filter
-        $filters
+        // Load collections
+        getAllCollectionsUseCase.execute()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] collections in
+                self?.collections = collections
+            }
+            .store(in: &cancellables)
+        
+        Publishers.CombineLatest($filters, $activeCollection)
             .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
             .handleEvents(receiveOutput: { [weak self] _ in
                 self?.state = .loading
             })
-            .map { [unowned self] filters in
+            .map { [unowned self] filters, activeCollection in
                 self.getLibraryUseCase
-                    .execute(filters: filters)
+                    .execute(filters: filters, collection: activeCollection?.id)
                     .catch { error -> AnyPublisher<[Entry], Never> in
-                        // Handle error and return empty publisher
                         DispatchQueue.main.async { [weak self] in
                             self?.state = .error(error)
                         }
@@ -91,7 +100,6 @@ final class LibraryViewModel: ObservableObject {
             .sink { [weak self] updated in
                 guard let self = self else { return }
                 
-                // Check if we're not in an error state before setting empty
                 let isInErrorState: Bool
                 if case .error = self.state {
                     isInErrorState = true
@@ -111,35 +119,42 @@ final class LibraryViewModel: ObservableObject {
     }
 }
 
-// MARK: Filter Controls
+// MARK: - Collection Management
 extension LibraryViewModel {
-    func togglePublishStatus(status: PublishStatus) -> Void {
-        if let index = filters.publishStatus.firstIndex(of: status) {
-            _ = withAnimation {
-                filters.publishStatus.remove(at: index)
-            }
+    func setActiveCollection(_ collection: Collection?) {
+        withAnimation(.smooth) {
+            activeCollection = collection
         }
-        else {
+    }
+    
+    func createCollection(name: String, color: String, icon: String) throws {
+        try addCollectionUseCase.execute(name: name, color: color, icon: icon)
+    }
+}
+
+// MARK: - Filter Management
+extension LibraryViewModel {
+    func togglePublishStatus(status: PublishStatus) {
+        if let index = filters.publishStatus.firstIndex(of: status) {
+            filters.publishStatus.remove(at: index)
+        } else {
             withAnimation {
                 filters.publishStatus.append(status)
             }
         }
     }
     
-    func toggleClassification(classification: Classification) -> Void {
+    func toggleClassification(classification: Classification) {
         if let index = filters.classification.firstIndex(of: classification) {
-            _ = withAnimation {
-                filters.classification.remove(at: index)
-            }
-        }
-        else {
+            filters.classification.remove(at: index)
+        } else {
             withAnimation {
                 filters.classification.append(classification)
             }
         }
     }
     
-    func clearFilter(for target: LibraryFilterTarget) -> Void {
+    func clearFilter(for target: LibraryFilterTarget) {
         withAnimation {
             switch target {
             case .addedAt:
@@ -152,6 +167,44 @@ extension LibraryViewModel {
             case .tags:
                 filters.tags.removeAll()
             }
+        }
+    }
+    
+    func clearAllFilters() {
+        withAnimation {
+            filters = LibraryFilters()
+        }
+    }
+}
+
+// MARK: - UI State Management
+extension LibraryViewModel {
+    func toggleFilters() {
+        withAnimation {
+            showFilters.toggle()
+        }
+    }
+    
+    func hideFilters() {
+        withAnimation {
+            showFilters = false
+        }
+    }
+    
+    var hasActiveFilters: Bool {
+        !filters.publishStatus.isEmpty ||
+        !filters.classification.isEmpty ||
+        !filters.tags.isEmpty ||
+        filters.addedAt != .none ||
+        filters.updatedAt != .none
+    }
+    
+    var stateIdentifier: String {
+        switch state {
+        case .loading: return "loading"
+        case .success: return "success"
+        case .error: return "error"
+        case .empty: return "empty"
         }
     }
 }

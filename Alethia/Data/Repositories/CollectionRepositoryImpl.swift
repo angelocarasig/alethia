@@ -21,7 +21,7 @@ extension CollectionRepositoryImpl: CollectionRepository {
         fatalError()
     }
     
-    func getAllCollections() -> AnyPublisher<[Collection], Never> {
+    func getAllCollections() -> AnyPublisher<[CollectionExtended], Never> {
         return local.getAllCollections()
     }
     

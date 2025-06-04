@@ -14,7 +14,7 @@ final class DetailsViewModel: ObservableObject {
     @Published private(set) var state: ViewState = .loading
     @Published private(set) var addingOrigin: Bool = false // loading state while an origin is being added
     @Published var confirmationRequest: ConfirmationRequest? = nil
-    @Published var collections: [Collection] = []
+    @Published var collections: [CollectionExtended] = []
     
     // MARK: - Properties
     private(set) var entry: Entry

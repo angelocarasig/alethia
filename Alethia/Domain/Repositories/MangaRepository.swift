@@ -9,7 +9,7 @@ import Foundation
 import Combine
 
 protocol MangaRepository {
-    func getLibrary(filters: LibraryFilters) -> AnyPublisher<[Entry], Error>
+    func getLibrary(filters: LibraryFilters, collection: Int64?) -> AnyPublisher<[Entry], Error>
     
     // Returns array for view to handle when multiple matches are found
     func getMangaDetail(entry: Entry) -> AnyPublisher<[Detail], Error>

@@ -11,7 +11,7 @@ import Combine
 protocol CollectionRepository {
     func getCollections(mangaId: Int64) -> AnyPublisher<[Collection], Error>
     
-    func getAllCollections() -> AnyPublisher<[Collection], Never>
+    func getAllCollections() -> AnyPublisher<[CollectionExtended], Never>
     
     func addCollection(name: String, color: String, icon: String) throws -> Void
 }

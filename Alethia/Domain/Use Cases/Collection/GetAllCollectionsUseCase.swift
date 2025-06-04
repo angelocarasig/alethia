@@ -9,7 +9,7 @@ import Foundation
 import Combine
 
 protocol GetAllCollectionsUseCase {
-    func execute() -> AnyPublisher<[Collection], Never>
+    func execute() -> AnyPublisher<[CollectionExtended], Never>
 }
 
 final class GetAllCollectionsUseCaseImpl: GetAllCollectionsUseCase {
@@ -19,7 +19,7 @@ final class GetAllCollectionsUseCaseImpl: GetAllCollectionsUseCase {
         self.repository = repository
     }
     
-    func execute() -> AnyPublisher<[Collection], Never> {
+    func execute() -> AnyPublisher<[CollectionExtended], Never> {
         return repository.getAllCollections()
     }
 }

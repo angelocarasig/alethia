@@ -21,7 +21,7 @@ final class MangaLocalDataSource {
 
 // MARK: Library Operations
 extension MangaLocalDataSource {
-    func getLibrary(filters: LibraryFilters) -> AnyPublisher<[Entry], Error> {
+    func getLibrary(filters: LibraryFilters, collection: Int64?) -> AnyPublisher<[Entry], Error> {
         let search = filters.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         
         return ValueObservation
@@ -31,6 +31,9 @@ extension MangaLocalDataSource {
                 var request = Manga
                     .entry
                     .filter(Manga.Columns.inLibrary)
+                
+                // Apply collection filter
+                request = try self.applyCollectionFilter(to: request, collection: collection, db: db)
                 
                 // Apply date filters
                 request = filters.addedAt.apply(to: request, column: Manga.Columns.addedAt)
@@ -323,6 +326,29 @@ extension MangaLocalDataSource {
 
 // MARK: Library Filtering Helpers
 private extension MangaLocalDataSource {
+    func applyCollectionFilter(
+        to request: QueryInterfaceRequest<Entry>,
+        collection: Int64?,
+        db: Database
+    ) throws -> QueryInterfaceRequest<Entry> {
+        // if collectionId is nil just return since we assume its 'default'.
+        // there is technically no way for a non nil collection id to be passed in.
+        guard let collectionId = collection else { return request }
+        
+        // Validate collection exists
+        guard try Collection.fetchOne(db, key: collectionId) != nil else {
+            throw CollectionError.notFound(collectionId)
+        }
+        
+        return request.filter(sql: """
+        mangaId IN (
+            SELECT mc.mangaId 
+            FROM mangaCollection mc 
+            WHERE mc.collectionId = ?
+        )
+    """, arguments: [collectionId])
+    }
+    
     func applyPublishStatusFilter(
         to request: QueryInterfaceRequest<Entry>,
         statuses: [PublishStatus]
