@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Flow
 
 struct TagsView: View {
     @EnvironmentObject private var vm: DetailsViewModel
@@ -15,19 +16,16 @@ struct TagsView: View {
     }
     
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack {
-                ForEach(tags.map { $0.name }.sorted(), id: \.self) { tag in
-                    Text(tag)
-                        .font(.caption)
-                        .foregroundStyle(.text.opacity(0.75))
-                        .padding(.horizontal, Constants.Padding.regular)
-                        .padding(.vertical, Constants.Padding.minimal)
-                        .background(Color.tint)
-                        .cornerRadius(Constants.Corner.Radius.button)
-                }
+        HFlow {
+            ForEach(tags.map { $0.name }.sorted(), id: \.self) { tag in
+                Text(tag)
+                    .font(.caption)
+                    .foregroundStyle(.text.opacity(0.75))
+                    .padding(.horizontal, Constants.Padding.regular)
+                    .padding(.vertical, Constants.Padding.minimal)
+                    .background(Color.tint)
+                    .cornerRadius(Constants.Corner.Radius.button)
             }
         }
-        .listRowInsets(EdgeInsets())
     }
 }
