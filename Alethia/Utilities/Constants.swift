@@ -110,6 +110,12 @@ extension Constants {
 }
 
 extension Constants {
+    struct Reader {
+        static let minimumPageCountForInfinite: Int = 3
+    }
+}
+
+extension Constants {
     struct Queue {
         static let ConcurrentOperationsCount: Int = 5
     }

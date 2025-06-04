@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import Combine
 import Kingfisher
+import Drops
 
 struct Page: Identifiable, Hashable, Sendable {
     var id: Int { pageNumber }
@@ -103,19 +104,11 @@ extension ReaderViewModel {
     }
     
     var canGoForward: Bool {
-        if let chapter = currentPage?.underlyingChapter {
-            return chapters.findNode(for: chapter)?.next != nil
-        }
-        
-        return false
+        return chapters.findNode(for: currentChapter)?.next != nil
     }
     
     var canGoBackward: Bool {
-        if let chapter = currentPage?.underlyingChapter {
-            return chapters.findNode(for: chapter)?.previous != nil
-        }
-        
-        return false
+        return chapters.findNode(for: currentChapter)?.previous != nil
     }
     
     private var canShowControls: Bool {
@@ -196,6 +189,8 @@ extension ReaderViewModel {
                     )
                 }
             
+            verifyOrientation()
+            
             withAnimation {
                 self.recommendations = recommendations
                 self.totalPages = mappedPages.count
@@ -272,13 +267,7 @@ extension ReaderViewModel {
 extension ReaderViewModel {
     func toggleOrientation() {
         orientation.cycle()
-        
-        do {
-            try updateMangaOrientationUseCase.execute(mangaId: mangaId, orientation: orientation)
-        }
-        catch {
-            self.state = .error(error)
-        }
+        handleOrientationChange()
     }
     
     func toggleControls() {
@@ -335,5 +324,49 @@ private extension ReaderViewModel {
         )
         
         prefetcher?.start()
+    }
+    
+    /// Handles orientation changes by validating infinite scroll requirements and persisting changes
+    private func handleOrientationChange() {
+        validateInfiniteScrollRequirements()
+        persistOrientationChange()
+    }
+    
+    /// Checks if infinite scroll orientation is valid based on page count
+    private func validateInfiniteScrollRequirements() {
+        guard orientation == .Infinite,
+              case .loaded(let pages) = state,
+              pages.count <= Constants.Reader.minimumPageCountForInfinite else {
+            return
+        }
+        
+        showInfiniteScrollSkippedAlert(pageCount: pages.count)
+        orientation.cycle()
+    }
+    
+    /// Shows alert when infinite scroll is skipped due to insufficient pages
+    private func showInfiniteScrollSkippedAlert(pageCount: Int) {
+        Drops.show(Drop(
+            title: "Infinite Scrolling Was Skipped",
+            subtitle: "Current orientation has fewer than \(Constants.Reader.minimumPageCountForInfinite) pages.",
+            icon: UIImage(systemName: "xmark")?.withTintColor(.red, renderingMode: .alwaysOriginal),
+            position: .top
+        ))
+    }
+    
+    /// Persists the current orientation to the database
+    private func persistOrientationChange() {
+        do {
+            try updateMangaOrientationUseCase.execute(mangaId: mangaId, orientation: orientation)
+        } catch {
+            withAnimation {
+                state = .error(error)
+            }
+        }
+    }
+    
+    /// Verifies orientation after loading chapter content
+    private func verifyOrientation() {
+        handleOrientationChange()
     }
 }

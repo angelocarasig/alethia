@@ -1,6 +1,15 @@
 {
-  "originHash" : "6be21acc4a94b24fadb7096bbf0d460320dedfe6f71236847c494c6f7fb37aaa",
+  "originHash" : "0b0049ae5e66e941c30ba825b69f971d07fe9077d50c1b294c432b1ebd942dc0",
   "pins" : [
+    {
+      "identity" : "drops",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/omaralbeik/Drops",
+      "state" : {
+        "revision" : "a183ee6f79f21c940092a19c2cba756555422371",
+        "version" : "1.7.0"
+      }
+    },
     {
       "identity" : "grdb.swift",
       "kind" : "remoteSourceControl",

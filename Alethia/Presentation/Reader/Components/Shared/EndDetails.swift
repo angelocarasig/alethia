@@ -32,6 +32,7 @@ struct EndDetails: View {
         }
         .scrollBounceBehavior(.basedOnSize)
         .frame(width: UIScreen.main.bounds.width)
+        .frame(minHeight: UIScreen.main.bounds.height)
     }
 }
 

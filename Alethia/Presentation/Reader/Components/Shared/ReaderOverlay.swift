@@ -148,6 +148,8 @@ extension ReaderOverlay {
                     }
                 } label: {
                     Image(systemName: "chevron.left")
+                        .renderingMode(.template)
+                        .foregroundColor(vm.canGoBackward ? Color.white : Color.secondary)
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, Constants.Padding.screen)
@@ -184,6 +186,8 @@ extension ReaderOverlay {
                     }
                 } label: {
                     Image(systemName: "chevron.right")
+                        .renderingMode(.template)
+                        .foregroundColor(vm.canGoForward ? Color.white : Color.secondary)
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, Constants.Padding.screen)
