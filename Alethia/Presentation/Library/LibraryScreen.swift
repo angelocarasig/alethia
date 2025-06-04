@@ -107,10 +107,11 @@ private struct ContentView: View {
     
     var body: some View {
         LazyVGrid(columns: gridColumns, spacing: spacing) {
-            ForEach(vm.items, id: \.transitionId) { entry in
+            ForEach(vm.items, id: \.libraryViewId) { entry in
                 CardView(namespace: namespace, entry: entry)
             }
         }
+        .animation(.smooth, value: vm.items.map(\.id))
         .padding(.top, Constants.Padding.regular)
         .padding(.horizontal, Constants.Padding.regular)
     }

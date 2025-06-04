@@ -38,6 +38,11 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
     var sourceViewId: String {
         "\(id)-\(match)"
     }
+    
+    /// Definitely exist since they're in library
+    var libraryViewId: String {
+        "\(mangaId!)"
+    }
 
     var mangaId: Int64?
     var sourceId: Int64?

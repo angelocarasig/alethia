@@ -87,6 +87,7 @@ extension MangaLocalDataSource {
             }
             
             manga.inLibrary = true
+            manga.addedAt = Date()
             try manga.update(db)
         }
     }
@@ -402,24 +403,33 @@ private extension MangaLocalDataSource {
         type: LibrarySortType,
         direction: LibrarySortDirection
     ) -> QueryInterfaceRequest<Entry> {
-        // For Entry requests, we need to map the sort columns appropriately
-        let sortColumn: Column = {
-            switch type {
-            case .title:
-                return Entry.Columns.title
-            case .created, .added:
-                // These would need SQL expressions if we need exact sorting
-                // For now, defaulting to title as a basic implementation
-                return Entry.Columns.title
-            case .updated:
-                return Entry.Columns.title
-            }
-        }()
         
-        // XOR on title sort type
-        let useAscending = (direction == .ascending) != (type == .title)
+        let isAscending = direction == .ascending
         
-        return request.order(useAscending ? sortColumn.asc : sortColumn.desc)
+        switch type {
+        case .title:
+            // change order for title since usually descending is a-z
+            return request.order(isAscending ? Manga.Columns.title.desc : Manga.Columns.title.asc)
+            
+        case .added:
+            // Sort by when manga was added to library
+            return request.order(isAscending ? Manga.Columns.addedAt.asc : Manga.Columns.addedAt.desc)
+            
+        case .updated:
+            // Sort by when manga was last updated (new chapters)
+            return request.order(isAscending ? Manga.Columns.updatedAt.asc : Manga.Columns.updatedAt.desc)
+            
+        case .created:
+            // Sort by manga creation date - need to get from origin
+            // Use a subquery to get the creation date from the primary origin (lowest priority)
+            let createdAtSubquery = Origin
+                .filter(Origin.Columns.mangaId == Manga.Columns.id)
+                .order(Origin.Columns.priority.asc)
+                .limit(1)
+                .select(Origin.Columns.createdAt)
+            
+            return request.order(isAscending ? createdAtSubquery.asc : createdAtSubquery.desc)
+        }
     }
 }
 
