@@ -10,22 +10,48 @@ import Flow
 
 struct TagsView: View {
     @EnvironmentObject private var vm: DetailsViewModel
+    @State private var showAll = false
     
     var tags: [Tag] {
         vm.details?.tags ?? []
     }
     
+    private var visibleTags: [String] {
+        let sortedTags = tags.map { $0.name }.sorted()
+        return showAll ? sortedTags : Array(sortedTags.prefix(10))
+    }
+    
     var body: some View {
-        HFlow {
-            ForEach(tags.map { $0.name }.sorted(), id: \.self) { tag in
-                Text(tag)
-                    .font(.caption)
-                    .foregroundStyle(.text.opacity(0.75))
-                    .padding(.horizontal, Constants.Padding.regular)
-                    .padding(.vertical, Constants.Padding.minimal)
-                    .background(Color.tint)
-                    .cornerRadius(Constants.Corner.Radius.button)
+        VStack(alignment: .leading, spacing: 8) {
+            HFlow {
+                ForEach(visibleTags, id: \.self) { tag in
+                    Text(tag)
+                        .font(.caption)
+                        .foregroundStyle(.text.opacity(0.75))
+                        .padding(.horizontal, Constants.Padding.regular)
+                        .padding(.vertical, Constants.Padding.minimal)
+                        .background(Color.tint)
+                        .cornerRadius(Constants.Corner.Radius.button)
+                }
+            }
+            
+            if tags.count > 10 {
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        withAnimation {
+                            showAll.toggle()
+                        }
+                    }) {
+                        Text(Image(systemName: showAll ? "chevron.up" : "chevron.down"))
+                        Text(showAll ? "Show Less" : "Show More")
+                            .font(.subheadline)
+                            .foregroundColor(.blue)
+                    }
+                }
+                .offset(y: 5)
             }
         }
+        .onTapGesture { withAnimation { showAll.toggle() } }
     }
 }

@@ -10,7 +10,7 @@ import GRDB
 import Combine
 
 final class DatabaseProvider {
-    public let version: Version = Version(1, 0, 2)
+    public let version: Version = Version(1, 0, 3)
     
     public let models: [DatabaseMigratable.Type] = [
         // MARK: Fetching

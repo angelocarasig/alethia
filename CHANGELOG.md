@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.3] - 2025-06-05
+
+### Database Migration
+- **Version**: 1.0.2 → 1.0.3
+- **Tables Affected**: `manga`
+- **Migration**: Add `lastReadAt` column to manga table
+- **Reason**: Track when manga was last read for better library organization and sorting
+
+### Changed
+- PATCH Added `lastReadAt` property to manga table to track reading history
+- Added database migration from 1.0.2 to 1.0.3 for manga table
+
+---
+
 ## [1.0.2] - 2025-06-04
 
 ### Database Migration
@@ -109,6 +123,7 @@ erDiagram
         string synopsis
         datetime addedAt
         datetime updatedAt
+        datetime lastReadAt
         bool inLibrary
         string orientation
         bool showAllChapters
@@ -192,3 +207,6 @@ erDiagram
         int64 mangaId FK
         int64 collectionId FK
     }
+```
+
+</details>
