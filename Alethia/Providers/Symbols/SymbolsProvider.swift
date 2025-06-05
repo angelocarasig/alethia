@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-struct SFSymbolsProvider {
+struct SymbolsProvider {
     static func getAllSymbols() -> [String] {
         guard let bundle = Bundle(identifier: "com.apple.CoreGlyphs"),
               let url = bundle.url(forResource: "symbol_search", withExtension: "plist"),
@@ -19,6 +19,30 @@ struct SFSymbolsProvider {
         }
         
         return symbols.filter { isValidSymbol($0) }.sorted()
+    }
+    
+    static var randomKaomoji: String {
+        return [
+            "(๑˃ᴗ˂)ﻭ",
+            "(｡◕‿◕｡)",
+            "ヽ(´▽`)/",
+            "(＾◡＾)",
+            "＼(^o^)／",
+            "(◕‿◕)",
+            "ლ(╹◡╹ლ)",
+            "(´∀｀)♡",
+            "( ˘ ³˘)♥",
+            "(◡ ‿ ◡)",
+            "＼(≧∇≦)／",
+            "(⌒‿⌒)",
+            "٩(◕‿◕)۶",
+            "(✿◠‿◠)",
+            "ʕ•ᴥ•ʔ",
+            "(っ◔◡◔)っ",
+            "ヾ(＾-＾)ノ",
+            "(◕ᴗ◕✿)"
+        ]
+            .randomElement()!
     }
     
     private static func isValidSymbol(_ name: String) -> Bool {

@@ -52,7 +52,7 @@ private extension SearchHomeView {
     private func EmptySearchView() -> some View {
         Spacer().frame(height: 25)
         Text("Search Something").font(.title2)
-        Text("(๑˃ᴗ˂)ﻭ").font(.title2)
+        Text(SymbolsProvider.randomKaomoji).font(.title2)
     }
     
     @ViewBuilder

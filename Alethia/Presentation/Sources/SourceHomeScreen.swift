@@ -181,37 +181,16 @@ private struct RowView: View {
     
     @ViewBuilder
     private func EmptyContent() -> some View {
-        VStack(alignment: .center, spacing: Constants.Spacing.large) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.red)
-                .font(.largeTitle)
-            
-            Text("Failed to Fetch")
-                .font(.headline)
-                .foregroundColor(.primary)
-            
+        ContentUnavailableView {
+            Label("Failed to Fetch", systemImage: "exclamationmark.triangle.fill")
+        } description: {
             Text("Please check your connection or try again later.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-            
-            Button(action: {
+        } actions: {
+            Button("Retry") {
                 Task { await vm.load(with: route.id!) }
-            }) {
-                Text("Retry")
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, Constants.Padding.regular)
-                    .padding(.vertical, Constants.Padding.minimal)
             }
             .buttonStyle(.borderedProminent)
-            .tint(.blue)
         }
-        .frame(maxWidth: .infinity, alignment: .center)
-        .padding()
-        .background(Color.tint)
-        .cornerRadius(Constants.Corner.Radius.regular)
-        .padding(.horizontal)
     }
 }
 

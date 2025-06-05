@@ -247,7 +247,7 @@ private struct IconPickerSheet: View {
     @State private var searchText: String = ""
     
     // Get all available SF Symbols
-    private let allIcons: [String] = SFSymbolsProvider.getAllSymbols()
+    private let allIcons: [String] = SymbolsProvider.getAllSymbols()
     
     init(selectedIcon: Binding<String>, selectedColor: Color) {
         self._selectedIcon = selectedIcon

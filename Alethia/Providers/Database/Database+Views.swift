@@ -28,6 +28,8 @@ private extension DatabaseProvider {
                 m.id AS mangaId,
                 m.title AS title,
                 m.inLibrary AS inLibrary,
+                m.addedAt AS addedAt,
+                m.updatedAt AS updatedAt,
                 
                 -- Get the source ID from the best origin
                 (SELECT o.sourceId 

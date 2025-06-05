@@ -26,98 +26,89 @@ struct SearchSourceView: View {
             SearchBar(searchText: $vm.search)
                 .padding(.horizontal, Constants.Padding.regular)
                 .onSubmit { vm.startNewSearch() }
+                .onChange(of: vm.search) { vm.searchTextChanged() }
             
-            ZStack {
-                if vm.items.isEmpty && vm.loading {
-                    SkeletonGridView()
-                } else {
-                    CollectionViewGrid(
-                        data: vm.items,
-                        id: \.sourceViewId,
-                        columns: 3,
-                        spacing: Constants.Spacing.minimal,
-                        onReachedBottom: {
-                            guard !vm.loading, !vm.items.isEmpty, !vm.noMoreContent else { return }
-                            vm.page += 1
-                            Task { await vm.loadPage() }
-                        },
-                        content: { entry in
-                            SourceCardView(
-                                namespace: namespace,
-                                source: vm.source,
-                                entry: entry
-                            )
-                        },
-                        footer: {
-                            // Footer content for loading and end states
-                            if vm.loading && !vm.items.isEmpty {
-                                ProgressView()
-                                    .padding()
-                            } else if vm.noMoreContent {
-                                Text("No More Results")
-                                    .font(.headline)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.secondary)
-                                    .padding()
-                            }
-                        }
-                    )
-                    .refreshable {
-                        await vm.refresh()
+            contentView
+                .task {
+                    if !vm.search.isEmpty && vm.firstLoad {
+                        vm.startNewSearch()
                     }
                 }
-            }
-            .task {
-                if !vm.search.isEmpty && vm.firstLoad {
-                    vm.startNewSearch()
-                }
-            }
         }
         .navigationTitle(vm.source.name)
     }
     
-    // MARK: – Skeleton
-    
     @ViewBuilder
-    private func SkeletonGridView() -> some View {
-        ScrollView {
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: Constants.Spacing.minimal),
-                GridItem(.flexible(), spacing: Constants.Spacing.minimal),
-                GridItem(.flexible(), spacing: Constants.Spacing.minimal)
-            ], spacing: Constants.Spacing.minimal) {
-                ForEach(0..<15, id: \.self) { _ in
-                    VStack(alignment: .leading, spacing: 6) {
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(height: 175)
-                            .shimmer()
-                        
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(height: 14)
-                        
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(width: 100, height: 14)
-                    }
-                    .padding(.vertical, Constants.Padding.regular)
-                    .padding(.horizontal, Constants.Padding.minimal)
-                }
+    private var contentView: some View {
+        switch vm.viewState {
+        case .initial:
+            InitialSearchStateView()
+        case .loading:
+            SkeletonGrid()
+        case .noResults:
+            NoResultsStateView(searchQuery: vm.search) {
+                vm.startNewSearch()
             }
-            .padding(.horizontal, Constants.Padding.minimal)
+        case .error(let message):
+            ErrorStateView(message: message) {
+                vm.startNewSearch()
+            }
+        case .content:
+            CollectionViewGrid(
+                data: vm.items,
+                id: \.sourceViewId,
+                columns: 3,
+                spacing: Constants.Spacing.minimal,
+                onReachedBottom: {
+                    guard !vm.loading, !vm.items.isEmpty, !vm.noMoreContent else { return }
+                    vm.page += 1
+                    Task { await vm.loadPage() }
+                },
+                content: { entry in
+                    SourceCardView(
+                        namespace: namespace,
+                        source: vm.source,
+                        entry: entry
+                    )
+                },
+                footer: {
+                    if vm.loading && !vm.items.isEmpty {
+                        ProgressView()
+                            .padding()
+                    } else if vm.noMoreContent && !vm.items.isEmpty {
+                        Text("No More Results")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+                            .padding()
+                            .transition(.opacity)
+                    }
+                }
+            )
+            .refreshable {
+                await vm.refresh()
+            }
         }
     }
 }
 
-// MARK: – ViewModel
+// MARK: - View Model
 
 private final class ViewModel: ObservableObject {
+    enum ViewState {
+        case initial
+        case loading
+        case content
+        case noResults
+        case error(String)
+    }
+    
     // Inputs
     let source: Source
     @Published var search: String
     
-    // Pagination + state
+    // State
+    @Published private(set) var viewState: ViewState = .initial
     @Published var page: Int = 1
     @Published var items: [Entry] = []
     @Published var loading: Bool = false
@@ -139,13 +130,30 @@ private final class ViewModel: ObservableObject {
         
         self.searchUseCase = DependencyInjector.shared.makeSearchSourceUseCase()
         self.observeMatchEntriesUseCase = DependencyInjector.shared.makeObserveMatchEntriesUseCase()
+        
+        // Set initial state based on whether we have a search term
+        self.viewState = initialSearchValue.isEmpty ? .initial : .loading
     }
     
     deinit {
         currentTask?.cancel()
     }
     
+    func searchTextChanged() {
+        raw.removeAll()
+        items.removeAll()
+        
+        if search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            viewState = .initial
+        }
+    }
+    
     func startNewSearch() {
+        guard !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            viewState = .initial
+            return
+        }
+        
         currentTask?.cancel()
         
         withAnimation(.easeInOut) {
@@ -154,6 +162,7 @@ private final class ViewModel: ObservableObject {
             raw.removeAll()
             noMoreContent = false
             firstLoad = true
+            viewState = .loading
         }
         
         Task { await loadPage() }
@@ -161,6 +170,11 @@ private final class ViewModel: ObservableObject {
     
     @MainActor
     func refresh() async {
+        guard !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            viewState = .initial
+            return
+        }
+        
         currentTask?.cancel()
         
         withAnimation(.easeInOut) {
@@ -170,6 +184,7 @@ private final class ViewModel: ObservableObject {
             raw.removeAll()
             noMoreContent = false
             firstLoad = true
+            viewState = .loading
         }
         
         await loadPage()
@@ -181,7 +196,6 @@ private final class ViewModel: ObservableObject {
     
     @MainActor
     func loadPage() async {
-        // Cancel any in-flight load
         currentTask?.cancel()
         
         currentTask = Task {
@@ -209,14 +223,22 @@ private final class ViewModel: ObservableObject {
                 try Task.checkCancellation()
                 
                 if newEntries.isEmpty {
-                    noMoreContent = true
+                    if page == 1 {
+                        viewState = .noResults
+                    } else {
+                        noMoreContent = true
+                    }
                     return
                 }
                 
                 raw.append(contentsOf: newEntries)
+                viewState = .content
                 bind()
             } catch {
                 print("Search error for page \(page):", error)
+                if page == 1 {
+                    viewState = .error(error.localizedDescription)
+                }
             }
         }
         
@@ -235,5 +257,67 @@ private final class ViewModel: ObservableObject {
                 self?.items = updated
             }
             .store(in: &cancellables)
+    }
+}
+
+// MARK: - State Views
+
+private struct InitialSearchStateView: View {
+    var body: some View {
+        ContentUnavailableView {
+            Label("Search Manga  \(SymbolsProvider.randomKaomoji)", systemImage: "magnifyingglass.circle")
+        } description: {
+            Text("Enter a search query to find series")
+        }
+    }
+}
+
+private struct NoResultsStateView: View {
+    let searchQuery: String
+    let onRetry: () -> Void
+    
+    var body: some View {
+        ContentUnavailableView {
+            Label("No Results", systemImage: "doc.text.magnifyingglass")
+        } description: {
+            Text("Couldn't find any manga matching \"\(searchQuery)\".")
+        } actions: {
+            Button("Retry") {
+                onRetry()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+}
+
+private struct ErrorStateView: View {
+    let message: String
+    let onRetry: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 80))
+                .foregroundStyle(.red)
+            
+            VStack(spacing: 12) {
+                Text("Search Failed")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+            
+            Button("Try Again") {
+                onRetry()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
     }
 }

@@ -26,7 +26,7 @@ struct SourceRouteScreen: View {
         Group {
             switch vm.viewState {
             case .loading:
-                SourceRouteSkeletonView()
+                SkeletonGrid()
             case .empty:
                 EmptyStateView(message: "No content available")
             case .content:
@@ -229,43 +229,6 @@ final class SourceRouteViewModel: ObservableObject {
             hasReachedEnd = false
             viewState = .loading
         }
-    }
-}
-
-// MARK: - Supporting Views
-private struct SourceRouteSkeletonView: View {
-    private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: Constants.Spacing.minimal), count: 3)
-    
-    var body: some View {
-        ScrollView {
-            LazyVGrid(columns: gridColumns, spacing: Constants.Spacing.minimal) {
-                ForEach(0..<12, id: \.self) { _ in
-                    SkeletonCard()
-                }
-            }
-            .padding(.horizontal, Constants.Padding.minimal)
-        }
-    }
-}
-
-private struct SkeletonCard: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Color.gray.opacity(0.3))
-                .frame(height: 175)
-                .shimmer()
-            
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Color.gray.opacity(0.3))
-                .frame(height: 14)
-            
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Color.gray.opacity(0.3))
-                .frame(height: 14)
-                .frame(maxWidth: 100)
-        }
-        .padding(.vertical, Constants.Padding.regular)
     }
 }
 
