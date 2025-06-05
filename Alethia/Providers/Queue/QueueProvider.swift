@@ -18,7 +18,7 @@ protocol QueueOperationIdentifiable {
 /// The type of operation a queue operation object contains
 enum QueueOperationType {
     case chapterDownload(Chapter)
-    case metadataRefresh(Manga)
+    case metadataRefresh(Entry)
 }
 
 enum QueueOperationState: Equatable {
@@ -175,21 +175,21 @@ extension QueueProvider {
         updateQueue()
     }
     
-    func refreshMetadata(_ manga: Manga) {
+    func refreshMetadata(_ entry: Entry) {
         // Check if operation doesn't exist OR if it exists but is finished
-        guard operations[manga.queueOperationId]?.state.isFinished != false else {
+        guard operations[entry.queueOperationId]?.state.isFinished != false else {
             return
         }
         
         // If there's a finished operation, remove it first
-        if let existingOperation = operations[manga.queueOperationId],
+        if let existingOperation = operations[entry.queueOperationId],
            existingOperation.state.isFinished {
-            operations.removeValue(forKey: manga.queueOperationId)
+            operations.removeValue(forKey: entry.queueOperationId)
         }
         
         // create new operation and add it
-        let operation = QueueOperation(item: manga, type: .metadataRefresh(manga))
-        operations[manga.queueOperationId] = operation
+        let operation = QueueOperation(item: entry, type: .metadataRefresh(entry))
+        operations[entry.queueOperationId] = operation
         
         // when value changes, notify main provider so that views can listen
         operation.objectWillChange
@@ -242,8 +242,8 @@ extension QueueProvider {
                 let stream = downloadChapterUseCase.execute(chapter: chapter)
                 operation.start(with: stream)
                 
-            case .metadataRefresh(let manga):
-                let stream = metadataRefreshUseCase.execute(manga: manga)
+            case .metadataRefresh(let entry):
+                let stream = metadataRefreshUseCase.execute(mangaId: entry.mangaId!)
                 operation.start(with: stream)
             }
         }

@@ -45,14 +45,14 @@ extension MangaRepositoryImpl: MangaRepository {
             .eraseToAnyPublisher()
     }
     
-    func refreshMetadata(manga: Manga) -> AsyncStream<QueueOperationState> {
+    func refreshMetadata(mangaId: Int64) -> AsyncStream<QueueOperationState> {
         AsyncStream { continuation in
             Task {
                 let backgroundTask = await UIApplication.shared.beginBackgroundTask {
                     continuation.yield(.failed(DownloadError.backgroundTimeExpired))
                 }
                 
-                await actor.refreshMetadata(manga: manga, continuation: continuation)
+                await actor.refreshMetadata(mangaId: mangaId, continuation: continuation)
                 continuation.finish()
                 
                 await MainActor.run {

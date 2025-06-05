@@ -68,6 +68,12 @@ extension LibraryViewModel {
         filters = filters
     }
     
+    func onRefresh() {
+        for item in self.items {
+            QueueProvider.shared.refreshMetadata(item)
+        }
+    }
+    
     private func bind() {
         state = .loading
         

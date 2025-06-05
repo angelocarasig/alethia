@@ -160,6 +160,9 @@ private struct LibraryContentView<Header: View, StickyHeader: View, Background: 
         ScrollView(.vertical, showsIndicators: false) {
             content
         }
+        .refreshable {
+            vm.onRefresh()
+        }
         .frame(maxWidth: .infinity)
         .onScrollGeometryChange(for: CGFloat.self, of: scrollOffsetCalculation) { oldValue, newValue in
             scrollOffset = newValue

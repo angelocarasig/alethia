@@ -11,18 +11,14 @@ import GRDB
 // MARK: - Metadata Refresh
 extension QueueActor {
     func refreshMetadata(
-        manga: Manga,
+        mangaId: Int64,
         continuation: AsyncStream<QueueOperationState>.Continuation
     ) async {
         do {
-            guard let mangaId = manga.id else {
-                throw MangaError.notFound
-            }
-            
             // Step 1: Fetch data from all origins (10% - 80%)
             continuation.yield(.ongoing(0.1))
             
-            let detailDTOs = try await fetchMangaOriginDetails(manga: manga) { progress in
+            let detailDTOs = try await fetchMangaOriginDetails(mangaId: mangaId) { progress in
                 continuation.yield(.ongoing(0.1 + (0.7 * progress)))
             }
             
@@ -50,9 +46,17 @@ extension QueueActor {
 // MARK: - Private Helpers
 extension QueueActor {
     func fetchMangaOriginDetails(
-        manga: Manga,
+        mangaId: Int64,
         onProgress: @escaping (Double) -> Void
     ) async throws -> [DetailDTO] {
+        // get the manga
+        let manga: Manga = try await DatabaseProvider.shared.reader.read { db in
+            guard let result = try Manga.fetchOne(db, key: mangaId) else {
+                throw MangaError.notFound
+            }
+            
+            return result
+        }
         
         // Get valid origins with their fetch URLs
         let validOrigins = try await getValidOrigins(for: manga)

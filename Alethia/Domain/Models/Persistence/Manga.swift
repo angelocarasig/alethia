@@ -8,12 +8,8 @@
 import Foundation
 import GRDB
 
-struct Manga: Codable, Identifiable, QueueOperationIdentifiable {
+struct Manga: Codable, Identifiable {
     var id: Int64?
-    
-    var queueOperationId: String {
-        "manga-\(id ?? -1)"
-    }
     
     var title: String
     var synopsis: String

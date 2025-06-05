@@ -132,6 +132,10 @@ extension DetailsViewModel {
                         self.options = []
                         print("Details Updated!")
                         self.state = .success(first)
+                        
+                        // MARK: - update internal entry's mangaId for usage with metadata refreshes
+                        self.entry.mangaId = first.manga.id
+                        
                         self.resolvedOrientation = self.resolveMangaOrientationUseCase.execute(detail: first)
                     } else {
                         self.options = []
@@ -202,8 +206,7 @@ extension DetailsViewModel {
 // MARK: - Use-Cases | Library Actions
 extension DetailsViewModel {
     func refreshMetadata() {
-        guard case let .success(details) = state else { return }
-        QueueProvider.shared.refreshMetadata(details.manga)
+        QueueProvider.shared.refreshMetadata(entry)
     }
     
     func addToLibrary(collections: [Int64], onSuccess: (() -> Void)? = nil) {
@@ -360,11 +363,10 @@ extension DetailsViewModel {
         QueueProvider.shared.$operations
             .receive(on: DispatchQueue.main)
             .sink { [weak self] operations in
-                guard let self = self,
-                      let details = self.details else { return }
+                guard let self = self else { return }
                 
                 // Check if there's an ongoing metadata refresh operation for this manga
-                if let operation = operations[details.manga.queueOperationId] {
+                if let operation = operations[entry.queueOperationId] {
                     switch operation.state {
                     case .pending:
                         // Start refreshing state with 0 progress

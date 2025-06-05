@@ -11,7 +11,7 @@ enum LibrarySortType: String, CaseIterable, Equatable, Identifiable {
     var id: String { self.rawValue }
     
     case title = "Title"
-    case updated = "Date Updated"
+    case updated = "Last Updated"
     case added = "Date Added"
     case read = "Last Read"
 }

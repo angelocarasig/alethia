@@ -19,7 +19,7 @@ enum EntryMatch {
     case exact
 }
 
-struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
+struct Entry: Codable, Hashable, Identifiable, QueueOperationIdentifiable, FetchableRecord, TableRecord {
     // MARK: Public API
     
     var id: String {
@@ -42,6 +42,11 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
     /// Definitely exist since they're in library
     var libraryViewId: String {
         "\(mangaId!)"
+    }
+    
+    /// For queue operations
+    var queueOperationId: String {
+        "manga-\(mangaId ?? -1)"
     }
     
     var mangaId: Int64?

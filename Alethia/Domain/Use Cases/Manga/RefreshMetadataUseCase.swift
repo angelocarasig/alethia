@@ -8,7 +8,7 @@
 import Foundation
 
 protocol RefreshMetadataUseCase {
-    func execute(manga: Manga) -> AsyncStream<QueueOperationState>
+    func execute(mangaId: Int64) -> AsyncStream<QueueOperationState>
 }
 
 final class RefreshMetadataUseCaseImpl: RefreshMetadataUseCase {
@@ -18,7 +18,7 @@ final class RefreshMetadataUseCaseImpl: RefreshMetadataUseCase {
         self.repository = repository
     }
     
-    func execute(manga: Manga) -> AsyncStream<QueueOperationState> {
-        return repository.refreshMetadata(manga: manga)
+    func execute(mangaId: Int64) -> AsyncStream<QueueOperationState> {
+        return repository.refreshMetadata(mangaId: mangaId)
     }
 }
