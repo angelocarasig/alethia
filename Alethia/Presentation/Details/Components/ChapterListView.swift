@@ -190,6 +190,7 @@ struct ChapterRow: View {
         .overlay {
             if read {
                 Color.background.opacity(0.3)
+                    .allowsHitTesting(false)
             }
         }
         .contentShape(.rect)
@@ -256,7 +257,7 @@ struct ChapterRow: View {
     }
 }
 
-struct ChapterDownloadButton: View {
+private struct ChapterDownloadButton: View {
     @EnvironmentObject private var vm: DetailsViewModel
     @ObservedObject private var queue = QueueProvider.shared
     let chapter: Chapter

@@ -68,7 +68,11 @@ struct ReaderScreen: View {
                 }
             }
         }
-        .onTapGesture { vm.toggleControls() }
+        .highPriorityGesture(
+            TapGesture().onEnded { _ in
+                vm.toggleControls()
+            }
+        )
         .overlay(ReaderOverlay())
         .toolbar(.hidden, for: .tabBar)     // tab bar
         .navigationBarBackButtonHidden()    // navigation bar (i.e. back dismiss())
@@ -123,6 +127,7 @@ extension ReaderScreen {
                     .onDisappear { vm.endDetailsVisible = false }
             }
         }
+        .zoomable()
         .scrollTargetBehavior(.paging)
         .scrollPosition($scrollPosition)
         .if(vm.orientation == .RightToLeft) { view in
@@ -181,6 +186,7 @@ extension ReaderScreen {
                     .onDisappear { vm.endDetailsVisible = false }
             }
         }
+        .zoomable()
         .if(vm.orientation == Orientation.Vertical) { view in
             // a 'vertical' reader is still paginated
             view.scrollTargetBehavior(.paging)

@@ -30,7 +30,7 @@ final class DatabaseProvider {
         Collection.self, MangaCollection.self,
     ]
     
-    let writer: DatabaseWriter
+    private(set) var writer: DatabaseWriter
     
     var reader: DatabaseReader {
         writer
@@ -40,9 +40,5 @@ final class DatabaseProvider {
         self.writer = writer
         
         try migrator.migrate(writer)
-        
-        #if DEBUG
-        // try self.seed(writer)
-        #endif
     }
 }
