@@ -58,6 +58,8 @@ final class DetailsViewModel: ObservableObject {
         self.addCollectionUseCase = injector.makeAddCollectionUseCase()
         
         self.downloadChapterUseCase = injector.makeDownloadChapterUseCase()
+        
+        self.observeMetadataRefreshState()
     }
 }
 
@@ -97,6 +99,7 @@ extension DetailsViewModel {
         case .empty: return "empty"
         case .error: return "error"
         case .success: return "success"
+        case .refreshing: return "refreshing"
         case .conflict: return "conflict"
         }
     }
@@ -198,6 +201,11 @@ extension DetailsViewModel {
 
 // MARK: - Use-Cases | Library Actions
 extension DetailsViewModel {
+    func refreshMetadata() {
+        guard case let .success(details) = state else { return }
+        QueueProvider.shared.refreshMetadata(details.manga)
+    }
+    
     func addToLibrary(collections: [Int64], onSuccess: (() -> Void)? = nil) {
         guard case let .success(details) = state,
               let mangaId = details.manga.id,
@@ -346,6 +354,61 @@ extension DetailsViewModel {
     }
 }
 
+// MARK: - Observation
+extension DetailsViewModel {
+    private func observeMetadataRefreshState() {
+        QueueProvider.shared.$operations
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] operations in
+                guard let self = self,
+                      let details = self.details else { return }
+                
+                // Check if there's an ongoing metadata refresh operation for this manga
+                if let operation = operations[details.manga.queueOperationId] {
+                    switch operation.state {
+                    case .pending:
+                        // Start refreshing state with 0 progress
+                        if case .success(let currentDetails) = self.state {
+                            withAnimation {
+                                self.state = .refreshing(currentDetails, progress: 0.0)
+                            }
+                        }
+                    case .ongoing(let progress):
+                        // Update progress while refreshing
+                        if case .refreshing(let currentDetails, _) = self.state {
+                            withAnimation {
+                                self.state = .refreshing(currentDetails, progress: progress)
+                            }
+                        }
+                    case .completed:
+                        // Refresh completed - reload details to get updated data
+                        self.loadDetails()
+                    case .failed(let error):
+                        // Refresh failed
+                        withAnimation {
+                            self.state = .error(error)
+                        }
+                    case .cancelled:
+                        // Refresh cancelled - go back to success state
+                        if case .refreshing(let currentDetails, _) = self.state {
+                            withAnimation {
+                                self.state = .success(currentDetails)
+                            }
+                        }
+                    }
+                } else {
+                    // No operation found - ensure we're not in refreshing state
+                    if case .refreshing(let currentDetails, _) = self.state {
+                        withAnimation {
+                            self.state = .success(currentDetails)
+                        }
+                    }
+                }
+            }
+            .store(in: &cancellables)
+    }
+}
+
 // MARK: - View State
 extension DetailsViewModel {
     enum ViewState {
@@ -353,6 +416,7 @@ extension DetailsViewModel {
         case conflict([Detail])
         case success(Detail)
         case error(Error)
+        case refreshing(Detail, progress: Double)
         case empty
     }
     

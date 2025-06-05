@@ -195,12 +195,10 @@ private struct QuickButtonsView: View {
             break
             
         case .refreshChapters:
-            // Implement refresh chapters action
-            break
+            vm.refreshMetadata()
             
         case .refreshMetadata:
-            // Implement refresh metadata action
-            break
+            vm.refreshMetadata()
             
         case .mergeWizard:
             // Implement merge wizard action

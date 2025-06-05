@@ -44,6 +44,8 @@ struct DetailsScreen: View {
             ErrorView(error: error)
         case .loading:
             LoadingView()
+        case .refreshing(let detail, let progress):
+            RefreshingView(currentContent: detail, progress: progress)
         case .success:
             DetailContentView()
         }
@@ -287,6 +289,47 @@ extension View {
             }
         } message: {
             Text(request.wrappedValue?.message ?? "")
+        }
+    }
+}
+
+
+// MARK: - Refreshing View Implementation
+extension DetailsScreen {
+    @ViewBuilder
+    private func RefreshingView(currentContent: Detail, progress: Double) -> some View {
+        ContentUnavailableView {
+            LoadingView()
+                .frame(width: 750, height: 750)
+        } description: {
+            VStack(spacing: Constants.Spacing.minimal) {
+                Text("Refreshing Content")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .padding(.top, Constants.Padding.screen)
+                
+                Text(progressText(for: progress))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .toolbar(.hidden, for: .tabBar)
+    }
+    
+    private func progressText(for progress: Double) -> String {
+        switch progress {
+        case 0.0..<0.2:
+            return "Fetching latest data..."
+        case 0.2..<0.4:
+            return "Updating chapters..."
+        case 0.4..<0.6:
+            return "Refreshing metadata..."
+        case 0.6..<0.8:
+            return "Processing changes..."
+        case 0.8..<1.0:
+            return "Almost done..."
+        default:
+            return "Finalizing..."
         }
     }
 }

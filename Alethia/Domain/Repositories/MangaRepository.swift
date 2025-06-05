@@ -14,6 +14,8 @@ protocol MangaRepository {
     // Returns array for view to handle when multiple matches are found
     func getMangaDetail(entry: Entry) -> AnyPublisher<[Detail], Error>
     
+    func refreshMetadata(manga: Manga) -> AsyncStream<QueueOperationState>
+    
     func addMangaToLibrary(mangaId: Int64, collections: [Int64]) throws -> Void
     
     func removeMangaFromLibrary(mangaId: Int64) throws -> Void

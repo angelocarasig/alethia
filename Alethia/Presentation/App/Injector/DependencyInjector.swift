@@ -20,7 +20,7 @@ final class DependencyInjector {
         let local = MangaLocalDataSource()
         let remote = MangaRemoteDataSource()
         
-        return MangaRepositoryImpl(local: local, remote: remote)
+        return MangaRepositoryImpl(local: local, remote: remote, actor: queueActor)
     }()
     
     private lazy var sourcesRepository: SourcesRepository = {
@@ -53,6 +53,10 @@ extension DependencyInjector {
     
     func makeGetMangaDetailUseCase() -> GetMangaDetailUseCase {
         return GetMangaDetailUseCaseImpl(repository: mangaRepository)
+    }
+    
+    func makeRefreshMetadataUseCase() -> RefreshMetadataUseCase {
+        return RefreshMetadataUseCaseImpl(repository: mangaRepository)
     }
     
     func makeAddMangaToLibraryUseCase() -> AddMangaToLibraryUseCase {

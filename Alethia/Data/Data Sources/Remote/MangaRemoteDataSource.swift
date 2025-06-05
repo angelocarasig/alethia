@@ -20,7 +20,8 @@ final class MangaRemoteDataSource {
               let url = URL(string: fetchUrl)
         else {
             let reason = "Entry titled: \(entry.title) does not have a valid fetch URL: '\(entry.fetchUrl ?? "")'"
-            throw ApplicationError.urlBuildingFailed(reason) }
+            throw ApplicationError.urlBuildingFailed(reason)
+        }
         
         return try await networkService.request(url: url)
     }

@@ -7,14 +7,17 @@
 
 import Foundation
 import Combine
+import UIKit.UIApplication
 
 final class MangaRepositoryImpl {
     private let local: MangaLocalDataSource
     private let remote: MangaRemoteDataSource
+    private let actor: QueueActor
     
-    init(local: MangaLocalDataSource, remote: MangaRemoteDataSource) {
+    init(local: MangaLocalDataSource, remote: MangaRemoteDataSource, actor: QueueActor) {
         self.local = local
         self.remote = remote
+        self.actor = actor
     }
 }
 
@@ -40,6 +43,23 @@ extension MangaRepositoryImpl: MangaRepository {
                     .eraseToAnyPublisher()
             }
             .eraseToAnyPublisher()
+    }
+    
+    func refreshMetadata(manga: Manga) -> AsyncStream<QueueOperationState> {
+        AsyncStream { continuation in
+            Task {
+                let backgroundTask = await UIApplication.shared.beginBackgroundTask {
+                    continuation.yield(.failed(DownloadError.backgroundTimeExpired))
+                }
+                
+                await actor.refreshMetadata(manga: manga, continuation: continuation)
+                continuation.finish()
+                
+                await MainActor.run {
+                    UIApplication.shared.endBackgroundTask(backgroundTask)
+                }
+            }
+        }
     }
     
     func addMangaToLibrary(mangaId: Int64, collections: [Int64]) throws {

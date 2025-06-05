@@ -42,6 +42,24 @@ enum QueueOperationState: Equatable {
             return false
         }
     }
+    
+    var isFinished: Bool {
+        switch self {
+        case .completed, .cancelled, .failed:
+            return true
+        case .pending, .ongoing:
+            return false
+        }
+    }
+    
+    var isActive: Bool {
+        switch self {
+        case .pending, .ongoing:
+            return true
+        case .completed, .cancelled, .failed:
+            return false
+        }
+    }
 }
 
 final class QueueOperation: ObservableObject, Identifiable {
@@ -67,7 +85,7 @@ final class QueueOperation: ObservableObject, Identifiable {
     @MainActor
     func updateState(_ newState: QueueOperationState) {
         self.state = newState
-
+        
         switch newState {
         case .pending, .failed, .cancelled:
             self.progress = 0.0
@@ -100,10 +118,12 @@ final class QueueProvider: ObservableObject {
     
     private var cancellables = Set<AnyCancellable>()
     private let downloadChapterUseCase: DownloadChapterUseCase
+    private let metadataRefreshUseCase: RefreshMetadataUseCase
     
     private init() {
         let injector = DependencyInjector.shared
         self.downloadChapterUseCase = injector.makeDownloadChapterUseCase()
+        self.metadataRefreshUseCase = injector.makeRefreshMetadataUseCase()
     }
 }
 
@@ -117,13 +137,59 @@ extension QueueProvider {
 // MARK: - Use-cases
 extension QueueProvider {
     func downloadChapter(_ chapter: Chapter) {
-        guard operations[chapter.queueOperationId] == nil else {
+        // Check if operation doesn't exist OR if it exists but is finished
+        guard operations[chapter.queueOperationId]?.state.isFinished != false else {
             return
+        }
+        
+        // If there's a finished operation, remove it first
+        if let existingOperation = operations[chapter.queueOperationId],
+           existingOperation.state.isFinished {
+            operations.removeValue(forKey: chapter.queueOperationId)
         }
         
         // create new operation and add it
         let operation = QueueOperation(item: chapter, type: .chapterDownload(chapter))
         operations[chapter.queueOperationId] = operation
+        
+        // when value changes, notify main provider so that views can listen
+        operation.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+        
+        // start subscription to handle queue
+        operation.publisher
+            .sink { [weak self] state in
+                switch state {
+                case .completed, .failed, .cancelled:
+                    self?.updateQueue()
+                default:
+                    break
+                }
+            }
+            .store(in: &cancellables)
+        
+        // once subscription started, try updating queue
+        updateQueue()
+    }
+    
+    func refreshMetadata(_ manga: Manga) {
+        // Check if operation doesn't exist OR if it exists but is finished
+        guard operations[manga.queueOperationId]?.state.isFinished != false else {
+            return
+        }
+        
+        // If there's a finished operation, remove it first
+        if let existingOperation = operations[manga.queueOperationId],
+           existingOperation.state.isFinished {
+            operations.removeValue(forKey: manga.queueOperationId)
+        }
+        
+        // create new operation and add it
+        let operation = QueueOperation(item: manga, type: .metadataRefresh(manga))
+        operations[manga.queueOperationId] = operation
         
         // when value changes, notify main provider so that views can listen
         operation.objectWillChange
@@ -176,8 +242,9 @@ extension QueueProvider {
                 let stream = downloadChapterUseCase.execute(chapter: chapter)
                 operation.start(with: stream)
                 
-            case .metadataRefresh:
-                break
+            case .metadataRefresh(let manga):
+                let stream = metadataRefreshUseCase.execute(manga: manga)
+                operation.start(with: stream)
             }
         }
     }
