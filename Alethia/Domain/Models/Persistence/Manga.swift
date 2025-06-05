@@ -110,48 +110,6 @@ extension Manga: DatabaseModel {
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
-        if version <= Version(1, 0, 0) {
-            /// Creates view for entry 1-1 bind to manga
-            migrator.registerMigration("virtual entry view") { db in
-                let sql = """
-                    -- Create a view named `entry`
-                    CREATE VIEW entry AS
-                    SELECT
-                    -- Select mangaId directly from Manga table
-                    m.id AS mangaId,
-                    
-                    -- Select the sourceId from the Origin table with the lowest priority for the given mangaId
-                    -- COALESCE ensures that if there is no sourceId, NULL is returned
-                    COALESCE(
-                        (
-                            SELECT o.sourceId
-                            FROM Origin o 
-                            WHERE o.mangaId = m.id
-                            ORDER BY o.priority ASC  -- Sort by priority to get the one with the lowest value
-                            LIMIT 1  -- Limit to the first (lowest priority) sourceId found
-                        ), 
-                        NULL  -- If no sourceId is found, return NULL
-                    ) AS sourceId,
-                    
-                    -- Select the title directly from the Manga table
-                    m.title AS title,
-                    
-                    -- Select the cover URL from the Cover table where active = 1 (only the active cover)
-                    -- LIMIT ensures that we only take one cover (since a manga can have multiple covers)
-                    (SELECT c.url
-                     FROM Cover c 
-                     WHERE c.mangaId = m.id AND c.active = 1
-                     LIMIT 1) AS cover
-                
-                -- fetchUrl mapped on client-side ('/' resolving becomes an issue)
-                
-                FROM Manga m;
-                """
-                
-                try db.execute(sql: sql)
-            }
-        }
-        
         if version < Version(1, 0, 1) {
             migrator.registerMigration("update manga updatedAt from chapters") { db in
                 // Get all manga IDs
@@ -178,76 +136,17 @@ extension Manga: DatabaseModel {
 }
 
 extension Manga {
+    // static version would return all entries anyway
     static var entry: QueryInterfaceRequest<Entry> {
-        // Get the source ID from the best origin
-        let sourceId = SQL("""
-            (SELECT o.sourceId 
-             FROM origin o 
-             WHERE o.mangaId = manga.id 
-             ORDER BY o.priority ASC 
-             LIMIT 1)
-        """)
+        return Entry.all()
+    }
+    
+    var entry: QueryInterfaceRequest<Entry> {
+        guard let id = id else {
+            return Entry.none()
+        }
         
-        // Construct the full URL by joining through source to host
-        let fetchUrl = SQL("""
-            (SELECT 
-                RTRIM(h.baseUrl, '/') || '/' || 
-                LTRIM(s.path, '/') || '/manga/' || 
-                o.slug
-             FROM origin o
-             JOIN source s ON s.id = o.sourceId
-             JOIN host h ON h.id = s.hostId
-             WHERE o.mangaId = manga.id
-             ORDER BY o.priority ASC
-             LIMIT 1)
-        """)
-        
-        // Get the active cover
-        let cover = SQL("""
-            (SELECT c.url 
-             FROM cover c
-             WHERE c.mangaId = manga.id
-             AND c.active = 1
-             ORDER BY c.id DESC
-             LIMIT 1)
-        """)
-        
-        // Calculate unread count
-        let unreadCount = SQL("""
-            IFNULL((SELECT COUNT(*) FROM (
-                WITH RankedChapters AS (
-                    SELECT 
-                        c.id,
-                        c.number,
-                        c.progress,
-                        ROW_NUMBER() OVER (
-                            PARTITION BY c.number 
-                            ORDER BY o.priority ASC, s.priority ASC
-                        ) as rank
-                    FROM chapter c
-                    JOIN origin o ON c.originId = o.id
-                    JOIN scanlator s ON c.scanlatorId = s.id
-                    WHERE o.mangaId = manga.id
-                    AND (manga.showHalfChapters = 1 OR CAST(c.number AS INTEGER) = c.number)
-                )
-                SELECT id FROM RankedChapters 
-                WHERE rank = 1 AND (progress IS NULL OR progress < 1.0)
-            )), 0)
-        """)
-        
-        // Cast unread count as INTEGER
-        let unreadCountCasted = SQL("CAST(\(unreadCount) AS INTEGER)")
-        
-        return Manga
-            .select([
-                Manga.Columns.id    .forKey("mangaId"),
-                Manga.Columns.title .forKey("title"),
-                sourceId            .forKey("sourceId"),
-                fetchUrl            .forKey("fetchUrl"),  // Now contains the full URL
-                cover               .forKey("cover"),
-                unreadCountCasted   .forKey("unread")
-            ])
-            .asRequest(of: Entry.self)
+        return Entry.filter(Entry.Columns.mangaId == id)
     }
     
     var chapters: QueryInterfaceRequest<ChapterExtended> {

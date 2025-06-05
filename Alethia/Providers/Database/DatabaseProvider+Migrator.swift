@@ -27,6 +27,8 @@ extension DatabaseProvider {
                 try model.migrate(with: &migrator, from: self.version)
             }
             
+            try makeViews()
+            
             return migrator
         }
         catch {

@@ -11,10 +11,10 @@ import GRDB
 enum EntryMatch {
     // Does not exist in library at all
     case none
-
+    
     // Same title
     case partial
-
+    
     // Exact ID
     case exact
 }
@@ -26,7 +26,7 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
         fetchUrl ?? // fetchUrl is a stable unique value - may not exist if source not present
         "\(mangaId ?? sourceId ?? -1)-\(title)-\(unread)"
     }
-
+    
     /// A computed property that represents the unique identifier for a transition.
     /// This identifier is used to track and manage transitions within the system.
     var transitionId: String {
@@ -43,31 +43,33 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
     var libraryViewId: String {
         "\(mangaId!)"
     }
-
+    
     var mangaId: Int64?
     var sourceId: Int64?
     var title: String
     var cover: String?
     var fetchUrl: String?
-
+    var inLibrary: Bool // need when querying in library
+    
     // MARK: Transient state
     var match: EntryMatch = .none
     var unread: Int
-
+    
     // MARK: Decoding & GRDB
     private enum CodingKeys: String, CodingKey {
-        case mangaId, sourceId, title, cover, fetchUrl, unread
+        case mangaId, sourceId, title, cover, fetchUrl, inLibrary, unread
     }
-
+    
     enum Columns {
         static let mangaId = Column(CodingKeys.mangaId)
         static let sourceId = Column(CodingKeys.sourceId)
         static let title = Column(CodingKeys.title)
         static let cover = Column(CodingKeys.cover)
         static let fetchUrl = Column(CodingKeys.fetchUrl)
+        static let inLibrary = Column(CodingKeys.inLibrary)
         static let unread = Column(CodingKeys.unread)
     }
-
+    
     // Custom initializer
     init(
         mangaId: Int64? = nil,
@@ -75,6 +77,7 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
         title: String,
         cover: String? = nil,
         fetchUrl: String? = nil,
+        inLibrary: Bool = false,
         unread: Int = -1,
         match: EntryMatch? = EntryMatch.none
     ) {
@@ -83,6 +86,7 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
         self.title = title
         self.cover = cover
         self.fetchUrl = fetchUrl
+        self.inLibrary = inLibrary
         self.unread = unread
         self.match = match ?? .none
     }
