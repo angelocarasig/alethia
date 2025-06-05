@@ -28,6 +28,9 @@ struct LibraryScreen: View {
                 LibraryFilterView()
                     .presentationDetents([.medium, .large])
             }
+            .sheet(isPresented: $vm.showQueue) {
+                QueueStatusView()
+            }
         }
         .environmentObject(vm)
         .onAppear {
@@ -160,7 +163,7 @@ private struct LibraryContentView<Header: View, StickyHeader: View, Background: 
         ScrollView(.vertical, showsIndicators: false) {
             content
         }
-        .refreshable {
+        .onPullToRefresh {
             vm.onRefresh()
         }
         .frame(maxWidth: .infinity)
@@ -224,10 +227,22 @@ private extension LibraryContentView {
     
     var trailingButtons: some View {
         HStack(spacing: Constants.Spacing.toolbar) {
-            Button(action: { vm.showFilters = true }) {
+            Button {
+                vm.showQueue = true
+            } label: {
+                let operationCount = QueueProvider.shared.operations.count
+                
+                Image(systemName: "hourglass")
+                    .foregroundStyle(operationCount > 0 ? Color.accentColor : Color.tint)
+            }
+            
+            Button {
+                vm.showFilters = true
+            } label: {
                 Image(systemName: "line.horizontal.3.decrease")
                     .overlay(ActiveFiltersOverlay())
             }
+            
             NavigationLink(destination: Text("Hi")) {
                 Image(systemName: "gearshape")
             }

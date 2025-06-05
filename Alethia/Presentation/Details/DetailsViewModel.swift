@@ -353,7 +353,7 @@ extension DetailsViewModel {
 // MARK: - Downloads
 extension DetailsViewModel {
     func downloadChapter(_ chapter: Chapter) {
-        QueueProvider.shared.downloadChapter(chapter)
+        QueueProvider.shared.downloadChapter(chapter, mangaId: details?.manga.id)
     }
 }
 
@@ -367,6 +367,9 @@ extension DetailsViewModel {
                 
                 // Check if there's an ongoing metadata refresh operation for this manga
                 if let operation = operations[entry.queueOperationId] {
+                    // skip if not metadata refresh
+                    guard case .metadataRefresh = operation.type else { return }
+                    
                     switch operation.state {
                     case .pending:
                         // Start refreshing state with 0 progress
@@ -396,13 +399,6 @@ extension DetailsViewModel {
                             withAnimation {
                                 self.state = .success(currentDetails)
                             }
-                        }
-                    }
-                } else {
-                    // No operation found - ensure we're not in refreshing state
-                    if case .refreshing(let currentDetails, _) = self.state {
-                        withAnimation {
-                            self.state = .success(currentDetails)
                         }
                     }
                 }

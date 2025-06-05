@@ -9,112 +9,10 @@ import Foundation
 import Combine
 import Collections
 
-typealias QueueOperationId = String
-
-protocol QueueOperationIdentifiable {
-    var queueOperationId: QueueOperationId { get }
-}
-
-/// The type of operation a queue operation object contains
-enum QueueOperationType {
-    case chapterDownload(Chapter)
-    case metadataRefresh(Entry)
-}
-
-enum QueueOperationState: Equatable {
-    case pending
-    case ongoing(Double) // where double is progress -> 0.0 to 1.0
-    case completed
-    case cancelled
-    case failed(Error)
-    
-    static func == (lhs: QueueOperationState, rhs: QueueOperationState) -> Bool {
-        switch (lhs, rhs) {
-        case (.pending, .pending),
-            (.completed, .completed),
-            (.cancelled, .cancelled):
-            return true
-        case let (.ongoing(p1), .ongoing(p2)):
-            return p1 == p2
-        case let (.failed(e1), .failed(e2)):
-            return (e1 as NSError) == (e2 as NSError)
-        default:
-            return false
-        }
-    }
-    
-    var isFinished: Bool {
-        switch self {
-        case .completed, .cancelled, .failed:
-            return true
-        case .pending, .ongoing:
-            return false
-        }
-    }
-    
-    var isActive: Bool {
-        switch self {
-        case .pending, .ongoing:
-            return true
-        case .completed, .cancelled, .failed:
-            return false
-        }
-    }
-}
-
-final class QueueOperation: ObservableObject, Identifiable {
-    let id: String
-    let type: QueueOperationType
-    
-    @Published private(set) var state: QueueOperationState
-    @Published private(set) var progress: Double
-    private var task: Task<Void, Never>?
-    
-    // expose state publisher
-    var publisher: AnyPublisher<QueueOperationState, Never> {
-        $state.eraseToAnyPublisher()
-    }
-    
-    init(item: any QueueOperationIdentifiable, type: QueueOperationType) {
-        self.id = item.queueOperationId
-        self.type = type
-        self.state = .pending
-        self.progress = 0.0
-    }
-    
-    @MainActor
-    func updateState(_ newState: QueueOperationState) {
-        self.state = newState
-        
-        switch newState {
-        case .pending, .failed, .cancelled:
-            self.progress = 0.0
-        case .ongoing(let progressValue):
-            self.progress = progressValue
-        case .completed:
-            self.progress = 1.0
-        }
-    }
-    
-    func start(with stream: AsyncStream<QueueOperationState>) {
-        task = Task {
-            for await newState in stream {
-                await updateState(newState)
-            }
-        }
-    }
-    
-    @MainActor
-    func cancel() {
-        task?.cancel()
-        updateState(.cancelled)
-    }
-}
-
 final class QueueProvider: ObservableObject {
     static var shared = QueueProvider()
     
-    @Published private(set) var operations = OrderedDictionary<QueueOperationId, QueueOperation>()
+    @Published var operations = OrderedDictionary<QueueOperationId, QueueOperation>()
     
     private var cancellables = Set<AnyCancellable>()
     private let downloadChapterUseCase: DownloadChapterUseCase
@@ -134,9 +32,36 @@ extension QueueProvider {
     }
 }
 
+// MARK: - Publishers
+extension QueueProvider {
+    func entryStatePublisher(entry: Entry) -> AnyPublisher<EntryQueueState, Never> {
+        guard let mangaId = entry.mangaId else {
+            return Just(.idle).eraseToAnyPublisher()
+        }
+        
+        return $operations
+            .map { operations in
+                var state: EntryQueueState = []
+                
+                for operation in operations.values where operation.state.isActive && operation.mangaId == mangaId {
+                    switch operation.type {
+                    case .chapterDownload:
+                        state.insert(.downloading)
+                    case .metadataRefresh:
+                        state.insert(.updatingMetadata)
+                    }
+                }
+                
+                return state
+            }
+            .removeDuplicates()
+            .eraseToAnyPublisher()
+    }
+}
+
 // MARK: - Use-cases
 extension QueueProvider {
-    func downloadChapter(_ chapter: Chapter) {
+    func downloadChapter(_ chapter: Chapter, mangaId: Int64?) {
         // Check if operation doesn't exist OR if it exists but is finished
         guard operations[chapter.queueOperationId]?.state.isFinished != false else {
             return
@@ -149,7 +74,7 @@ extension QueueProvider {
         }
         
         // create new operation and add it
-        let operation = QueueOperation(item: chapter, type: .chapterDownload(chapter))
+        let operation = QueueOperation(item: chapter, type: .chapterDownload(chapter), mangaId: mangaId)
         operations[chapter.queueOperationId] = operation
         
         // when value changes, notify main provider so that views can listen
@@ -188,7 +113,7 @@ extension QueueProvider {
         }
         
         // create new operation and add it
-        let operation = QueueOperation(item: entry, type: .metadataRefresh(entry))
+        let operation = QueueOperation(item: entry, type: .metadataRefresh(entry), mangaId: entry.mangaId)
         operations[entry.queueOperationId] = operation
         
         // when value changes, notify main provider so that views can listen
@@ -215,9 +140,8 @@ extension QueueProvider {
     }
 }
 
-
 // MARK: - Internal
-extension QueueProvider {
+private extension QueueProvider {
     private func updateQueue() {
         /// Check if there is > 5 queue operations currently ongoing
         

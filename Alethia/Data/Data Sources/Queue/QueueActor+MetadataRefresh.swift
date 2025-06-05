@@ -110,6 +110,11 @@ extension QueueActor {
                     return nil
                 }
                 
+                /// skip disabled sources
+                guard !source.disabled else {
+                    return nil
+                }
+                
                 guard let fetchUrl = URL.appendingPaths(
                     host.baseUrl,
                     source.path,

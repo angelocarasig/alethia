@@ -12,9 +12,10 @@ import GRDB
 
 final class LibraryViewModel: ObservableObject {
     // MARK: - Published Properties
-    @Published var showFilters: Bool = false
-    @Published var filters: LibraryFilters = .init()
     @Published private(set) var state: ViewState = .loading
+    @Published var filters: LibraryFilters = .init()
+    @Published var showFilters: Bool = false
+    @Published var showQueue: Bool = false
     
     @Published private(set) var collections: [CollectionExtended] = []
     @Published private(set) var activeCollection: Collection? = nil
