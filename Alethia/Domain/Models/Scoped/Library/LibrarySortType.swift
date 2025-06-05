@@ -13,6 +13,6 @@ enum LibrarySortType: String, CaseIterable, Equatable, Identifiable {
     case title = "Title"
     case updated = "Date Updated"
     case added = "Date Added"
-    case created = "Date Created" // when the manga was created specifically
+    case read = "Last Read"
 }
 

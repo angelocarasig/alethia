@@ -55,6 +55,7 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
     // these properties not important but just needed for querying
     var addedAt: Date = .distantPast
     var updatedAt: Date = .distantPast
+    var lastReadAt: Date? = nil
     
     // MARK: Transient state
     var match: EntryMatch = .none
@@ -63,7 +64,7 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
     // MARK: Decoding & GRDB
     private enum CodingKeys: String, CodingKey {
         case mangaId, sourceId, title, cover, fetchUrl, unread
-        case inLibrary, addedAt, updatedAt
+        case inLibrary, addedAt, updatedAt, lastReadAt
     }
     
     enum Columns {
@@ -76,6 +77,7 @@ struct Entry: Codable, Hashable, Identifiable, FetchableRecord, TableRecord {
         static let inLibrary = Column(CodingKeys.inLibrary)
         static let addedAt = Column(CodingKeys.addedAt)
         static let updatedAt = Column(CodingKeys.updatedAt)
+        static let lastReadAt = Column(CodingKeys.lastReadAt)
         
         static let unread = Column(CodingKeys.unread)
     }

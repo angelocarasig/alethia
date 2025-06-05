@@ -25,6 +25,8 @@ final class ChapterLocalDataSource {
             
             targetChapter.progress = newProgress
             try targetChapter.update(db)
+            
+            try updateMangaLastRead(db: db, for: targetChapter)
         }
     }
     
@@ -37,6 +39,8 @@ final class ChapterLocalDataSource {
             
             targetChapter.progress = 1.0
             try targetChapter.update(db)
+            
+            try updateMangaLastRead(db: db, for: targetChapter)
         }
     }
     
@@ -144,6 +148,24 @@ final class ChapterLocalDataSource {
         }
         
         return pageURLs
+    }
+}
+
+// MARK: - General helpers
+private extension ChapterLocalDataSource {
+    private func updateMangaLastRead(db: Database, for targetChapter: Chapter) throws -> Void {
+        guard let origin = try Origin.fetchOne(db, key: targetChapter.originId) else {
+            throw OriginError.notFound
+        }
+        
+        guard var correlatingManga = try Manga.fetchOne(db, key: origin.mangaId) else {
+            throw MangaError.notFound
+        }
+        
+        print("Updating \(correlatingManga.title) last read to: \(Date().description)")
+        
+        correlatingManga.lastReadAt = Date()
+        try correlatingManga.update(db)
     }
 }
 

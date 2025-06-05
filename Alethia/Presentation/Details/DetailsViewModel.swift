@@ -30,7 +30,6 @@ final class DetailsViewModel: ObservableObject {
     private let removeMangaFromLibraryUseCase: RemoveMangaFromLibraryUseCase
     private let addMangaOriginUseCase: AddMangaOriginUseCase
     private let markAllChaptersUseCase: MarkAllChaptersUseCase
-    private let updateChapterProgressUseCase: UpdateChapterProgressUseCase
     private let updateMangaCoverUseCase: UpdateMangaCoverUseCase
     
     // MARK: - Collections
@@ -53,7 +52,6 @@ final class DetailsViewModel: ObservableObject {
         self.removeMangaFromLibraryUseCase = injector.makeRemoveMangaFromLibraryUseCase()
         self.addMangaOriginUseCase = injector.makeAddMangaOriginUseCase()
         self.markAllChaptersUseCase = injector.makeMarkAllChaptersUseCase()
-        self.updateChapterProgressUseCase = injector.makeUpdateChapterProgressUseCase()
         self.updateMangaCoverUseCase = injector.makeUpdateMangaCoverUseCase()
         
         self.getAllCollectionsUseCase = injector.makeGetAllCollectionsUseCase()
@@ -260,11 +258,7 @@ extension DetailsViewModel {
     
     func markChapter(asRead: Bool, for chapter: ChapterExtended) {
         do {
-            try updateChapterProgressUseCase.execute(
-                chapter: chapter.chapter,
-                newProgress: asRead ? 1.0 : 0.0,
-                override: true
-            )
+            try markAllChaptersUseCase.execute(chapters: [chapter.chapter], asRead: asRead)
         }
         catch {
             withAnimation {

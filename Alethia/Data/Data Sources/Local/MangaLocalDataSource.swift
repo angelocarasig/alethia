@@ -300,23 +300,23 @@ extension MangaLocalDataSource {
                 throw MangaError.notFound
             }
             
-            // 1. Similar tags - manga that share tags with the target manga
-            let withSimilarTags = try fetchSimilarTaggedManga(db: db, mangaId: mangaId)
-            
-            // 2. Same collection - manga in the same collections
-            let fromSameCollection = try fetchSameCollectionManga(db: db, mangaId: mangaId)
-            
-            // 3. Same author - other works by the same authors
-            let otherWorksByAuthor = try fetchSameAuthorManga(db: db, mangaId: mangaId)
-            
-            // 4. Same scanlator - other series by the same scanlators
-            let otherSeriesByScanlator = try fetchSameScanlatorManga(db: db, mangaId: mangaId)
+//            // 1. Similar tags - manga that share tags with the target manga
+//            let withSimilarTags = try fetchSimilarTaggedManga(db: db, mangaId: mangaId)
+//            
+//            // 2. Same collection - manga in the same collections
+//            let fromSameCollection = try fetchSameCollectionManga(db: db, mangaId: mangaId)
+//            
+//            // 3. Same author - other works by the same authors
+//            let otherWorksByAuthor = try fetchSameAuthorManga(db: db, mangaId: mangaId)
+//            
+//            // 4. Same scanlator - other series by the same scanlators
+//            let otherSeriesByScanlator = try fetchSameScanlatorManga(db: db, mangaId: mangaId)
             
             return RecommendedEntries(
-                withSimilarTags: withSimilarTags,
-                fromSameCollection: fromSameCollection,
-                otherWorksByAuthor: otherWorksByAuthor,
-                otherSeriesByScanlator: otherSeriesByScanlator
+                withSimilarTags: [],
+                fromSameCollection: [],
+                otherWorksByAuthor: [],
+                otherSeriesByScanlator: []
             )
         }
     }
@@ -445,16 +445,9 @@ private extension MangaLocalDataSource {
             // Sort by when manga was last updated (new chapters)
             return request.order(isAscending ? Manga.Columns.updatedAt.asc : Manga.Columns.updatedAt.desc)
             
-        case .created:
-            // Sort by manga creation date - need to get from origin
-            // Use a subquery to get the creation date from the primary origin (lowest priority)
-            let createdAtSubquery = Origin
-                .filter(Origin.Columns.mangaId == Manga.Columns.id)
-                .order(Origin.Columns.priority.asc)
-                .limit(1)
-                .select(Origin.Columns.createdAt)
-            
-            return request.order(isAscending ? createdAtSubquery.asc : createdAtSubquery.desc)
+        case .read:
+            // Sort by when manga was last read
+            return request.order(isAscending ? Manga.Columns.lastReadAt.asc : Manga.Columns.lastReadAt.desc)
         }
     }
 }
@@ -703,6 +696,7 @@ private extension MangaLocalDataSource {
 
 // MARK: Recommendation Query Helpers
 private extension MangaLocalDataSource {
+    @available(*, deprecated, message: "Refactor Out")
     func fetchSimilarTaggedManga(db: Database, mangaId: Int64) throws -> [Entry] {
         return try Manga.entry
             .filter(Manga.Columns.inLibrary)
@@ -723,6 +717,7 @@ private extension MangaLocalDataSource {
             .fetchAll(db)
     }
     
+    @available(*, deprecated, message: "Refactor Out")
     func fetchSameCollectionManga(db: Database, mangaId: Int64) throws -> [Entry] {
         return try Manga.entry
             .filter(Manga.Columns.inLibrary)
@@ -743,6 +738,7 @@ private extension MangaLocalDataSource {
             .fetchAll(db)
     }
     
+    @available(*, deprecated, message: "Refactor Out")
     func fetchSameAuthorManga(db: Database, mangaId: Int64) throws -> [Entry] {
         return try Manga.entry
             .filter(Manga.Columns.inLibrary)
@@ -763,6 +759,7 @@ private extension MangaLocalDataSource {
             .fetchAll(db)
     }
     
+    @available(*, deprecated, message: "Refactor Out")
     func fetchSameScanlatorManga(db: Database, mangaId: Int64) throws -> [Entry] {
         return try Manga.entry
             .filter(Manga.Columns.inLibrary)

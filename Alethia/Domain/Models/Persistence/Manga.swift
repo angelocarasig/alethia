@@ -16,6 +16,7 @@ struct Manga: Codable, Identifiable {
     
     var addedAt: Date = Date()
     var updatedAt: Date = Date()
+    var lastReadAt: Date? = nil
     
     var inLibrary: Bool = false
     var orientation: Orientation = .Default
@@ -76,6 +77,7 @@ extension Manga: TableRecord {
         static let synopsis = Column(Manga.CodingKeys.synopsis)
         static let addedAt = Column(Manga.CodingKeys.addedAt)
         static let updatedAt = Column(Manga.CodingKeys.updatedAt)
+        static let lastReadAt = Column(Manga.CodingKeys.lastReadAt)
         static let inLibrary = Column(Manga.CodingKeys.inLibrary)
         static let orientation = Column(Manga.CodingKeys.orientation)
         static let showAllChapters = Column(Manga.CodingKeys.showAllChapters)
@@ -88,7 +90,7 @@ extension Manga: FetchableRecord { }
 extension Manga: PersistableRecord { }
 
 extension Manga: DatabaseModel {
-    static var version: Version = Version(1, 0, 1)
+    static var version: Version = Version(1, 0, 3)
     
     static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
@@ -117,18 +119,26 @@ extension Manga: DatabaseModel {
                 
                 for mangaId in allMangaIds {
                     let sql = """
-                UPDATE manga
-                SET updatedAt = COALESCE(
-                    (SELECT MAX(c.date)
-                     FROM chapter c
-                     JOIN origin o ON c.originId = o.id
-                     WHERE o.mangaId = ?),
-                    updatedAt
-                )
-                WHERE id = ?
-            """
+                        UPDATE manga
+                        SET updatedAt = COALESCE(
+                            (SELECT MAX(c.date)
+                             FROM chapter c
+                             JOIN origin o ON c.originId = o.id
+                             WHERE o.mangaId = ?),
+                            updatedAt
+                        )
+                        WHERE id = ?
+                    """
                     
                     try db.execute(sql: sql, arguments: [mangaId, mangaId])  // Use mangaId, not id
+                }
+            }
+        }
+        
+        if version < Version(1, 0, 3) {
+            migrator.registerMigration("add lastReadAt to manga") { db in
+                try db.alter(table: databaseTableName) { t in
+                    t.add(column: Columns.lastReadAt.name, .datetime)
                 }
             }
         }

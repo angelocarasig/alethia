@@ -30,6 +30,7 @@ private extension DatabaseProvider {
                 m.inLibrary AS inLibrary,
                 m.addedAt AS addedAt,
                 m.updatedAt AS updatedAt,
+                m.lastReadAt AS lastReadAt,
                 
                 -- Get the source ID from the best origin
                 (SELECT o.sourceId 
