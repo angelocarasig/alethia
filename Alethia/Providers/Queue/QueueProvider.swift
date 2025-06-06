@@ -18,13 +18,6 @@ final class QueueProvider: ObservableObject {
     private let downloadChapterUseCase: DownloadChapterUseCase
     private let metadataRefreshUseCase: RefreshMetadataUseCase
     
-    private var throttleWorkItem: DispatchWorkItem?
-    private let queueUpdateQueue = DispatchQueue(label: "queue.update", qos: .utility)
-    
-    private var lastMetadataRequestTime: Dictionary<String, Date> = .init()
-    private let sourceThrottleInterval: TimeInterval = 3.0
-    private let throttleQueue = DispatchQueue(label: "throttle.sync", attributes: .concurrent)
-    
     private init() {
         let injector = DependencyInjector.shared
         self.downloadChapterUseCase = injector.makeDownloadChapterUseCase()
@@ -69,24 +62,29 @@ extension QueueProvider {
 // MARK: - Use-cases
 extension QueueProvider {
     func downloadChapter(_ chapter: Chapter, mangaId: Int64?) {
+        // Check if operation doesn't exist OR if it exists but is finished
         guard operations[chapter.queueOperationId]?.state.isFinished != false else {
             return
         }
         
+        // If there's a finished operation, remove it first
         if let existingOperation = operations[chapter.queueOperationId],
            existingOperation.state.isFinished {
             operations.removeValue(forKey: chapter.queueOperationId)
         }
         
+        // create new operation and add it
         let operation = QueueOperation(item: chapter, type: .chapterDownload(chapter), mangaId: mangaId)
         operations[chapter.queueOperationId] = operation
         
+        // when value changes, notify main provider so that views can listen
         operation.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
         
+        // start subscription to handle queue
         operation.publisher
             .sink { [weak self] state in
                 switch state {
@@ -98,47 +96,34 @@ extension QueueProvider {
             }
             .store(in: &cancellables)
         
+        // once subscription started, try updating queue
         updateQueue()
     }
     
     func refreshMetadata(_ entry: Entry) {
+        // Check if operation doesn't exist OR if it exists but is finished
         guard operations[entry.queueOperationId]?.state.isFinished != false else {
             return
         }
         
-        // Check per-source throttling
-        if let sourceId = entry.sourceId {
-            let sourceKey = String(sourceId)
-            let now = Date()
-            
-            let shouldThrottle = throttleQueue.sync {
-                let lastRequest = lastMetadataRequestTime[sourceKey] ?? .distantPast
-                return now.timeIntervalSince(lastRequest) < sourceThrottleInterval
-            }
-            
-            guard !shouldThrottle else {
-                return // Throttled for this source
-            }
-            
-            throttleQueue.async(flags: .barrier) { [weak self] in
-                self?.lastMetadataRequestTime[sourceKey] = now
-            }
-        }
-        
+        // If there's a finished operation, remove it first
         if let existingOperation = operations[entry.queueOperationId],
            existingOperation.state.isFinished {
             operations.removeValue(forKey: entry.queueOperationId)
         }
         
+        // create new operation and add it
         let operation = QueueOperation(item: entry, type: .metadataRefresh(entry), mangaId: entry.mangaId)
         operations[entry.queueOperationId] = operation
         
+        // when value changes, notify main provider so that views can listen
         operation.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
         
+        // start subscription to handle queue
         operation.publisher
             .sink { [weak self] state in
                 switch state {
@@ -150,35 +135,16 @@ extension QueueProvider {
             }
             .store(in: &cancellables)
         
+        // once subscription started, try updating queue
         updateQueue()
     }
 }
 
 // MARK: - Internal
 private extension QueueProvider {
-    func updateQueue() {
-        let ongoingCount = operations.values.filter {
-            if case .ongoing = $0.state { return true }
-            return false
-        }.count
+    private func updateQueue() {
+        /// Check if there is > 5 queue operations currently ongoing
         
-        // If we have slots available, process immediately
-        if ongoingCount < Constants.Queue.ConcurrentOperationsCount {
-            performQueueUpdate()
-        }
-        
-        // Always set up throttled processing for overflow/future items
-        throttleWorkItem?.cancel()
-        
-        let workItem = DispatchWorkItem { [weak self] in
-            self?.performQueueUpdate()
-        }
-        
-        throttleWorkItem = workItem
-        queueUpdateQueue.asyncAfter(deadline: .now() + 3.0, execute: workItem)
-    }
-    
-    func performQueueUpdate() {
         let ongoingCount = operations.values.filter {
             if case .ongoing = $0.state { return true }
             return false
@@ -186,9 +152,14 @@ private extension QueueProvider {
         
         guard ongoingCount < Constants.Queue.ConcurrentOperationsCount else { return }
         
+        /// get available pending operations
+        
         let pendingOperations = operations.values.filter { $0.state == .pending }
         let slotsAvailable = Constants.Queue.ConcurrentOperationsCount - ongoingCount
         
+        /// for available pending operations start their action
+        
+        // ordered dictionary so using .prefix should retrieve in FIFO order
         for operation in pendingOperations.prefix(slotsAvailable) {
             switch operation.type {
             case .chapterDownload(let chapter):

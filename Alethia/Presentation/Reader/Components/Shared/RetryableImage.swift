@@ -30,6 +30,14 @@ struct RetryableImage: View {
     var body: some View {
         KFImage(URL(string: url))
             .requestModifier(RefererModifier(referer: referer))
+            .setProcessor(
+                DownsamplingImageProcessor(
+                    size: .init(
+                        width: UIScreen.main.bounds.width,
+                        height: .greatestFiniteMagnitude
+                    )
+                )
+            )
             .onProgress { receivedSize, totalSize in
                 loadingState = .loading(Double(receivedSize) / Double(totalSize))
             }

@@ -12,40 +12,49 @@ import Combine
 final class DetailsViewModel: ObservableObject {
     // MARK: - Published Properties
     @Published private(set) var state: ViewState = .loading
-    @Published private(set) var addingOrigin: Bool = false // loading state while an origin is being added
-    @Published var confirmationRequest: ConfirmationRequest? = nil
     @Published var collections: [CollectionExtended] = []
+    @Published var confirmationRequest: ConfirmationRequest? = nil
     
-    // MARK: - Properties
+    // MARK: - Flags
+    // indicates when an origin is being added (i.e. show spinners)
+    @Published private(set) var isAddingOrigin: Bool = false
+    
+    // when we init this view while a metadata refresh is ongoing we need to block view until its been fully resolved
+    private var waitingForMetadataRefresh: Bool = false
+    
+    // MARK: - Private Properties
     private(set) var entry: Entry
     private(set) var resolvedOrientation: Orientation?
     private var context: Source?
     private var options: [Detail] = []
-    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Use Cases
+    private var cancellables = Set<AnyCancellable>()
+    
+    // The usual stuff
     private let getMangaDetailUseCase: GetMangaDetailUseCase
     private let resolveMangaOrientationUseCase: ResolveMangaOrientationUseCase
+    
+    // CRUD
     private let addMangaToLibraryUseCase: AddMangaToLibraryUseCase
     private let removeMangaFromLibraryUseCase: RemoveMangaFromLibraryUseCase
     private let addMangaOriginUseCase: AddMangaOriginUseCase
     private let markAllChaptersUseCase: MarkAllChaptersUseCase
     private let updateMangaCoverUseCase: UpdateMangaCoverUseCase
     
-    // MARK: - Collections
+    // Collections
     private let getAllCollectionsUseCase: GetAllCollectionsUseCase
     private let addCollectionUseCase: AddCollectionUseCase
     
-    // MARK: - Downloading
+    // Downloads
     private let downloadChapterUseCase: DownloadChapterUseCase
     
-    
-    // MARK: - Initialization
     init(entry: Entry, context: Source?) {
         self.entry = entry
         self.context = context
         
         let injector = DependencyInjector.shared
+        
         self.getMangaDetailUseCase = injector.makeGetMangaDetailUseCase()
         self.resolveMangaOrientationUseCase = injector.makeResolveMangaOrientationUseCase()
         self.addMangaToLibraryUseCase = injector.makeAddMangaToLibraryUseCase()
@@ -54,16 +63,20 @@ final class DetailsViewModel: ObservableObject {
         self.markAllChaptersUseCase = injector.makeMarkAllChaptersUseCase()
         self.updateMangaCoverUseCase = injector.makeUpdateMangaCoverUseCase()
         
+        // Collection operations
         self.getAllCollectionsUseCase = injector.makeGetAllCollectionsUseCase()
         self.addCollectionUseCase = injector.makeAddCollectionUseCase()
         
+        // Download operations
         self.downloadChapterUseCase = injector.makeDownloadChapterUseCase()
         
+        // Start observing metadata refresh state
         self.observeMetadataRefreshState()
     }
 }
 
 // MARK: - Computed Properties
+
 extension DetailsViewModel {
     var sourcePresent: Bool {
         guard case let .success(details) = state,
@@ -106,13 +119,21 @@ extension DetailsViewModel {
 }
 
 // MARK: - Data Loading
+
 extension DetailsViewModel {
     func loadDetails() {
+        // Check if we're waiting for an active refresh to complete
+        guard !waitingForMetadataRefresh else {
+            print("🟨 Waiting for active refresh to complete before loading")
+            return
+        }
+        
         state = .loading
         
-        // just load collections here
+        // Load collections in parallel
         loadCollections()
         
+        // Execute detail fetch
         getMangaDetailUseCase.execute(entry: entry)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] completion in
@@ -126,18 +147,22 @@ extension DetailsViewModel {
                 
                 withAnimation {
                     if received.count > 1 {
+                        // Multiple matches found
                         self.options = received
                         self.state = .conflict(received)
                     } else if let first = received.first {
+                        // Single match found
                         self.options = []
                         print("Details Updated!")
                         self.state = .success(first)
                         
-                        // MARK: - update internal entry's mangaId for usage with metadata refreshes
+                        // Update entry's mangaId for future operations
                         self.entry.mangaId = first.manga.id
                         
+                        // Resolve reading orientation
                         self.resolvedOrientation = self.resolveMangaOrientationUseCase.execute(detail: first)
                     } else {
+                        // No matches found
                         self.options = []
                         self.state = .empty
                     }
@@ -157,6 +182,7 @@ extension DetailsViewModel {
 }
 
 // MARK: - Conflict Resolution
+
 extension DetailsViewModel {
     func requestConfirmation(for option: Detail) {
         withAnimation {
@@ -180,6 +206,7 @@ extension DetailsViewModel {
             return
         }
         
+        // Create new entry with resolved manga ID
         self.entry = Entry(
             mangaId: mangaId,
             sourceId: sourceId,
@@ -193,6 +220,7 @@ extension DetailsViewModel {
             confirmationRequest = nil
         }
         
+        // Reload with resolved entry
         loadDetails()
     }
     
@@ -203,7 +231,8 @@ extension DetailsViewModel {
     }
 }
 
-// MARK: - Use-Cases | Library Actions
+// MARK: - Library Operations
+
 extension DetailsViewModel {
     func refreshMetadata() {
         QueueProvider.shared.refreshMetadata(entry)
@@ -215,7 +244,6 @@ extension DetailsViewModel {
               !details.manga.inLibrary else { return }
         
         do {
-            // Add to library with no collections (empty array)
             try addMangaToLibraryUseCase.execute(mangaId: mangaId, collections: collections)
             onSuccess?()
         } catch {
@@ -231,7 +259,6 @@ extension DetailsViewModel {
               details.manga.inLibrary else { return }
         
         do {
-            // Remove from library (automatically removes from all collections)
             try removeMangaFromLibraryUseCase.execute(mangaId: mangaId)
         } catch {
             withAnimation {
@@ -242,36 +269,37 @@ extension DetailsViewModel {
     
     @MainActor
     func addOrigin() async -> Void {
-        guard
-            !sourcePresent,
-            let details = details,
-            let mangaId = details.manga.id
-        else { return }
+        guard !sourcePresent,
+              let details = details,
+              let mangaId = details.manga.id else { return }
+        
         defer {
             withAnimation {
-                addingOrigin = false
+                isAddingOrigin = false
             }
         }
         
         withAnimation {
-            addingOrigin = true
+            isAddingOrigin = true
         }
         
         do {
             try await addMangaOriginUseCase.execute(entry: self.entry, mangaId: mangaId)
-        }
-        catch {
+        } catch {
             withAnimation {
                 state = .error(error)
             }
         }
     }
-    
+}
+
+// MARK: - Chapter Operations
+
+extension DetailsViewModel {
     func markChapter(asRead: Bool, for chapter: ChapterExtended) {
         do {
             try markAllChaptersUseCase.execute(chapters: [chapter.chapter], asRead: asRead)
-        }
-        catch {
+        } catch {
             withAnimation {
                 state = .error(error)
             }
@@ -286,8 +314,7 @@ extension DetailsViewModel {
                 chapters: chapters.map { $0.chapter },
                 asRead: asRead
             )
-        }
-        catch {
+        } catch {
             withAnimation {
                 state = .error(error)
             }
@@ -297,7 +324,6 @@ extension DetailsViewModel {
     func markAllChaptersAbove(from chapter: ChapterExtended, asRead: Bool) {
         guard !chapters.isEmpty else { return }
         
-        // Find all chapters with number >= target chapter number
         let chaptersInRange = chapters
             .map { $0.chapter }
             .filter { $0.number >= chapter.chapter.number }
@@ -310,7 +336,6 @@ extension DetailsViewModel {
     func markAllChaptersBelow(from chapter: ChapterExtended, asRead: Bool) {
         guard !chapters.isEmpty else { return }
         
-        // Find all chapters with number <= target chapter number
         let chaptersInRange = chapters
             .map { $0.chapter }
             .filter { $0.number <= chapter.chapter.number }
@@ -320,18 +345,24 @@ extension DetailsViewModel {
         markAllChaptersInRange(chapters: chaptersInRange, asRead: asRead)
     }
     
-    /// chapters passed should be calculated
     private func markAllChaptersInRange(chapters: [Chapter], asRead: Bool) {
         do {
             try markAllChaptersUseCase.execute(chapters: chapters, asRead: asRead)
-        }
-        catch {
+        } catch {
             withAnimation {
                 state = .error(error)
             }
         }
     }
     
+    func downloadChapter(_ chapter: Chapter) {
+        QueueProvider.shared.downloadChapter(chapter, mangaId: details?.manga.id)
+    }
+}
+
+// MARK: - Cover & Collection Operations
+
+extension DetailsViewModel {
     func updateMangaCover(_ cover: Cover) {
         guard let mangaId = details?.manga.id,
               let coverId = cover.id else { return }
@@ -350,64 +381,85 @@ extension DetailsViewModel {
     }
 }
 
-// MARK: - Downloads
-extension DetailsViewModel {
-    func downloadChapter(_ chapter: Chapter) {
-        QueueProvider.shared.downloadChapter(chapter, mangaId: details?.manga.id)
-    }
-}
+// MARK: - Queue Observation
 
-// MARK: - Observation
 extension DetailsViewModel {
     private func observeMetadataRefreshState() {
+        // Check for active operations on initialization
+        if let existingOperation = QueueProvider.shared.operations[entry.queueOperationId],
+           case .metadataRefresh = existingOperation.type,
+           existingOperation.state.isActive {
+            // Active refresh found - wait for completion
+            self.waitingForMetadataRefresh = true
+        }
+        
+        // Set up observer for queue state changes
         QueueProvider.shared.$operations
             .receive(on: DispatchQueue.main)
             .sink { [weak self] operations in
-                guard let self = self else { return }
+                guard let self = self,
+                      let operation = operations[entry.queueOperationId],
+                      case .metadataRefresh = operation.type else { return }
                 
-                // Check if there's an ongoing metadata refresh operation for this manga
-                if let operation = operations[entry.queueOperationId] {
-                    // skip if not metadata refresh
-                    guard case .metadataRefresh = operation.type else { return }
-                    
-                    switch operation.state {
-                    case .pending:
-                        // Start refreshing state with 0 progress
-                        if case .success(let currentDetails) = self.state {
-                            withAnimation {
-                                self.state = .refreshing(currentDetails, progress: 0.0)
-                            }
-                        }
-                    case .ongoing(let progress):
-                        // Update progress while refreshing
-                        if case .refreshing(let currentDetails, _) = self.state {
-                            withAnimation {
-                                self.state = .refreshing(currentDetails, progress: progress)
-                            }
-                        }
-                    case .completed:
-                        // Refresh completed - reload details to get updated data
-                        self.loadDetails()
-                    case .failed(let error):
-                        // Refresh failed
-                        withAnimation {
-                            self.state = .error(error)
-                        }
-                    case .cancelled:
-                        // Refresh cancelled - go back to success state
-                        if case .refreshing(let currentDetails, _) = self.state {
-                            withAnimation {
-                                self.state = .success(currentDetails)
-                            }
-                        }
-                    }
-                }
+                self.handleQueueStateChange(operation.state)
             }
             .store(in: &cancellables)
     }
+    
+    private func handleQueueStateChange(_ operationState: QueueOperationState) {
+        switch operationState {
+        case .pending:
+            // Transition to refreshing if we have loaded data
+            if case .success(let currentDetails) = self.state {
+                withAnimation {
+                    self.state = .refreshing(currentDetails, progress: 0.0)
+                }
+            }
+            
+        case .ongoing(let progress):
+            // Update progress if already refreshing
+            if case .refreshing(let currentDetails, _) = self.state {
+                withAnimation {
+                    self.state = .refreshing(currentDetails, progress: progress)
+                }
+            }
+            
+        case .completed:
+            // Handle completion based on current state
+            if self.waitingForMetadataRefresh {
+                self.waitingForMetadataRefresh = false
+                self.loadDetails()
+            } else if case .refreshing = self.state {
+                self.loadDetails()
+            }
+            
+        case .failed(let error):
+            // Handle failure based on current state
+            if self.waitingForMetadataRefresh {
+                self.waitingForMetadataRefresh = false
+                self.loadDetails() // Try loading with cached data
+            } else if case .refreshing = self.state {
+                withAnimation {
+                    self.state = .error(error)
+                }
+            }
+            
+        case .cancelled:
+            // Handle cancellation based on current state
+            if self.waitingForMetadataRefresh {
+                self.waitingForMetadataRefresh = false
+                self.loadDetails()
+            } else if case .refreshing(let currentDetails, _) = self.state {
+                withAnimation {
+                    self.state = .success(currentDetails)
+                }
+            }
+        }
+    }
 }
 
-// MARK: - View State
+// MARK: - Types
+
 extension DetailsViewModel {
     enum ViewState {
         case loading

@@ -78,7 +78,7 @@ extension QueueActor {
                         print("✅ Successfully fetched data for origin: \(originExtended.origin.slug)")
                         return detailDTO
                     } catch {
-                        print("❌ Failed to fetch data for origin \(originExtended.origin.slug): \(error)")
+                        print("❌ Failed to fetch data for origin \(originExtended.origin.slug): \(error.localizedDescription)")
                         throw error
                     }
                 }

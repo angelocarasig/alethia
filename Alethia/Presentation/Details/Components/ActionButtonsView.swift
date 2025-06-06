@@ -49,7 +49,7 @@ struct ActionButtonsView: View {
                 OriginButton()
             }
             .actionButton(vm.sourcePresent)
-            .disabled(vm.addingOrigin || (vm.details != nil && !vm.inLibrary))
+            .disabled(vm.isAddingOrigin || (vm.details != nil && !vm.inLibrary))
             
             QuickButtonsView()
         }
@@ -67,7 +67,7 @@ struct ActionButtonsView: View {
     
     @ViewBuilder
     private func OriginButton() -> some View {
-        if !vm.addingOrigin {
+        if !vm.isAddingOrigin {
             HStack {
                 Image(systemName: "plus.square.dashed")
                 Text(vm.inLibrary ?
