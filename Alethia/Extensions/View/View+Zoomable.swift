@@ -56,9 +56,9 @@ private struct ZoomableModifier: ViewModifier {
                 }
             }
             .animatableTransformEffect(transform)
-            .gesture(dragGesture, including: transform == .identity ? .none : .all)
-            .gesture(magnificationGesture)
-            .gesture(doubleTapGesture)
+            .simultaneousGesture(dragGesture, including: transform == .identity ? .none : .all)
+            .simultaneousGesture(magnificationGesture)
+            .simultaneousGesture(doubleTapGesture)
     }
     
     private var magnificationGesture: some Gesture {

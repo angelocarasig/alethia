@@ -88,6 +88,7 @@ extension EndDetails {
                         Image(systemName: "house.fill")
                         Text("Exit")
                     }
+                    .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
                 .font(.headline)
