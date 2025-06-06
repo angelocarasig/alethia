@@ -140,21 +140,22 @@ struct AddToLibrarySheet: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-                .padding(Constants.Padding.screen)
-                .background(
-                    RoundedRectangle(cornerRadius: Constants.Corner.Radius.panel)
-                        .fill(isSelected ? collectionColor.opacity(0.08) : Color.clear)
-                        .stroke(
-                            isSelected ? collectionColor.opacity(0.3) : Color.secondary.opacity(0.1),
-                            lineWidth: isSelected ? 2 : 1
-                        )
-                )
-                .contentShape(.rect)
-                .scaleEffect(isSelected ? 0.98 : 1.0)
-                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
-                .onTapGesture {
-                    toggleCollection(collectionId)
-                }
+            .padding(Constants.Padding.screen)
+            .frame(height: 69)
+            .background(
+                RoundedRectangle(cornerRadius: Constants.Corner.Radius.panel)
+                    .fill(isSelected ? collectionColor.opacity(0.08) : Color.clear)
+                    .stroke(
+                        isSelected ? collectionColor.opacity(0.3) : Color.secondary.opacity(0.1),
+                        lineWidth: isSelected ? 2 : 1
+                    )
+            )
+            .contentShape(.rect)
+            .scaleEffect(isSelected ? 0.98 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+            .onTapGesture {
+                toggleCollection(collectionId)
+            }
         )
     }
 }
