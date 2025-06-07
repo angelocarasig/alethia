@@ -1,5 +1,5 @@
 //
-//  AddToLibrarySheet.swift
+//  ManageCollectionsView.swift
 //  Alethia
 //
 //  Created by Angelo Carasig on 4/6/2025.
@@ -7,22 +7,30 @@
 
 import SwiftUI
 
-struct AddToLibrarySheet: View {
+struct ManageCollectionsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var vm: DetailsViewModel
     
     @State private var selectedCollections: Set<Int64> = []
     @State private var searchText: String = ""
+    @State private var hasChanges: Bool = false
+    @State private var isSaving: Bool = false
+    @State private var showError: Bool = false
+    @State private var errorMessage: String = ""
     
-    private var collections: [CollectionExtended] {
+    private var allCollections: [CollectionExtended] {
         vm.collections
+    }
+    
+    private var currentCollections: Set<Int64> {
+        Set(vm.details?.collections.compactMap { $0.collection.id } ?? [])
     }
     
     private var filteredCollections: [CollectionExtended] {
         if searchText.isEmpty {
-            return collections
+            return allCollections
         }
-        return collections.filter { collection in
+        return allCollections.filter { collection in
             collection.collection.name.localizedCaseInsensitiveContains(searchText)
         }
     }
@@ -36,26 +44,31 @@ struct AddToLibrarySheet: View {
                 // Search Section
                 SearchSection()
                 
-                // Collections Grid
-                CollectionsSection()
+                // Collections List
+                CollectionsList()
                 
                 // Action Footer
                 ActionFooter()
             }
-            .navigationTitle("Add To Library")
+            .navigationTitle("Manage Collections")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
                 ToolbarItem(placement: .confirmationAction) {
                     SaveButton()
                 }
             }
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
+            .onAppear {
+                // Initialize with current collections
+                selectedCollections = currentCollections
+            }
+            .onChange(of: selectedCollections) { _, _ in
+                hasChanges = selectedCollections != currentCollections
+            }
+            .alert("Error", isPresented: $showError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
         }
     }
     
@@ -63,13 +76,13 @@ struct AddToLibrarySheet: View {
     @ViewBuilder
     private func InfoBanner() -> some View {
         HStack(spacing: Constants.Spacing.regular) {
-            // Left side - Info icon and text
+            // Left side - Info
             HStack(spacing: Constants.Spacing.regular) {
                 Image(systemName: "info.circle.fill")
                     .font(.system(size: 16))
                     .foregroundStyle(.blue)
                 
-                Text("Select collections to organize your manga")
+                Text("Select collections for this manga")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -77,8 +90,26 @@ struct AddToLibrarySheet: View {
             
             Spacer()
             
-            // Right side - Selection count
-            if !selectedCollections.isEmpty {
+            // Right side - Status
+            if hasChanges {
+                HStack(spacing: Constants.Spacing.minimal) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.orange)
+                    
+                    Text("Modified")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.orange)
+                }
+                .padding(.horizontal, Constants.Padding.regular)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(Color.orange.opacity(0.1))
+                )
+                .transition(.scale.combined(with: .opacity))
+            } else if !selectedCollections.isEmpty {
                 HStack(spacing: Constants.Spacing.minimal) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 14))
@@ -95,12 +126,12 @@ struct AddToLibrarySheet: View {
                     Capsule()
                         .fill(Color.green.opacity(0.1))
                 )
-                .transition(.scale.combined(with: .opacity))
             }
         }
         .padding(.horizontal, Constants.Padding.screen)
         .padding(.vertical, Constants.Padding.regular)
-        .background(Color.tint.opacity(0.25))
+        .background(Color(UIColor.secondarySystemBackground))
+        .animation(.spring(response: 0.3), value: hasChanges)
         .animation(.spring(response: 0.3), value: selectedCollections.count)
     }
     
@@ -132,7 +163,7 @@ struct AddToLibrarySheet: View {
                 .font(.headline)
                 .foregroundStyle(.secondary)
             
-            Text("Try a different search term or create a new collection")
+            Text("Try a different search term")
                 .font(.subheadline)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
@@ -140,28 +171,22 @@ struct AddToLibrarySheet: View {
         .padding(.vertical, Constants.Padding.screen)
     }
     
-    // MARK: - Collections Section
+    // MARK: - Collections List
     @ViewBuilder
-    private func CollectionsSection() -> some View {
+    private func CollectionsList() -> some View {
         ScrollView {
             LazyVStack(spacing: Constants.Spacing.large) {
-                if filteredCollections.isEmpty && searchText.isEmpty {
+                if allCollections.isEmpty {
                     EmptyCollectionsState()
                 } else {
                     ForEach(filteredCollections, id: \.id) { collection in
                         CollectionCard(collection: collection)
-                            .transition(.asymmetric(
-                                insertion: .scale(scale: 0.8).combined(with: .opacity),
-                                removal: .scale(scale: 0.8).combined(with: .opacity)
-                            ))
                     }
                 }
             }
             .padding(.horizontal, Constants.Padding.screen)
             .padding(.top, Constants.Padding.regular)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: filteredCollections.count)
         }
-        .scrollBounceBehavior(.basedOnSize)
     }
     
     @ViewBuilder
@@ -182,10 +207,24 @@ struct AddToLibrarySheet: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
+            
+            NavigationLink(destination: NewCollectionView { name, color, icon in
+                do {
+                    try vm.addCollection(name: name, color: color, icon: icon)
+                    return .success(())
+                } catch {
+                    return .failure(error)
+                }
+            }) {
+                Label("Create Collection", systemImage: "plus")
+                    .font(.headline)
+            }
+            .buttonStyle(.borderedProminent)
         }
         .padding(.vertical, Constants.Padding.screen * 2)
     }
     
+    // MARK: - Collection Card
     private func CollectionCard(collection: CollectionExtended) -> some View {
         guard let collectionId = collection.collection.id else { return AnyView(EmptyView()) }
         
@@ -195,108 +234,54 @@ struct AddToLibrarySheet: View {
             Button {
                 toggleCollection(collectionId)
             } label: {
-                CollectionRowView(
-                    collection: collection,
-                    isSelected: isSelected
-                )
+                HStack {
+                    CollectionRowView(
+                        collection: collection,
+                        isSelected: isSelected,
+                        showSelected: true
+                    )
+                }
             }
-                .buttonStyle(.plain)
+            .buttonStyle(.plain)
+            .disabled(isSaving)
         )
-    }
-    
-    @ViewBuilder
-    private func SelectionIndicator(isSelected: Bool, color: Color) -> some View {
-        ZStack {
-            Circle()
-                .stroke(isSelected ? color : Color.secondary.opacity(0.3), lineWidth: 2)
-                .frame(width: 22, height: 22) // Slightly smaller
-                .background(
-                    Circle()
-                        .fill(isSelected ? color : Color.clear)
-                        .frame(width: 22, height: 22)
-                )
-            
-            if isSelected {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
-                    .transition(.scale.combined(with: .opacity))
-            }
-        }
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
-    }
-    
-    @ViewBuilder
-    private func CollectionIconView(icon: String, color: Color, isSelected: Bool) -> some View {
-        ZStack {
-            Circle()
-                .fill(color.opacity(isSelected ? 0.2 : 0.1))
-                .frame(width: 40, height: 40) // Reduced from 50
-                .overlay(
-                    Circle()
-                        .stroke(color.opacity(isSelected ? 0.4 : 0.2), lineWidth: 1)
-                )
-            
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .medium)) // Reduced from 22
-                .foregroundStyle(color)
-                .scaleEffect(isSelected ? 1.1 : 1.0)
-        }
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
-    }
-    
-    @ViewBuilder
-    private func CollectionInfoView(collection: CollectionExtended) -> some View {
-        VStack(alignment: .leading, spacing: 2) { // Reduced spacing
-            Text(collection.collection.name)
-                .font(.subheadline) // Changed from headline
-                .fontWeight(.semibold)
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-            
-            HStack(spacing: Constants.Spacing.minimal) {
-                Image(systemName: "book.closed")
-                    .font(.caption2) // Smaller icon
-                    .foregroundStyle(.secondary)
-                
-                Text("\(collection.itemCount) \(collection.itemCount == 1 ? "item" : "items")")
-                    .font(.caption) // Changed from subheadline
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-    
-    @ViewBuilder
-    private func CardBackground(isSelected: Bool, color: Color) -> some View {
-        RoundedRectangle(cornerRadius: Constants.Corner.Radius.panel)
-            .fill(
-                isSelected ?
-                LinearGradient(
-                    colors: [color.opacity(0.1), color.opacity(0.05)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ) :
-                    LinearGradient(
-                        colors: [Color(.systemBackground), Color(.systemGray6).opacity(0.3)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Constants.Corner.Radius.panel)
-                    .stroke(
-                        isSelected ? color.opacity(0.4) : Color.secondary.opacity(0.1),
-                        lineWidth: isSelected ? 2 : 1
-                    )
-            )
     }
     
     // MARK: - Action Footer
     @ViewBuilder
     private func ActionFooter() -> some View {
         VStack(spacing: Constants.Spacing.large) {
+            // Quick Actions
+            if !allCollections.isEmpty {
+                HStack(spacing: Constants.Spacing.large) {
+                    Button {
+                        withAnimation {
+                            selectedCollections.removeAll()
+                        }
+                    } label: {
+                        Text("Clear All")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    }
+                    .disabled(selectedCollections.isEmpty || isSaving)
+                    
+                    Divider()
+                        .frame(height: 20)
+                    
+                    Button {
+                        withAnimation {
+                            selectedCollections = currentCollections
+                        }
+                    } label: {
+                        Text("Reset")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    }
+                    .disabled(!hasChanges || isSaving)
+                }
+                .padding(.top, Constants.Padding.regular)
+            }
+            
             // Create New Collection Button
             NavigationLink(destination: NewCollectionView { name, color, icon in
                 do {
@@ -306,14 +291,26 @@ struct AddToLibrarySheet: View {
                     return .failure(error)
                 }
             }) {
-                Label("Create New Collection", systemImage: "plus")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color.accentColor.opacity(0.1))
-                    .foregroundStyle(Color.accentColor)
-                    .clipShape(RoundedRectangle(cornerRadius: Constants.Corner.Radius.button))
+                HStack(spacing: Constants.Spacing.regular) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(Color.accentColor)
+                    
+                    Text("Create New Collection")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    RoundedRectangle(cornerRadius: Constants.Corner.Radius.button)
+                        .fill(.tint.opacity(0.1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Constants.Corner.Radius.button)
+                                .stroke(Color.accentColor.opacity(0.3), lineWidth: 1)
+                        )
+                )
+                .foregroundStyle(Color.accentColor)
             }
             .buttonStyle(.plain)
         }
@@ -323,14 +320,17 @@ struct AddToLibrarySheet: View {
     
     @ViewBuilder
     private func SaveButton() -> some View {
-        Button("Save") {
-            vm.addToLibrary(collections: Array(selectedCollections), onSuccess: {
-                dismiss()
-            })
+        if isSaving {
+            ProgressView()
+                .scaleEffect(0.8)
+        } else {
+            Button("Save") {
+                saveChanges()
+            }
+            .fontWeight(.semibold)
+            .disabled(!hasChanges)
+            .foregroundStyle(hasChanges ? Color.accentColor : Color.secondary)
         }
-        .fontWeight(.semibold)
-        .disabled(selectedCollections.isEmpty)
-        .foregroundStyle(selectedCollections.isEmpty ? Color.secondary : Color.accentColor)
     }
     
     // MARK: - Helper Methods
@@ -346,5 +346,20 @@ struct AddToLibrarySheet: View {
         // Haptic feedback
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
+    }
+    
+    private func saveChanges() {
+        guard hasChanges else { return }
+        
+        isSaving = true
+        
+        do {
+            try vm.updateMangaCollections(Array(selectedCollections))
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+            isSaving = false
+        }
     }
 }

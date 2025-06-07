@@ -42,7 +42,12 @@ struct NewCollectionView: View {
         NavigationStack {
             Form {
                 Section {
-                    CollectionPreview()
+                    CollectionRowPreview(
+                        name: collectionName,
+                        itemCount: 0,
+                        icon: selectedIcon,
+                        color: selectedColor
+                    )
                 } header: {
                     Text("Preview")
                 }
@@ -102,7 +107,6 @@ struct NewCollectionView: View {
             .navigationTitle("New Collection")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // no cancel here since it's already been pushed, the back button should exist
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") {
                         createCollection()
@@ -140,45 +144,6 @@ struct NewCollectionView: View {
     
     // MARK: - Form Rows
     
-    private func CollectionPreview() -> some View {
-        HStack(spacing: Constants.Spacing.toolbar) {
-            // Icon with background circle
-            ZStack {
-                Circle()
-                    .fill(selectedColor.opacity(0.15))
-                    .frame(width: 50, height: 50)
-                
-                Image(systemName: selectedIcon)
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(selectedColor)
-            }
-            
-            // Text content
-            VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
-                Text(collectionName.isEmpty ? "Collection Name" : collectionName)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(collectionName.isEmpty ? .secondary : .primary)
-                    .lineLimit(2)
-                
-                Text("0 entries")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            
-            Spacer()
-        }
-        .padding(.vertical, Constants.Padding.regular)
-        .animation(.easeInOut(duration: 0.2), value: selectedColor)
-        .animation(.easeInOut(duration: 0.2), value: selectedIcon)
-        .animation(.easeInOut(duration: 0.2), value: collectionName)
-        .listRowBackground(
-            RoundedRectangle(cornerRadius: Constants.Corner.Radius.button)
-                .fill(selectedColor.opacity(0.05))
-                .stroke(selectedColor.opacity(0.2), lineWidth: 1)
-        )
-    }
-    
     private func ColorPickerRow() -> some View {
         HStack(spacing: Constants.Spacing.toolbar) {
             // Color preview circle
@@ -192,7 +157,6 @@ struct NewCollectionView: View {
             
             Text("Collection Color")
             
-            Spacer()
             Spacer()
             
             // System color picker
@@ -240,6 +204,7 @@ struct NewCollectionView: View {
     }
 }
 
+// MARK: - Icon Picker Sheet
 private struct IconPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedIcon: String
@@ -266,7 +231,7 @@ private struct IconPickerSheet: View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Search bar
-                SearchBar(searchText: $searchText)
+                SearchBar(searchText: $searchText, placeholder: "Search icons...")
                     .padding(.horizontal)
                     .padding(.bottom)
                 
