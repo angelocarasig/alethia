@@ -7,29 +7,22 @@ struct LibraryScreen: View {
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                // Background
-                Color.background
-                    .ignoresSafeArea()
-                
-                // Main Content
-                LibraryContent(animation: animation)
-                    .environmentObject(vm)
-            }
-            .sheet(isPresented: $vm.showFilters) {
-                LibraryFilterView()
-                    .presentationDetents([.medium, .large])
-            }
-            .sheet(isPresented: $vm.showQueue) {
-                QueueStatusView()
-                    .presentationDetents([.medium, .large])
-            }
-            .navigationTitle("Library")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                toolbarContent
-            }
-            .environmentObject(vm)
+            // Main Content
+            LibraryContent(animation: animation)
+                .sheet(isPresented: $vm.showFilters) {
+                    LibraryFilterView()
+                        .presentationDetents([.medium, .large])
+                }
+                .sheet(isPresented: $vm.showQueue) {
+                    QueueStatusView()
+                        .presentationDetents([.medium, .large])
+                }
+                .navigationTitle("Library")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    toolbarContent
+                }
+                .environmentObject(vm)
         }
         .task {
             vm.onAppear()
@@ -53,18 +46,7 @@ struct LibraryScreen: View {
                     vm.showFilters = true
                 } label: {
                     Image(systemName: "line.horizontal.3.decrease")
-                        .overlay(
-                            Group {
-                                if !vm.filters.activeFilters.isEmpty {
-                                    Text("\(vm.filters.activeFilters.count)")
-                                        .font(.caption)
-                                        .foregroundColor(.white)
-                                        .padding(Constants.Padding.regular)
-                                        .background(Circle().fill(Color.red))
-                                        .offset(x: 10, y: -10)
-                                }
-                            }
-                        )
+                        .badge(vm.filters.activeFilters.isEmpty ? nil : "\(vm.filters.activeFilters.count)")
                 }
                 
                 NavigationLink(destination: Text("Hi")) {
@@ -81,10 +63,11 @@ private struct LibraryContent: View {
     let animation: Namespace.ID
     
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
             LibraryHeader()
             
-            ZStack {
+            // Direct state-based view rendering without ZStack
+            Group {
                 switch vm.state {
                 case .loading:
                     LoadingState()
@@ -109,23 +92,28 @@ private struct LibraryHeader: View {
         VStack {
             SearchBar(searchText: $vm.filters.searchText)
             
-            NavigationLink(destination: SearchHomeView(initialSearchValue: vm.filters.searchText)) {
-                HStack {
-                    Image(systemName: "globe")
-                        .font(.subheadline)
-                    Text("Search everywhere for '\(vm.filters.searchText)'")
-                        .font(.subheadline)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+            // Conditional view without extra container
+            if !vm.filters.searchText.isEmpty {
+                NavigationLink(destination: SearchHomeView(initialSearchValue: vm.filters.searchText)) {
+                    HStack {
+                        Image(systemName: "globe")
+                            .font(.subheadline)
+                        Text("Search everywhere for '\(vm.filters.searchText)'")
+                            .font(.subheadline)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.vertical, Constants.Padding.regular)
+                    .background(.quaternary.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
-                .padding(.vertical, Constants.Padding.regular)
-                .background(.quaternary.opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .transition(.asymmetric(
+                    insertion: .move(edge: .top).combined(with: .opacity),
+                    removal: .move(edge: .top).combined(with: .opacity)
+                ))
             }
-            .frame(height: vm.filters.searchText.isEmpty ? 0 : nil)
-            .opacity(vm.filters.searchText.isEmpty ? 0 : 1)
             
             CollectionSelectorView()
         }
@@ -240,6 +228,7 @@ private struct EntryGridItem: View {
             )
             .matchedTransitionSource(id: entry.transitionId, in: animation)
         }
+        .contentShape(.rect)
         .buttonStyle(.plain)
         .unread(entry.unread)
     }

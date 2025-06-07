@@ -29,11 +29,6 @@ extension QueueActor {
                 try await updateMangaMetadata(mangaId: mangaId, payload: detailDTO)
             }
             
-            // Step 3: Update refresh timestamp (95% - 100%)
-            continuation.yield(.ongoing(0.95))
-            
-            try await updateMangaLastRefreshed(mangaId: mangaId)
-            
             continuation.yield(.ongoing(1.0))
             continuation.yield(.completed)
             
@@ -43,18 +38,17 @@ extension QueueActor {
     }
 }
 
-// MARK: - Private Helpers
-extension QueueActor {
+// MARK: - Data Fetching
+private extension QueueActor {
     func fetchMangaOriginDetails(
         mangaId: Int64,
         onProgress: @escaping (Double) -> Void
     ) async throws -> [DetailDTO] {
-        // get the manga
-        let manga: Manga = try await DatabaseProvider.shared.reader.read { db in
+        // Get the manga
+        let manga = try await DatabaseProvider.shared.reader.read { db in
             guard let result = try Manga.fetchOne(db, key: mangaId) else {
                 throw MangaError.notFound
             }
-            
             return result
         }
         
@@ -71,16 +65,9 @@ extension QueueActor {
         
         return try await withThrowingTaskGroup(of: DetailDTO.self) { group in
             // Add tasks for each origin
-            for (originExtended, fetchUrl) in validOrigins {
+            for (_, fetchUrl) in validOrigins {
                 group.addTask {
-                    do {
-                        let detailDTO = try await self.fetchMangaDetail(from: fetchUrl)
-                        print("✅ Successfully fetched data for origin: \(originExtended.origin.slug)")
-                        return detailDTO
-                    } catch {
-                        print("❌ Failed to fetch data for origin \(originExtended.origin.slug): \(error.localizedDescription)")
-                        throw error
-                    }
+                    try await self.fetchMangaDetail(from: fetchUrl)
                 }
             }
             
@@ -106,11 +93,10 @@ extension QueueActor {
                 guard let source = originExtended.source,
                       let host = try Host.fetchOne(db, key: source.hostId)
                 else {
-                    print("⚠️ Skipping detached origin: \(originExtended.origin.slug)")
                     return nil
                 }
                 
-                /// skip disabled sources
+                // Skip disabled sources
                 guard !source.disabled else {
                     return nil
                 }
@@ -121,7 +107,6 @@ extension QueueActor {
                     "manga",
                     originExtended.origin.slug
                 ) else {
-                    print("⚠️ Failed to build URL for origin: \(originExtended.origin.slug)")
                     return nil
                 }
                 
@@ -134,24 +119,24 @@ extension QueueActor {
         let networkService = NetworkService()
         return try await networkService.request(url: url)
     }
-    
+}
+
+// MARK: - Database Updates
+private extension QueueActor {
     func updateMangaMetadata(mangaId: Int64, payload: DetailDTO) async throws {
         try await DatabaseProvider.shared.writer.write { db in
             guard try Manga.fetchOne(db, key: mangaId) != nil else {
                 throw MangaError.notFound
             }
             
-            print("📝 Updating metadata for manga \(mangaId) from payload: \(payload.manga.title)")
-            
             guard let origin = try Origin
                 .filter(Origin.Columns.mangaId == mangaId)
                 .filter(Origin.Columns.slug == payload.origin.slug)
                 .fetchOne(db) else {
-                print("⚠️ Could not find origin for payload: \(payload.origin.slug)")
                 return
             }
             
-            // Update related entities
+            // Update all related entities
             try Self.updateTitles(payload.manga.alternativeTitles, mangaId: mangaId, db: db)
             try Self.updateCovers(payload.origin.covers, mangaId: mangaId, db: db)
             try Self.updateAuthors(payload.manga.authors, mangaId: mangaId, db: db)
@@ -160,21 +145,10 @@ extension QueueActor {
             try Self.updateMangaUpdatedAt(mangaId: mangaId, db: db)
         }
     }
-    
-    func updateMangaLastRefreshed(mangaId: Int64) async throws {
-        try await DatabaseProvider.shared.writer.write { db in
-            guard var manga = try Manga.fetchOne(db, key: mangaId) else {
-                throw MangaError.notFound
-            }
-            
-            manga.updatedAt = Date()
-            try manga.update(db)
-        }
-    }
 }
 
-// MARK: - Entity Update Helpers
-extension QueueActor {
+// MARK: - Title Updates
+private extension QueueActor {
     static func updateTitles(_ newTitles: [String], mangaId: Int64, db: Database) throws {
         let existingTitles = Set(try Title
             .filter(Title.Columns.mangaId == mangaId)
@@ -183,10 +157,12 @@ extension QueueActor {
         
         for title in newTitles where !existingTitles.contains(title) {
             try Title(title: title, mangaId: mangaId).insert(db)
-            print("  ➕ Added title: \(title)")
         }
     }
-    
+}
+
+// MARK: - Cover Updates
+private extension QueueActor {
     static func updateCovers(_ newCoverUrls: [String], mangaId: Int64, db: Database) throws {
         guard !newCoverUrls.isEmpty else { return }
         
@@ -195,7 +171,7 @@ extension QueueActor {
             .fetchAll(db)
             .map(\.url))
         
-        for (_, coverUrl) in newCoverUrls.enumerated() where !existingCoverUrls.contains(coverUrl) {
+        for coverUrl in newCoverUrls where !existingCoverUrls.contains(coverUrl) {
             // Deactivate all existing covers
             try Cover
                 .filter(Cover.Columns.mangaId == mangaId)
@@ -208,10 +184,12 @@ extension QueueActor {
                 path: coverUrl,
                 mangaId: mangaId
             ).insert(db)
-            print("  ➕ Added cover: \(coverUrl) (set as active)")
         }
     }
-    
+}
+
+// MARK: - Author Updates
+private extension QueueActor {
     static func updateAuthors(_ newAuthorNames: [String], mangaId: Int64, db: Database) throws {
         let existingAuthorNames = Set(try Author
             .joining(required: Author.mangaAuthor.filter(MangaAuthor.Columns.mangaId == mangaId))
@@ -224,10 +202,12 @@ extension QueueActor {
             guard let authorId = author.id else { continue }
             
             try MangaAuthor(authorId: authorId, mangaId: mangaId).insert(db, onConflict: .ignore)
-            print("  ➕ Added author: \(authorName)")
         }
     }
-    
+}
+
+// MARK: - Tag Updates
+private extension QueueActor {
     static func updateTags(_ newTagNames: [String], mangaId: Int64, db: Database) throws {
         let existingTagNames = Set(try Tag
             .joining(required: Tag.mangaTag.filter(MangaTag.Columns.mangaId == mangaId))
@@ -242,10 +222,12 @@ extension QueueActor {
             }
             
             try MangaTag(tagId: tagId, mangaId: mangaId).insert(db)
-            print("  ➕ Added tag: \(tagName)")
         }
     }
-    
+}
+
+// MARK: - Manga Metadata Updates
+private extension QueueActor {
     static func updateMangaUpdatedAt(mangaId: Int64, db: Database) throws {
         let sql = """
             SELECT MAX(c.date) as latestDate
@@ -254,9 +236,7 @@ extension QueueActor {
             WHERE o.mangaId = ?
             """
         
-        guard let latestDate = try Date.fetchOne(db, sql: sql, arguments: [mangaId]) else {
-            return
-        }
+        let latestDate = try Date.fetchOne(db, sql: sql, arguments: [mangaId]) ?? .distantPast
         
         guard var manga = try Manga.fetchOne(db, key: mangaId) else {
             throw MangaError.notFound
@@ -265,7 +245,10 @@ extension QueueActor {
         manga.updatedAt = latestDate
         try manga.update(db)
     }
-    
+}
+
+// MARK: - Chapter Updates
+private extension QueueActor {
     static func updateChapters(_ newChapters: [ChapterDTO], originId: Int64, db: Database) throws {
         guard !newChapters.isEmpty else { return }
         
@@ -275,13 +258,12 @@ extension QueueActor {
             .fetchAll(db)
             .map(\.slug))
         
-        // IMPORTANT: Filter out chapters that already exist BEFORE processing scanlators
+        // Filter out chapters that already exist
         let chaptersToInsert = newChapters.filter { !existingChapterSlugs.contains($0.slug) }
         
-        // If no new chapters to insert, return early
         guard !chaptersToInsert.isEmpty else { return }
         
-        // Group ONLY the chapters that will be inserted by scanlator
+        // Group chapters by scanlator
         let chaptersByScanlator = Dictionary(grouping: chaptersToInsert) { $0.scanlator }
         
         // Get existing scanlators for this origin
@@ -292,13 +274,11 @@ extension QueueActor {
         
         var nextPriority = existingScanlators.last?.priority ?? -1
         
-        // Process each scanlator group (only for chapters that will actually be inserted)
+        // Process each scanlator group
         for (scanlatorName, chapters) in chaptersByScanlator {
-            // Try to find existing scanlator for this origin
-            let existingScanlator = existingScanlators.first { $0.name == scanlatorName }
-            
             let scanlator: Scanlator
-            if let existing = existingScanlator {
+            
+            if let existing = existingScanlators.first(where: { $0.name == scanlatorName }) {
                 scanlator = existing
             } else {
                 // Create new scanlator with next available priority
@@ -310,7 +290,6 @@ extension QueueActor {
                 )
                 newScanlator = try newScanlator.insertAndFetch(db)
                 scanlator = newScanlator
-                print("  ➕ Added new scanlator: \(scanlatorName)")
             }
             
             // Insert new chapters for this scanlator
@@ -325,7 +304,6 @@ extension QueueActor {
                     number: chapterDTO.number,
                     date: Date.javascriptDate(chapterDTO.date)
                 ).insert(db)
-                print("  ➕ Added chapter: \(chapterDTO.number) - \(chapterDTO.title)")
             }
         }
     }

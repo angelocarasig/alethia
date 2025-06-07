@@ -13,37 +13,42 @@ struct AlethiaApp: App {
     
     var body: some Scene {
         WindowGroup {
-            TabView {
-                HomeScreen()
-                    .tabItem {
-                        Image(systemName: "house.fill")
-                        Text("Home")
-                    }
-                
-                LibraryScreen()
-                    .tabItem {
-                        Image(systemName: "books.vertical.fill")
-                        Text("Library")
-                    }
-                
-                SourcesScreen()
-                    .tabItem {
-                        Image(systemName: "plus.square.dashed")
-                        Text("Sources")
-                    }
-                
-                HistoryScreen()
-                    .tabItem {
-                        Image(systemName: "clock.fill")
-                        Text("History")
-                    }
-                
-                SettingsScreen()
-                    .tabItem {
-                        Image(systemName: "gearshape.fill")
-                        Text("Settings")
-                    }
-            }
+            ContentView()
+        }
+    }
+    
+    @ViewBuilder
+    private func ContentView() -> some View {
+        TabView {
+            HomeScreen()
+                .tabItem {
+                    Image(systemName: "house.fill")
+                    Text("Home")
+                }
+            
+            LibraryScreen()
+                .tabItem {
+                    Image(systemName: "books.vertical.fill")
+                    Text("Library")
+                }
+            
+            SourcesScreen()
+                .tabItem {
+                    Image(systemName: "plus.square.dashed")
+                    Text("Sources")
+                }
+            
+            HistoryScreen()
+                .tabItem {
+                    Image(systemName: "clock.fill")
+                    Text("History")
+                }
+            
+            SettingsScreen()
+                .tabItem {
+                    Image(systemName: "gearshape.fill")
+                    Text("Settings")
+                }
         }
     }
 }

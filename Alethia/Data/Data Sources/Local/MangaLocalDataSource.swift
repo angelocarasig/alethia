@@ -385,25 +385,21 @@ private extension MangaLocalDataSource {
         guard !statuses.isEmpty else { return request }
         
         let statusValues = statuses.map { $0.rawValue }
-        let placeholders = statusValues.map { _ in "?" }.joined(separator: ", ")
         
-        return request.filter(
-            literal: SQL(sql:
-                """
-                mangaId IN (
-                    SELECT DISTINCT o.mangaId
-                    FROM origin o
-                    WHERE o.status IN (\(placeholders))
-                    AND o.priority = (
-                        SELECT MIN(o2.priority)
-                        FROM origin o2
-                        WHERE o2.mangaId = o.mangaId
-                    )
-                )
-                """,
-                         arguments: StatementArguments(statusValues)
-                        )
+        let sql: SQL = """
+        mangaId IN (
+            SELECT DISTINCT o.mangaId
+            FROM origin o
+            WHERE o.status IN \(statusValues)
+            AND o.priority = (
+                SELECT MIN(o2.priority)
+                FROM origin o2
+                WHERE o2.mangaId = o.mangaId
+            )
         )
+        """
+        
+        return request.filter(sql)
     }
     
     func applyClassificationFilter(
@@ -413,32 +409,27 @@ private extension MangaLocalDataSource {
         guard !classifications.isEmpty else { return request }
         
         let classificationValues = classifications.map { $0.rawValue }
-        let placeholders = classificationValues.map { _ in "?" }.joined(separator: ", ")
         
-        return request.filter(
-            literal: SQL(sql:
-                """
-                mangaId IN (
-                    SELECT DISTINCT o.mangaId
-                    FROM origin o
-                    WHERE o.classification IN (\(placeholders))
-                    AND o.priority = (
-                        SELECT MIN(o2.priority)
-                        FROM origin o2
-                        WHERE o2.mangaId = o.mangaId
-                    )
-                )
-                """,
-                         arguments: StatementArguments(classificationValues)
-                        )
+        let sql: SQL = """
+        mangaId IN (
+            SELECT DISTINCT o.mangaId
+            FROM origin o
+            WHERE o.classification IN \(classificationValues)
+            AND o.priority = (
+                SELECT MIN(o2.priority)
+                FROM origin o2
+                WHERE o2.mangaId = o.mangaId
+            )
         )
+        """
+        
+        return request.filter(sql)
     }
     
     func applySearchFilter(
         to request: QueryInterfaceRequest<Entry>,
         search: String
     ) -> QueryInterfaceRequest<Entry> {
-        // CHANGED: Reference entry.mangaId instead of manga.id
         return request.filter(
             sql: """
             (INSTR(LOWER(title), LOWER(?)) > 0 OR 
