@@ -16,5 +16,5 @@ struct Detail: Decodable, FetchableRecord {
     var tags: [Tag]
     var origins: [OriginExtended]
     var chapters: [ChapterExtended]
-    var collections: [Collection]
+    var collections: [CollectionExtended]
 }

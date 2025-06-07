@@ -29,4 +29,6 @@ protocol MangaRepository {
     func getMangaRecommendations(mangaId: Int64) throws -> RecommendedEntries
     
     func resolveMangaOrientation(detail: Detail) -> Orientation
+    
+    func updateMangaCollections(mangaId: Int64, collectionIds: [Int64]) throws -> Void
 }

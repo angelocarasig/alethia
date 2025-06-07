@@ -111,6 +111,35 @@ extension MangaLocalDataSource {
             try manga.update(db)
         }
     }
+    
+    func updateMangaCollections(mangaId: Int64, collectionIds: [Int64]) throws {
+        try database.write { db in
+            guard try Manga.fetchOne(db, key: mangaId) != nil else {
+                throw MangaError.notFound
+            }
+            
+            // Verify all collections exist
+            for collectionId in collectionIds {
+                guard try Collection.fetchOne(db, key: collectionId) != nil else {
+                    throw CollectionError.notFound(collectionId)
+                }
+            }
+            
+            // Remove all existing collection associations
+            try MangaCollection
+                .filter(MangaCollection.Columns.mangaId == mangaId)
+                .deleteAll(db)
+            
+            // Add new collection associations
+            for collectionId in collectionIds {
+                try MangaCollection(mangaId: mangaId, collectionId: collectionId)
+                    .insert(db)
+            }
+            
+            // Note: We DON'T update addedAt or inLibrary status here
+            // The manga remains in library with its original added date
+        }
+    }
 }
 
 // MARK: Manga CRUD Operations
@@ -498,7 +527,7 @@ private extension MangaLocalDataSource {
         // Use the chapters query interface request from the Manga model
         let chapters = try manga.chapters.fetchAll(db)
         
-        let collections = try manga.collections.fetchAll(db)
+        let collections = try manga.collectionsExtended.fetchAll(db)
         
         return Detail(
             manga: manga,

@@ -92,6 +92,10 @@ extension MangaRepositoryImpl: MangaRepository {
     func updateMangaCover(mangaId: Int64, coverId: Int64) throws {
         try local.updateMangaCover(mangaId: mangaId, coverId: coverId)
     }
+    
+    func updateMangaCollections(mangaId: Int64, collectionIds: [Int64]) throws {
+        try local.updateMangaCollections(mangaId: mangaId, collectionIds: collectionIds)
+    }
 }
 
 // MARK: Helpers

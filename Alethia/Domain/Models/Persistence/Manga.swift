@@ -224,6 +224,24 @@ extension Manga {
 }
 
 extension Manga {
+    var collectionsExtended: QueryInterfaceRequest<CollectionExtended> {
+        guard let id = id else {
+            fatalError("Manga ID is required to fetch collections.")
+        }
+        
+        let itemCountColumn = SQL("""
+            (SELECT COUNT(*) FROM mangaCollection mc2 WHERE mc2.collectionId = collection.id)
+        """).forKey("itemCount")
+        
+        return Collection
+            .joining(required: Collection.mangaCollection
+                .filter(MangaCollection.Columns.mangaId == id)
+            )
+            .annotated(with: itemCountColumn)
+            .order(Collection.Columns.name.asc)
+            .asRequest(of: CollectionExtended.self)
+    }
+    
     var originsExtended: QueryInterfaceRequest<OriginExtended> {
         guard let id = id else {
             fatalError("Manga ID is required to fetch extended origins.")

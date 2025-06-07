@@ -45,6 +45,7 @@ final class DetailsViewModel: ObservableObject {
     // Collections
     private let getAllCollectionsUseCase: GetAllCollectionsUseCase
     private let addCollectionUseCase: AddCollectionUseCase
+    private let updateMangaCollectionsUseCase: UpdateMangaCollectionsUseCase
     
     // Downloads
     private let downloadChapterUseCase: DownloadChapterUseCase
@@ -66,6 +67,7 @@ final class DetailsViewModel: ObservableObject {
         // Collection operations
         self.getAllCollectionsUseCase = injector.makeGetAllCollectionsUseCase()
         self.addCollectionUseCase = injector.makeAddCollectionUseCase()
+        self.updateMangaCollectionsUseCase = injector.makeUpdateMangaCollectionsUseCase()
         
         // Download operations
         self.downloadChapterUseCase = injector.makeDownloadChapterUseCase()
@@ -378,6 +380,14 @@ extension DetailsViewModel {
     
     func addCollection(name: String, color: String, icon: String) throws -> Void {
         try addCollectionUseCase.execute(name: name, color: color, icon: icon)
+    }
+    
+    func updateMangaCollections(_ collections: [Int64]) throws -> Void {
+        guard let mangaId = details?.manga.id else {
+            throw ApplicationError.internalError
+        }
+        
+        try updateMangaCollectionsUseCase.execute(mangaId: mangaId, collectionIds: collections)
     }
 }
 

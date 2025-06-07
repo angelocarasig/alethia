@@ -4,7 +4,6 @@
 //
 //  Created by Angelo Carasig on 13/4/2025.
 //
-
 import SwiftUI
 
 struct CollectionsView: View {
@@ -15,45 +14,29 @@ struct CollectionsView: View {
         GridItem(.flexible(), spacing: Constants.Spacing.large),
     ]
     
-    private var collections: [Collection] {
+    private var collections: [CollectionExtended] {
         vm.details?.collections ?? []
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+            // Enhanced Header
             NavigationLink(destination: ManageCollectionsView()) {
-                HStack {
-                    Text("Collections")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    
-                    Image(systemName: "chevron.right")
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
-                }
+                Text("Collections")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                Image(systemName: "chevron.right")
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
             
+            // Content Area
             if collections.isEmpty {
-                ContentUnavailableView {
-                    Label("No Collections", systemImage: "folder.badge.plus")
-                } description: {
-                    Text("This manga isn't part of any collections yet")
-                } actions: {
-                    NavigationLink(destination: ManageCollectionsView()) {
-                        Text("Manage Collections")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding(Constants.Padding.minimal)
-                    }
-                }
-                .frame(minHeight: 120)
+                EmptyStateView()
             } else {
-                LazyVGrid(columns: columns, spacing: Constants.Spacing.regular) {
-                    ForEach(collections, id: \.id) { collection in
-                        CollectionCard(collection: collection)
-                    }
-                }
+                CollectionsGrid()
             }
         }
         .opacity(vm.inLibrary ? 1 : 0.5)
@@ -61,40 +44,95 @@ struct CollectionsView: View {
     }
     
     @ViewBuilder
-    private func CollectionCard(collection: Collection) -> some View {
-        HStack(spacing: Constants.Spacing.regular) {
-            let selectedColor = Color(hex: collection.color)
+    private func EmptyStateView() -> some View {
+        ContentUnavailableView {
+            Label("No Collections Yet", systemImage: "folder.badge.plus")
+        } description: {
+            Text("This item does not belong to any existing collections.")
+        } actions: {
+            NavigationLink(destination: ManageCollectionsView()) {
+                HStack(spacing: Constants.Spacing.minimal) {
+                    Text("Manage Collections")
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func CollectionsGrid() -> some View {
+        LazyVGrid(columns: columns, spacing: Constants.Spacing.regular) {
+            ForEach(Array(collections.enumerated()), id: \.element.id) { index, collection in
+                CollectionCard(collection: collection)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.8).combined(with: .opacity),
+                        removal: .scale(scale: 0.8).combined(with: .opacity)
+                    ))
+                    .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(Double(index) * 0.1), value: collections.count)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func CollectionCard(collection: CollectionExtended) -> some View {
+        let collectionColor = Color(hex: collection.collection.color)
+        
+        VStack(spacing: Constants.Spacing.regular) {
+            // Icon Container with Enhanced Styling
             ZStack {
                 Circle()
-                    .fill(selectedColor.opacity(0.15))
-                    .frame(width: 50, height: 50)
+                    .fill(collectionColor.opacity(0.15))
+                    .frame(width: 60, height: 60)
+                    .overlay(
+                        Circle()
+                            .stroke(collectionColor.opacity(0.3), lineWidth: 1.5)
+                    )
                 
-                Image(systemName: collection.icon)
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(selectedColor)
+                Image(systemName: collection.collection.icon)
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundStyle(collectionColor)
             }
             
-            Text(collection.name)
+            // Collection Name
+            Text(collection.collection.name)
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .foregroundStyle(.primary)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(Constants.Padding.regular)
-        .padding(.vertical, Constants.Padding.regular)
-        .background(Color(hex: collection.color).opacity(0.1))
-        .overlay(
-            RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-                .stroke(Color(hex: collection.color).opacity(0.3), lineWidth: 1)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Constants.Padding.screen)
+        .padding(.horizontal, Constants.Padding.regular)
+        .background(
+            RoundedRectangle(cornerRadius: Constants.Corner.Radius.card)
+                .fill(collectionColor.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Constants.Corner.Radius.card)
+                        .stroke(collectionColor.opacity(0.2), lineWidth: 1)
+                )
         )
-        .cornerRadius(Constants.Corner.Radius.regular)
+        .contentShape(.rect)
+        .hoverEffect(.highlight)
     }
 }
 
 private struct ManageCollectionsView: View {
     var body: some View {
-        Text("Hi")
+        NavigationView {
+            VStack(spacing: Constants.Spacing.large) {
+                Text("Manage Collections")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                
+                Text("Collection management functionality coming soon...")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding()
+            .navigationTitle("Collections")
+            .navigationBarTitleDisplayMode(.inline)
+        }
     }
 }
