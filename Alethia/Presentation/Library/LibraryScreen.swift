@@ -114,7 +114,7 @@ private struct ContentView: View {
                 CardView(namespace: namespace, entry: entry)
             }
         }
-        .animation(.smooth, value: vm.items.map(\.id))
+        .animation(.smooth(duration: 0.2, extraBounce: 0.35), value: vm.items.map(\.id))
         .padding(.top, Constants.Padding.regular)
         .padding(.horizontal, Constants.Padding.regular)
     }

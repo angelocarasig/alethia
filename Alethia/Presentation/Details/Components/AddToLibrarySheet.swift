@@ -329,8 +329,6 @@ struct AddToLibrarySheet: View {
             })
         }
         .fontWeight(.semibold)
-        .disabled(selectedCollections.isEmpty)
-        .foregroundStyle(selectedCollections.isEmpty ? Color.secondary : Color.accentColor)
     }
     
     // MARK: - Helper Methods

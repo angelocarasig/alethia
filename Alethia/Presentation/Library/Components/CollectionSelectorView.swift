@@ -9,104 +9,109 @@ import SwiftUI
 
 struct CollectionSelectorView: View {
     @EnvironmentObject private var vm: LibraryViewModel
-    
     @State private var showingNewCollectionSheet: Bool = false
     
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Constants.Spacing.toolbar) {
-                DefaultCollectionCell()
+            HStack(spacing: 12) {
+                DefaultCollectionPill()
                 
                 ForEach(vm.collections) { collection in
-                    CollectionCell(collection)
+                    CollectionPill(collection)
                 }
                 
-                NewCollectionCell()
+                NewCollectionPill()
             }
-            .scrollTargetLayout()
-            .padding(
-                EdgeInsets(
-                    top: 4,
-                    leading: Constants.Padding.screen,
-                    bottom: Constants.Padding.screen,
-                    trailing: Constants.Padding.screen
-                )
-            )
+            .padding(.horizontal, Constants.Padding.screen)
+            .padding(.vertical, 12)
         }
+        .background(Color(.systemBackground))
         .scrollDismissesKeyboard(.immediately)
         .scrollBounceBehavior(.basedOnSize)
     }
     
     @ViewBuilder
-    private func DefaultCollectionCell() -> some View {
-        VStack {
-            let isSelected = vm.activeCollection == nil
-            
-            Text("Default")
-                .font(.headline)
-                .fontWeight(isSelected ? .semibold : .regular)
-                .foregroundColor(isSelected ? .text : .secondary)
-            if isSelected {
-                Rectangle()
-                    .frame(height: 4)
-                    .foregroundColor(.accentColor)
-            }
-        }
-        .onTapGesture {
-            withAnimation {
-                vm.setActiveCollection(nil)
-            }
-        }
-    }
-    
-    @ViewBuilder
-    private func CollectionCell(_ collection: CollectionExtended) -> some View {
-        VStack {
-            let isSelected = vm.activeCollection == collection.collection
-            
-            HStack(spacing: Constants.Spacing.minimal) {
-                Text(collection.collection.name)
-                    .font(.headline)
-                    .fontWeight(isSelected ? .semibold : .regular)
-                    .foregroundColor(isSelected ? .text : .secondary)
-                
-                Text("(\(collection.itemCount))")
-                    .font(.headline)
-                    .fontWeight(.regular)
-                    .foregroundColor(.secondary)
-            }
-            
-            if isSelected {
-                Rectangle()
-                    .frame(height: 4)
-                    .foregroundColor(Color(hex: collection.collection.color))
-            }
-        }
-        .frame(minWidth: 50)
-        .onTapGesture {
-            withAnimation {
-                vm.setActiveCollection(collection.collection)
-            }
-        }
-    }
-    
-    @ViewBuilder
-    private func NewCollectionCell() -> some View {
+    private func DefaultCollectionPill() -> some View {
+        let isSelected = vm.activeCollection == nil
+        
         Button {
-            withAnimation {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 vm.setActiveCollection(nil)
-                showingNewCollectionSheet = true
             }
         } label: {
-            HStack {
-                Text("New")
-                Image(systemName: "plus")
+            HStack(spacing: 6) {
+                Image(systemName: "square.grid.2x2")
+                    .font(.system(size: 14, weight: .medium))
+                
+                Text("All")
+                    .font(.system(size: 15, weight: .medium))
             }
-            .font(.headline)
-            .fontWeight(.regular)
-            .foregroundColor(.secondary)
-            .shimmer()
+            .foregroundColor(isSelected ? .white : .primary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(isSelected ? Color.accentColor : Color(.secondarySystemFill))
+            )
         }
+        .buttonStyle(ScaleButtonStyle())
+    }
+    
+    @ViewBuilder
+    private func CollectionPill(_ collection: CollectionExtended) -> some View {
+        let isSelected = vm.activeCollection == collection.collection
+        
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                vm.setActiveCollection(collection.collection)
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: collection.collection.icon)
+                    .font(.system(size: 14, weight: .medium))
+                
+                Text(collection.collection.name)
+                    .font(.system(size: 15, weight: .medium))
+                    .lineLimit(1)
+                
+                if collection.itemCount > 0 {
+                    Text("\(collection.itemCount)")
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                }
+            }
+            .foregroundColor(isSelected ? .white : .primary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(isSelected ? Color(hex: collection.collection.color) : Color(.secondarySystemFill))
+            )
+        }
+        .buttonStyle(ScaleButtonStyle())
+    }
+    
+    @ViewBuilder
+    private func NewCollectionPill() -> some View {
+        Button {
+            showingNewCollectionSheet = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 14, weight: .medium))
+                
+                Text("New")
+                    .font(.system(size: 15, weight: .medium))
+            }
+            .foregroundColor(.secondary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .strokeBorder(Color(.separator), style: StrokeStyle(lineWidth: 1, dash: [5, 3]))
+            )
+        }
+        .buttonStyle(ScaleButtonStyle())
         .sheet(isPresented: $showingNewCollectionSheet) {
             NewCollectionView { name, color, icon in
                 do {
@@ -119,5 +124,15 @@ struct CollectionSelectorView: View {
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
         }
+    }
+}
+
+// MARK: - Supporting Styles
+
+private struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.spring(response: 0.2, dampingFraction: 0.8), value: configuration.isPressed)
     }
 }

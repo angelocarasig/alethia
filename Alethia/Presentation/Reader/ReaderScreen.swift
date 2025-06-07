@@ -68,10 +68,12 @@ struct ReaderScreen: View {
                 }
             }
         }
-        .simultaneousGesture(
-            TapGesture().onEnded { _ in
-                vm.toggleControls()
-            }
+        .gesture(
+            TapGesture()
+                .onEnded { _ in
+                    vm.toggleControls()
+                }
+                .exclusively(before: TapGesture(count: 2)) // some cooking
         )
         .overlay(ReaderOverlay())
         .toolbar(.hidden, for: .tabBar)     // tab bar
@@ -103,26 +105,24 @@ extension ReaderScreen {
     private func HorizontalReader(_ pages: [Page]) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: 0) {
-                Group {
-                    ForEach(pages) { page in
-                        RetryableImage(
-                            url: page.pageUrl,
-                            referer: page.pageReferer
-                        )
-                        .id(page.pageNumber)
-                        .onScrollVisibilityChange { isVisible in
-                            if !vm.didScrollScrubber && isVisible {
-                                vm.updateCurrentPage(page: page)
-                            }
+                ForEach(pages) { page in
+                    RetryableImage(
+                        url: page.pageUrl,
+                        referer: page.pageReferer
+                    )
+                    .id(page.pageNumber)
+                    .onScrollVisibilityChange { isVisible in
+                        if !vm.didScrollScrubber && isVisible {
+                            vm.updateCurrentPage(page: page)
                         }
-                        .containerRelativeFrame(
-                            .horizontal,
-                            count: 1,
-                            spacing: 0
-                        )
                     }
-                    .scrollTargetLayout()
+                    .containerRelativeFrame(
+                        .horizontal,
+                        count: 1,
+                        spacing: 0
+                    )
                 }
+                .scrollTargetLayout()
                 .zoomable()
                 
                 EndDetails()
@@ -163,28 +163,29 @@ extension ReaderScreen {
     private func VerticalReader(_ pages: [Page]) -> some View {
         ScrollView(.vertical, showsIndicators: false) {
             LazyVStack(spacing: 0) {
-                Group {
-                    ForEach(pages) { page in
-                        RetryableImage(
-                            url: page.pageUrl,
-                            referer: page.pageReferer
-                        )
-                        // onappear easier for vertical reader here
-                        .onAppear {
-                            if !vm.didScrollScrubber {
-                                vm.updateCurrentPage(page: page)
-                            }
+                ForEach(pages) { page in
+                    RetryableImage(
+                        url: page.pageUrl,
+                        referer: page.pageReferer
+                    )
+                    // onappear easier for vertical reader here
+                    .onAppear {
+                        if !vm.didScrollScrubber {
+                            vm.updateCurrentPage(page: page)
                         }
-                        .id(page.pageNumber)
-                        .containerRelativeFrame(
-                            vm.orientation == Orientation.Vertical ? .vertical : .horizontal,
-                            count: 1,
-                            spacing: 0
-                        )
                     }
-                    .scrollTargetLayout()
+                    .id(page.pageNumber)
+                    .containerRelativeFrame(
+                        vm.orientation == Orientation.Vertical ? .vertical : .horizontal,
+                        count: 1,
+                        spacing: 0
+                    )
                 }
-                .zoomable()
+                .scrollTargetLayout()
+                // apply zoomable to vstack when vertical
+                .if(vm.orientation == Orientation.Vertical) { view in
+                    view.zoomable()
+                }
                 
                 EndDetails()
                     .onAppear { vm.endDetailsVisible = true }
@@ -194,6 +195,11 @@ extension ReaderScreen {
         .if(vm.orientation == Orientation.Vertical) { view in
             // a 'vertical' reader is still paginated
             view.scrollTargetBehavior(.paging)
+        }
+        .if(vm.orientation == Orientation.Infinite) { view in
+            // if its infinite we need to apply it to the entire scrollview
+            // while not end details isn't visible this should be zoomable
+            view.zoomable(isZoomable: !vm.endDetailsVisible)
         }
         .scrollPosition($scrollPosition)
         .onChange(of: vm.currentChapter) {

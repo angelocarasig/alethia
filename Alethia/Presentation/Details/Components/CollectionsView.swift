@@ -61,7 +61,9 @@ struct CollectionsView: View {
     
     @ViewBuilder
     private func CollectionsList() -> some View {
-        VStack(spacing: Constants.Spacing.regular) {
+        let gridCols: Int = 2
+        
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Constants.Spacing.regular), count: gridCols)) {
             ForEach(Array(collections.enumerated()), id: \.element.id) { index, collection in
                 CollectionRow(collection: collection)
                     .transition(.asymmetric(

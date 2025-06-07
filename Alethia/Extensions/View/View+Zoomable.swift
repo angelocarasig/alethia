@@ -10,10 +10,12 @@ import SwiftUI
 extension View {
     @ViewBuilder
     func zoomable(
+        isZoomable: Bool = true,
         minZoomScale: CGFloat = 1,
-        doubleTapZoomScale: CGFloat = 3
+        doubleTapZoomScale: CGFloat = 2
     ) -> some View {
         modifier(ZoomableModifier(
+            isZoomable: isZoomable,
             minZoomScale: minZoomScale,
             doubleTapZoomScale: doubleTapZoomScale
         ))
@@ -21,23 +23,24 @@ extension View {
     
     @ViewBuilder
     func zoomable(
+        isZoomable: Bool = true,
         minZoomScale: CGFloat = 1,
-        doubleTapZoomScale: CGFloat = 3,
+        doubleTapZoomScale: CGFloat = 2,
         outOfBoundsColor: Color = .clear
     ) -> some View {
-        GeometryReader { proxy in
-            ZStack {
-                outOfBoundsColor
-                self.zoomable(
-                    minZoomScale: minZoomScale,
-                    doubleTapZoomScale: doubleTapZoomScale
-                )
-            }
+        ZStack {
+            outOfBoundsColor
+            self.zoomable(
+                isZoomable: isZoomable,
+                minZoomScale: minZoomScale,
+                doubleTapZoomScale: doubleTapZoomScale
+            )
         }
     }
 }
 
 private struct ZoomableModifier: ViewModifier {
+    let isZoomable: Bool
     let minZoomScale: CGFloat
     let doubleTapZoomScale: CGFloat
     
@@ -56,14 +59,22 @@ private struct ZoomableModifier: ViewModifier {
                 }
             }
             .animatableTransformEffect(transform)
-            .simultaneousGesture(dragGesture, including: transform == .identity ? .none : .all)
+            .gesture(dragGesture, including: transform == .identity ? .none : .all)
             .simultaneousGesture(magnificationGesture)
             .simultaneousGesture(doubleTapGesture)
+            .onChange(of: isZoomable) {
+                withAnimation {
+                    lastTransform = .identity
+                    transform = .identity
+                }
+            }
     }
     
     private var magnificationGesture: some Gesture {
         MagnifyGesture(minimumScaleDelta: 0)
             .onChanged { value in
+                guard isZoomable else { return }
+                
                 // Calculate the anchor point in the view's coordinate space
                 let anchor = value.startAnchor.scaledBy(contentSize)
                 
@@ -83,6 +94,8 @@ private struct ZoomableModifier: ViewModifier {
     private var doubleTapGesture: some Gesture {
         SpatialTapGesture(count: 2)
             .onEnded { value in
+                guard isZoomable else { return }
+                
                 let newTransform: CGAffineTransform =
                 if transform.isIdentity {
                     .anchoredScale(scale: doubleTapZoomScale, anchor: value.location)
@@ -100,6 +113,8 @@ private struct ZoomableModifier: ViewModifier {
     private var dragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
+                guard isZoomable else { return }
+                
                 withAnimation(.interactiveSpring) {
                     transform = lastTransform.translatedBy(
                         x: value.translation.width / transform.scaleX,
@@ -113,6 +128,8 @@ private struct ZoomableModifier: ViewModifier {
     }
     
     private func onEndGesture() {
+        guard isZoomable else { return }
+        
         let newTransform = limitTransform(transform)
         
         withAnimation(.snappy(duration: 0.1)) {

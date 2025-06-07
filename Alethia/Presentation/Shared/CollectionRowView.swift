@@ -101,21 +101,11 @@ private struct CollectionIcon: View {
     let isSelected: Bool
     
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(color.opacity(isSelected ? 0.2 : 0.1))
-                .frame(width: 40, height: 40)
-                .overlay(
-                    Circle()
-                        .stroke(color.opacity(isSelected ? 0.4 : 0.2), lineWidth: 1)
-                )
-            
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(color)
-                .scaleEffect(isSelected ? 1.1 : 1.0)
-        }
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        Image(systemName: icon)
+            .font(.system(size: 18, weight: .medium))
+            .foregroundStyle(color)
+            .scaleEffect(isSelected ? 1.1 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
     }
 }
 

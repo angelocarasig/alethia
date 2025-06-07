@@ -774,5 +774,4 @@ private struct OperationTypePill: View {
 
 #Preview("Queue Status View") {
     QueueStatusView()
-        .preferredColorScheme(.dark)
 }
