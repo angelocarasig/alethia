@@ -70,6 +70,7 @@ struct SearchSourceView: View {
                         source: vm.source,
                         entry: entry
                     )
+                    .id("\(vm.page)-\(entry.id)-\(entry.match)")
                 },
                 footer: {
                     if vm.loading && !vm.items.isEmpty {

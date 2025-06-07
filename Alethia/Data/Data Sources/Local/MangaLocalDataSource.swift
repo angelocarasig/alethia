@@ -28,16 +28,16 @@ extension MangaLocalDataSource {
             .tracking { [weak self] db -> [Entry] in
                 guard let self = self else { return [] }
                 
-                var request = Manga
-                    .entry
-                    .filter(Manga.Columns.inLibrary)
+                var request = Entry
+                    .all()
+                    .filter(Entry.Columns.inLibrary)
                 
                 // Apply collection filter
                 request = try self.applyCollectionFilter(to: request, collection: collection, db: db)
                 
                 // Apply date filters
-                request = filters.addedAt.apply(to: request, column: Manga.Columns.addedAt)
-                request = filters.updatedAt.apply(to: request, column: Manga.Columns.updatedAt)
+                request = filters.addedAt.apply(to: request, column: Entry.Columns.addedAt)
+                request = filters.updatedAt.apply(to: request, column: Entry.Columns.updatedAt)
                 
                 // Apply publish status filter
                 if !filters.publishStatus.isEmpty {
@@ -329,17 +329,17 @@ extension MangaLocalDataSource {
                 throw MangaError.notFound
             }
             
-//            // 1. Similar tags - manga that share tags with the target manga
-//            let withSimilarTags = try fetchSimilarTaggedManga(db: db, mangaId: mangaId)
-//            
-//            // 2. Same collection - manga in the same collections
-//            let fromSameCollection = try fetchSameCollectionManga(db: db, mangaId: mangaId)
-//            
-//            // 3. Same author - other works by the same authors
-//            let otherWorksByAuthor = try fetchSameAuthorManga(db: db, mangaId: mangaId)
-//            
-//            // 4. Same scanlator - other series by the same scanlators
-//            let otherSeriesByScanlator = try fetchSameScanlatorManga(db: db, mangaId: mangaId)
+            //            // 1. Similar tags - manga that share tags with the target manga
+            //            let withSimilarTags = try fetchSimilarTaggedManga(db: db, mangaId: mangaId)
+            //
+            //            // 2. Same collection - manga in the same collections
+            //            let fromSameCollection = try fetchSameCollectionManga(db: db, mangaId: mangaId)
+            //
+            //            // 3. Same author - other works by the same authors
+            //            let otherWorksByAuthor = try fetchSameAuthorManga(db: db, mangaId: mangaId)
+            //
+            //            // 4. Same scanlator - other series by the same scanlators
+            //            let otherSeriesByScanlator = try fetchSameScanlatorManga(db: db, mangaId: mangaId)
             
             return RecommendedEntries(
                 withSimilarTags: [],
@@ -438,14 +438,13 @@ private extension MangaLocalDataSource {
         to request: QueryInterfaceRequest<Entry>,
         search: String
     ) -> QueryInterfaceRequest<Entry> {
-        // For Entry type queries, we need to use a raw SQL filter that checks both
-        // the manga title and alternative titles
+        // CHANGED: Reference entry.mangaId instead of manga.id
         return request.filter(
             sql: """
             (INSTR(LOWER(title), LOWER(?)) > 0 OR 
              EXISTS(
                 SELECT 1 FROM title t 
-                WHERE t.mangaId = manga.id 
+                WHERE t.mangaId = entry.mangaId 
                 AND INSTR(LOWER(t.title), LOWER(?)) > 0
              ))
             """,
@@ -464,19 +463,19 @@ private extension MangaLocalDataSource {
         switch type {
         case .title:
             // change order for title since usually descending is a-z
-            return request.order(isAscending ? Manga.Columns.title.desc : Manga.Columns.title.asc)
+            return request.order(isAscending ? Entry.Columns.title.desc : Entry.Columns.title.asc)
             
         case .added:
             // Sort by when manga was added to library
-            return request.order(isAscending ? Manga.Columns.addedAt.asc : Manga.Columns.addedAt.desc)
+            return request.order(isAscending ? Entry.Columns.addedAt.asc : Entry.Columns.addedAt.desc)
             
         case .updated:
             // Sort by when manga was last updated (new chapters)
-            return request.order(isAscending ? Manga.Columns.updatedAt.asc : Manga.Columns.updatedAt.desc)
+            return request.order(isAscending ? Entry.Columns.updatedAt.asc : Entry.Columns.updatedAt.desc)
             
         case .read:
             // Sort by when manga was last read
-            return request.order(isAscending ? Manga.Columns.lastReadAt.asc : Manga.Columns.lastReadAt.desc)
+            return request.order(isAscending ? Entry.Columns.lastReadAt.asc : Entry.Columns.lastReadAt.desc)
         }
     }
 }

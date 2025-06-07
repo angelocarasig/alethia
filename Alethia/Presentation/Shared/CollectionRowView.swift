@@ -149,19 +149,7 @@ private struct CollectionBackground: View {
     
     var body: some View {
         RoundedRectangle(cornerRadius: cornerRadius)
-            .fill(
-                isSelected ?
-                LinearGradient(
-                    colors: [color.opacity(0.1), color.opacity(0.05)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                ) :
-                    LinearGradient(
-                        colors: [Color(.systemBackground), Color(.systemGray6).opacity(0.3)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-            )
+            .fill(isSelected ? color.opacity(0.1) : Color(.systemBackground))
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(

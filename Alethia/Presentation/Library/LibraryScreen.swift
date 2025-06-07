@@ -1,28 +1,20 @@
-//
-//  LibraryScreen.swift
-//  Alethia
-//
-//  Created by Angelo Carasig on 18/4/2025.
-//
-
 import SwiftUI
 
-// MARK: - Main LibraryScreen
+// MARK: - LibraryScreen
 struct LibraryScreen: View {
     @StateObject private var vm = LibraryViewModel()
+    @Namespace private var animation
     
     var body: some View {
         NavigationStack {
-            LibraryContentView {
-                MainHeader()
-            } stickyHeader: {
-                CollectionSelectorView()
-            } background: {
-                Rectangle()
-                    .fill(.regularMaterial)
+            ZStack {
+                // Background
+                Color.background
                     .ignoresSafeArea()
-            } content: {
-                ContentStateView()
+                
+                // Main Content
+                LibraryContent(animation: animation)
+                    .environmentObject(vm)
             }
             .sheet(isPresented: $vm.showFilters) {
                 LibraryFilterView()
@@ -30,287 +22,225 @@ struct LibraryScreen: View {
             }
             .sheet(isPresented: $vm.showQueue) {
                 QueueStatusView()
+                    .presentationDetents([.medium, .large])
             }
+            .navigationTitle("Library")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                toolbarContent
+            }
+            .environmentObject(vm)
         }
-        .environmentObject(vm)
-        .onAppear {
+        .task {
             vm.onAppear()
         }
     }
-}
-
-// MARK: - LibraryScreen Content Views
-private extension LibraryScreen {
-    @ViewBuilder
-    func ContentStateView() -> some View {
-        switch vm.state {
-        case .loading:
-            LoadingView()
-            
-        case .empty:
-            ContentUnavailableView(
-                "Nothing Found",
-                systemImage: "books.vertical"
-            )
-            
-        case .success:
-            ContentView()
-            
-        case .error(let error):
-            ContentUnavailableView(
-                "Something went wrong",
-                systemImage: "exclamationmark.triangle",
-                description: Text(error.localizedDescription)
-            )
-        }
-    }
     
-    @ViewBuilder
-    func MainHeader() -> some View {
-        VStack(alignment: .center, spacing: 0) {
-            SearchBar(searchText: $vm.filters.searchText)
-                .padding(.horizontal)
-                .padding(.bottom, Constants.Padding.regular)
-            
-            if !vm.filters.searchText.isEmpty {
-                NavigationLink(destination: SearchHomeView(initialSearchValue: vm.filters.searchText)) {
-                    Text("Search Globally")
+    @ToolbarContentBuilder
+    var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            HStack(spacing: Constants.Spacing.toolbar) {
+                Button {
+                    vm.showQueue = true
+                } label: {
+                    let operationCount = QueueProvider.shared.operations.count
+                    
+                    Image(systemName: "hourglass")
+                        .foregroundStyle(operationCount > 0 ? Color.accentColor : Color.secondary)
+                }
+                
+                Button {
+                    vm.showFilters = true
+                } label: {
+                    Image(systemName: "line.horizontal.3.decrease")
+                        .overlay(
+                            Group {
+                                if !vm.filters.activeFilters.isEmpty {
+                                    Text("\(vm.filters.activeFilters.count)")
+                                        .font(.caption)
+                                        .foregroundColor(.white)
+                                        .padding(Constants.Padding.regular)
+                                        .background(Circle().fill(Color.red))
+                                        .offset(x: 10, y: -10)
+                                }
+                            }
+                        )
+                }
+                
+                NavigationLink(destination: Text("Hi")) {
+                    Image(systemName: "gearshape")
                 }
             }
         }
-        .animation(.easeInOut, value: vm.filters.searchText.isEmpty)
     }
 }
 
-// MARK: - LibraryScreen Helper Views
-private extension LibraryScreen {
-    @ViewBuilder
-    func ActiveFiltersOverlay() -> some View {
-        if !vm.filters.activeFilters.isEmpty {
-            Text("\(vm.filters.activeFilters.count)")
-                .font(.caption)
-                .foregroundColor(.white)
-                .padding(Constants.Padding.regular)
-                .background(Circle().fill(Color.red))
-                .offset(x: 10, y: -10)
+// MARK: - Library Content
+private struct LibraryContent: View {
+    @EnvironmentObject private var vm: LibraryViewModel
+    let animation: Namespace.ID
+    
+    var body: some View {
+        VStack {
+            LibraryHeader()
+            
+            ZStack {
+                switch vm.state {
+                case .loading:
+                    LoadingState()
+                case .empty:
+                    EmptyState()
+                case .error(let error):
+                    ErrorState(error: error)
+                case .success:
+                    SuccessState(animation: animation)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }
 
-// MARK: - Content Grid View
-private struct ContentView: View {
-    @Namespace private var namespace
+// MARK: - Library Header
+private struct LibraryHeader: View {
     @EnvironmentObject private var vm: LibraryViewModel
     
-    private var columns: Int = 3
-    private var spacing: CGFloat = Constants.Spacing.minimal
+    var body: some View {
+        VStack {
+            SearchBar(searchText: $vm.filters.searchText)
+            
+            NavigationLink(destination: SearchHomeView(initialSearchValue: vm.filters.searchText)) {
+                HStack {
+                    Image(systemName: "globe")
+                        .font(.subheadline)
+                    Text("Search everywhere for '\(vm.filters.searchText)'")
+                        .font(.subheadline)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.vertical, Constants.Padding.regular)
+                .background(.quaternary.opacity(0.5))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .frame(height: vm.filters.searchText.isEmpty ? 0 : nil)
+            .opacity(vm.filters.searchText.isEmpty ? 0 : 1)
+            
+            CollectionSelectorView()
+        }
+        .padding(.horizontal, Constants.Padding.screen)
+        .animation(.easeInOut(duration: 0.3), value: vm.filters.searchText.isEmpty)
+        .background(.bar)
+    }
+}
+
+// MARK: - Content States
+private struct LoadingState: View {
+    var body: some View {
+        VStack(spacing: Constants.Spacing.regular) {
+            LoadingView()
+            Text("Loading library \(SymbolsProvider.randomKaomoji)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct EmptyState: View {
+    @EnvironmentObject private var vm: LibraryViewModel
+    
+    var body: some View {
+        ContentUnavailableView {
+            Label("No Content", systemImage: "books.vertical")
+        } description: {
+            Text(emptyStateMessage)
+        } actions: {
+            if vm.hasActiveFilters {
+                Button("Clear Filters") {
+                    vm.clearAllFilters()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+    }
+    
+    private var emptyStateMessage: String {
+        if !vm.filters.searchText.isEmpty {
+            return "No results for '\(vm.filters.searchText)'"
+        } else if vm.hasActiveFilters {
+            return "No items match your current filters"
+        } else if vm.activeCollection != nil {
+            return "This collection is empty"
+        } else {
+            return "Your library is empty"
+        }
+    }
+}
+
+private struct ErrorState: View {
+    let error: Error
+    @EnvironmentObject private var vm: LibraryViewModel
+    
+    var body: some View {
+        ContentUnavailableView {
+            Label("Error", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text(error.localizedDescription)
+        } actions: {
+            Button("Try Again") {
+                vm.refreshCollection()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+}
+
+// MARK: - Success State
+private struct SuccessState: View {
+    @EnvironmentObject private var vm: LibraryViewModel
+    let animation: Namespace.ID
+    
+    let spacing: CGFloat = Constants.Spacing.regular
+    let columns: Int = 3
+    
     private var gridColumns: [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: spacing), count: columns)
     }
     
     var body: some View {
-        LazyVGrid(columns: gridColumns, spacing: spacing) {
-            ForEach(vm.items, id: \.libraryViewId) { entry in
-                CardView(namespace: namespace, entry: entry)
+        ScrollView {
+            LazyVGrid(columns: gridColumns, spacing: spacing) {
+                ForEach(vm.items, id: \.libraryViewId) { EntryGridItem(entry: $0, animation: animation) }
             }
+            .padding(.top, 2) // to account for unread badges
+            .padding()
+            .animation(.smooth(duration: 0.3, extraBounce: 0.1), value: vm.items.map(\.id))
         }
-        .animation(.smooth(duration: 0.2, extraBounce: 0.35), value: vm.items.map(\.id))
-        .padding(.top, Constants.Padding.regular)
-        .padding(.horizontal, Constants.Padding.regular)
+        .refreshable {
+            vm.onRefresh()
+        }
     }
 }
 
-// MARK: - Card View
-private struct CardView: View {
-    let namespace: Namespace.ID
+// MARK: - Entry Grid Item
+private struct EntryGridItem: View {
     let entry: Entry
+    let animation: Namespace.ID
     
     var body: some View {
         NavigationLink {
             DetailsScreen(entry: entry, source: nil)
-                .navigationTransition(.zoom(sourceID: entry.transitionId, in: namespace))
+                .navigationTransition(.zoom(sourceID: entry.transitionId, in: animation))
         } label: {
             EntryView(
                 item: entry,
                 lineLimit: 2,
                 showUnread: true
             )
-            .matchedTransitionSource(id: entry.transitionId, in: namespace)
+            .matchedTransitionSource(id: entry.transitionId, in: animation)
         }
+        .buttonStyle(.plain)
         .unread(entry.unread)
-        .padding(.top, Constants.Padding.regular)
-    }
-}
-
-// MARK: - Library Content View
-private struct LibraryContentView<Header: View, StickyHeader: View, Background: View, Content: View>: View {
-    var spacing: CGFloat = 10
-    
-    @ViewBuilder var header: Header
-    @ViewBuilder var stickyHeader: StickyHeader
-    @ViewBuilder var background: Background
-    @ViewBuilder var content: Content
-    
-    @State private var currentDragOffset: CGFloat = 0
-    @State private var previousDragOffset: CGFloat = 0
-    @State private var headerOffset: CGFloat = 0
-    @State private var headerSize: CGFloat = 0
-    @State private var scrollOffset: CGFloat = 0
-    
-    @EnvironmentObject private var vm: LibraryViewModel
-    
-    var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            content
-        }
-        .onPullToRefresh {
-            vm.onRefresh()
-        }
-        .frame(maxWidth: .infinity)
-        .onScrollGeometryChange(for: CGFloat.self, of: scrollOffsetCalculation) { oldValue, newValue in
-            scrollOffset = newValue
-        }
-        .simultaneousGesture(dragGesture)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            CombinedHeaderView()
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbar {
-            toolbarContent
-        }
-    }
-}
-
-// MARK: - LibraryContentView Computed Properties
-private extension LibraryContentView {
-    func scrollOffsetCalculation(_ geometry: ScrollGeometry) -> CGFloat {
-        geometry.contentOffset.y + geometry.contentInsets.top
-    }
-    
-    var dragGesture: some Gesture {
-        DragGesture()
-            .onChanged(handleDragChanged)
-            .onEnded(handleDragEnded)
-    }
-    
-    @ToolbarContentBuilder
-    var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            leadingTitle
-        }
-        
-        ToolbarItem(placement: .principal) {
-            principalTitle
-        }
-        
-        ToolbarItem(placement: .topBarTrailing) {
-            trailingButtons
-        }
-    }
-    
-    var leadingTitle: some View {
-        Text("Library")
-            .font(.largeTitle)
-            .fontWeight(.bold)
-            .opacity(scrollOffset <= 0 ? 1 : 0)
-            .animation(.easeInOut(duration: 0.3), value: scrollOffset <= 0)
-    }
-    
-    var principalTitle: some View {
-        Text("Library")
-            .font(.headline)
-            .fontWeight(.semibold)
-            .opacity(scrollOffset > 0 ? 1 : 0)
-            .animation(.easeInOut(duration: 0.3), value: scrollOffset > 0)
-    }
-    
-    var trailingButtons: some View {
-        HStack(spacing: Constants.Spacing.toolbar) {
-            Button {
-                vm.showQueue = true
-            } label: {
-                let operationCount = QueueProvider.shared.operations.count
-                
-                Image(systemName: "hourglass")
-                    .foregroundStyle(operationCount > 0 ? Color.accentColor : Color.tint)
-            }
-            
-            Button {
-                vm.showFilters = true
-            } label: {
-                Image(systemName: "line.horizontal.3.decrease")
-                    .overlay(ActiveFiltersOverlay())
-            }
-            
-            NavigationLink(destination: Text("Hi")) {
-                Image(systemName: "gearshape")
-            }
-        }
-    }
-}
-
-// MARK: - LibraryContentView Methods
-private extension LibraryContentView {
-    func handleDragChanged(_ value: DragGesture.Value) {
-        let dragOffset = -max(0, abs(value.translation.height) - 50) * (value.translation.height < 0 ? -1 : 1)
-        
-        previousDragOffset = currentDragOffset
-        currentDragOffset = dragOffset
-        
-        let deltaOffset = (currentDragOffset - previousDragOffset).rounded()
-        headerOffset = max(min(headerOffset + deltaOffset, headerSize), 0)
-    }
-    
-    func handleDragEnded(_ value: DragGesture.Value) {
-        withAnimation {
-            if headerOffset > (headerSize * 0.5) && scrollOffset > headerSize {
-                headerOffset = headerSize
-            } else {
-                headerOffset = 0
-            }
-        }
-        
-        currentDragOffset = 0
-        previousDragOffset = 0
-    }
-    
-    @ViewBuilder
-    func ActiveFiltersOverlay() -> some View {
-        if !vm.filters.activeFilters.isEmpty {
-            Text("\(vm.filters.activeFilters.count)")
-                .font(.caption)
-                .foregroundColor(.white)
-                .padding(Constants.Padding.regular)
-                .background(Circle().fill(Color.red))
-                .offset(x: 10, y: -10)
-        }
-    }
-    
-    @ViewBuilder
-    func CombinedHeaderView() -> some View {
-        VStack(spacing: 0) {
-            header
-                .onGeometryChange(for: CGFloat.self) { geometry in
-                    geometry.size.height
-                } action: { newValue in
-                    headerSize = newValue + spacing
-                }
-            
-            stickyHeader
-        }
-        .offset(y: -headerOffset + (headerSize > 0 ? 5 : 0)) // 5 acts as padding for toolbar
-        .clipped()
-        .background {
-            Group{
-                if scrollOffset <= 50 {
-                    Color.background
-                } else {
-                    background
-                }
-            }
-            .ignoresSafeArea()
-            .offset(y: -headerOffset)
-        }
     }
 }

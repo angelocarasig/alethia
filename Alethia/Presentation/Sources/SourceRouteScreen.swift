@@ -59,7 +59,7 @@ struct SourceRouteScreen: View {
                     source: source,
                     entry: entry
                 )
-                .id("\(entry.id)-\(entry.match)")
+                .id("\(vm.currentPage)-\(entry.id)-\(entry.match)")
             },
             footer: {
                 bottomStatusView
@@ -107,7 +107,7 @@ final class SourceRouteViewModel: ObservableObject {
     
     // MARK: - Private Properties
     private let routeId: Int64
-    private var currentPage = 1
+    private(set) var currentPage = 1
     private var rawEntries: [Entry] = []
     private var cancellables = Set<AnyCancellable>()
     private var loadTask: Task<Void, Never>?

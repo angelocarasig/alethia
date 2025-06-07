@@ -10,15 +10,7 @@ import SwiftUI
 
 struct SymbolsProvider {
     static func getAllSymbols() -> [String] {
-        guard let bundle = Bundle(identifier: "com.apple.CoreGlyphs"),
-              let url = bundle.url(forResource: "symbol_search", withExtension: "plist"),
-              let data = try? Data(contentsOf: url),
-              let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
-              let symbols = plist["symbols"] as? [String] else {
-            return fallbackSymbols()
-        }
-        
-        return symbols.filter { isValidSymbol($0) }.sorted()
+        return fallbackSymbols()
     }
     
     static var randomKaomoji: String {
@@ -42,7 +34,7 @@ struct SymbolsProvider {
             "ヾ(＾-＾)ノ",
             "(◕ᴗ◕✿)"
         ]
-            .randomElement()!
+        .randomElement()!
     }
     
     private static func isValidSymbol(_ name: String) -> Bool {
@@ -59,7 +51,7 @@ struct SymbolsProvider {
             
             // Hearts & Favorites
             "heart", "heart.fill", "heart.circle", "heart.circle.fill", "heart.slash",
-            "heart.slash.fill", "heart.text.square", "heart.text.square.fill",
+            "heart.slash.fill", "heart.text.square", "heart.text.square.fill", "trash", "trash.fill",
             
             // Stars & Ratings
             "star", "star.fill", "star.leadinghalf.filled", "star.circle", "star.circle.fill",

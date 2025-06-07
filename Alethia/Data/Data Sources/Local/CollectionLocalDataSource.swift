@@ -19,11 +19,19 @@ final class CollectionLocalDataSource {
 
 extension CollectionLocalDataSource {
     func addCollection(name: String, color: String, icon: String) throws -> Void {
+        guard !Constants.Collections.bannedCollectionNames.contains(where: { $0.lowercased() == name.lowercased() }) else {
+            throw CollectionError.badName(name)
+        }
+        
+        guard name.count > Constants.Collections.maximumCollectionNameLength else {
+            throw CollectionError.maximumLengthReached(name.count)
+        }
+        
+        guard name.count < Constants.Collections.minimumCollectionNameLength else {
+            throw CollectionError.minimumLengthNotReached(name.count)
+        }
+        
         try DatabaseProvider.shared.writer.write { db in
-            guard name.lowercased() != "default" else {
-                throw CollectionError.badName("default")
-            }
-            
             try Collection(name: name, color: color, icon: icon).insert(db)
         }
     }

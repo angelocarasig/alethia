@@ -13,7 +13,7 @@ struct CollectionSelectorView: View {
     
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
+            HStack(spacing: Constants.Spacing.large) {
                 DefaultCollectionPill()
                 
                 ForEach(vm.collections) { collection in
@@ -22,10 +22,8 @@ struct CollectionSelectorView: View {
                 
                 NewCollectionPill()
             }
-            .padding(.horizontal, Constants.Padding.screen)
-            .padding(.vertical, 12)
+            .padding(.bottom, Constants.Padding.regular)
         }
-        .background(Color(.systemBackground))
         .scrollDismissesKeyboard(.immediately)
         .scrollBounceBehavior(.basedOnSize)
     }
@@ -39,19 +37,23 @@ struct CollectionSelectorView: View {
                 vm.setActiveCollection(nil)
             }
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: Constants.Spacing.regular) {
                 Image(systemName: "square.grid.2x2")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 16, weight: .medium))
+                    .frame(width: 20, height: 20)
                 
-                Text("All")
-                    .font(.system(size: 15, weight: .medium))
+                if isSelected {
+                    Text("All")
+                        .font(.system(size: 15, weight: .medium))
+                        .transition(.scale(scale: 0.8, anchor: .leading).combined(with: .opacity))
+                }
             }
-            .foregroundColor(isSelected ? .white : .primary)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .foregroundColor(isSelected ? .background : .text)
+            .padding(.horizontal, isSelected ? Constants.Padding.screen : Constants.Spacing.large)
+            .padding(.vertical, Constants.Spacing.large)
             .background(
-                Capsule()
-                    .fill(isSelected ? Color.accentColor : Color(.secondarySystemFill))
+                RoundedRectangle(cornerRadius: Constants.Corner.Radius.button, style: .continuous)
+                    .fill(isSelected ? Color.text : Color.tint)
             )
         }
         .buttonStyle(ScaleButtonStyle())
@@ -63,29 +65,37 @@ struct CollectionSelectorView: View {
         
         Button {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                vm.setActiveCollection(collection.collection)
+                if isSelected {
+                    vm.setActiveCollection(nil)
+                } else {
+                    vm.setActiveCollection(collection.collection)
+                }
             }
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: Constants.Spacing.regular) {
                 Image(systemName: collection.collection.icon)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 16, weight: .medium))
+                    .frame(width: 20, height: 20)
                 
-                Text(collection.collection.name)
-                    .font(.system(size: 15, weight: .medium))
-                    .lineLimit(1)
-                
-                if collection.itemCount > 0 {
-                    Text("\(collection.itemCount)")
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                if isSelected {
+                    HStack(spacing: Constants.Spacing.minimal) {
+                        Text(collection.collection.name)
+                            .font(.system(size: 15, weight: .medium))
+                            .lineLimit(1)
+                        
+                        Text("\(collection.itemCount)")
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                    .transition(.scale(scale: 0.8, anchor: .leading).combined(with: .opacity))
                 }
             }
             .foregroundColor(isSelected ? .white : .primary)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, isSelected ? Constants.Padding.screen : Constants.Spacing.large)
+            .padding(.vertical, Constants.Spacing.large)
             .background(
-                Capsule()
-                    .fill(isSelected ? Color(hex: collection.collection.color) : Color(.secondarySystemFill))
+                RoundedRectangle(cornerRadius: Constants.Corner.Radius.button, style: .continuous)
+                    .fill(isSelected ? Color(hex: collection.collection.color) : Color.tint)
             )
         }
         .buttonStyle(ScaleButtonStyle())
@@ -96,18 +106,18 @@ struct CollectionSelectorView: View {
         Button {
             showingNewCollectionSheet = true
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: Constants.Spacing.regular) {
                 Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 16, weight: .medium))
                 
                 Text("New")
                     .font(.system(size: 15, weight: .medium))
             }
             .foregroundColor(.secondary)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, Constants.Padding.screen)
+            .padding(.vertical, Constants.Spacing.large)
             .background(
-                Capsule()
+                RoundedRectangle(cornerRadius: Constants.Corner.Radius.button, style: .continuous)
                     .strokeBorder(Color(.separator), style: StrokeStyle(lineWidth: 1, dash: [5, 3]))
             )
         }

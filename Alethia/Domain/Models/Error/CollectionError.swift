@@ -4,12 +4,13 @@
 //
 //  Created by Angelo Carasig on 4/6/2025.
 //
-
 import Foundation
 
 enum CollectionError: LocalizedError {
     case notFound(Int64?)
     case badName(String?)
+    case minimumLengthNotReached(Int)
+    case maximumLengthReached(Int)
     
     // need this
     var errorDescription: String? {
@@ -27,10 +28,13 @@ enum CollectionError: LocalizedError {
         case .badName(let name):
             if let name = name {
                 return "The collection name '\(name)' is reserved and cannot be used."
-            }
-            else {
+            } else {
                 return "The collection name provided is invalid."
             }
+        case .minimumLengthNotReached(let length):
+            return "The collection name must be at least ^[\(Constants.Collections.minimumCollectionNameLength) character](inflect: true) long but got \(length)."
+        case .maximumLengthReached(let length):
+            return "The collection name cannot exceed ^[\(Constants.Collections.maximumCollectionNameLength) character](inflect: true) but got \(length)."
         }
     }
 }

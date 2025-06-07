@@ -110,11 +110,14 @@ extension Constants {
 }
 
 extension Constants {
-    struct Library {
+    struct Collections {
         static let bannedCollectionNames: [String] = [
             "default",
             "new"
         ]
+        
+        static let minimumCollectionNameLength: Int = 3
+        static let maximumCollectionNameLength: Int = 20
     }
 }
 

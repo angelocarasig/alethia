@@ -50,6 +50,7 @@ extension Collection: DatabaseModel {
                 .unique()
                 .collate(.nocase)
                 .indexed()
+                .check { length($0) >= Constants.Collections.minimumCollectionNameLength && length($0) <= Constants.Collections.maximumCollectionNameLength }
             
             t.column(Columns.color.name, .text)
                 .notNull()

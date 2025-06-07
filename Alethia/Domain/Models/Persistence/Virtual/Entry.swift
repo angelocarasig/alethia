@@ -8,20 +8,53 @@
 import Foundation
 import GRDB
 
-enum EntryMatch {
-    // Does not exist in library at all
-    case none
+// MARK: - Entry Model
+
+struct Entry: Codable, Hashable, Identifiable {
+    // MARK: Properties
     
-    // Same title
-    case partial
+    var mangaId: Int64?
+    var sourceId: Int64?
+    var title: String
+    var cover: String?
+    var fetchUrl: String?
     
-    // Exact ID
-    case exact
+    // Properties needed for querying
+    var inLibrary: Bool
+    var addedAt: Date = .distantPast
+    var updatedAt: Date = .distantPast
+    var lastReadAt: Date? = nil
+    
+    // Transient state
+    var match: EntryMatch = .none
+    var unread: Int
+    
+    // MARK: Initialization
+    
+    init(
+        mangaId: Int64? = nil,
+        sourceId: Int64? = nil,
+        title: String,
+        cover: String? = nil,
+        fetchUrl: String? = nil,
+        inLibrary: Bool = false,
+        unread: Int = -1,
+        match: EntryMatch? = EntryMatch.none
+    ) {
+        self.mangaId = mangaId
+        self.sourceId = sourceId
+        self.title = title
+        self.cover = cover
+        self.fetchUrl = fetchUrl
+        self.inLibrary = inLibrary
+        self.unread = unread
+        self.match = match ?? .none
+    }
 }
 
-struct Entry: Codable, Hashable, Identifiable, QueueOperationIdentifiable, FetchableRecord, TableRecord {
-    // MARK: Public API
-    
+// MARK: - Identifiers
+
+extension Entry {
     var id: String {
         fetchUrl ?? // fetchUrl is a stable unique value - may not exist if source not present
         "\(mangaId ?? sourceId ?? -1)-\(title)-\(unread)"
@@ -43,34 +76,29 @@ struct Entry: Codable, Hashable, Identifiable, QueueOperationIdentifiable, Fetch
     var libraryViewId: String {
         "\(mangaId!)"
     }
-    
-    /// For queue operations
+}
+
+// MARK: - Queue Operation Support
+
+extension Entry: QueueOperationIdentifiable {
     var queueOperationId: String {
         "manga-\(mangaId ?? -1)"
     }
-    
-    var mangaId: Int64?
-    var sourceId: Int64?
-    var title: String
-    var cover: String?
-    var fetchUrl: String?
-    
-    // MARK: - Properties needed for querying
-    var inLibrary: Bool
-    // these properties not important but just needed for querying
-    var addedAt: Date = .distantPast
-    var updatedAt: Date = .distantPast
-    var lastReadAt: Date? = nil
-    
-    // MARK: Transient state
-    var match: EntryMatch = .none
-    var unread: Int
-    
-    // MARK: Decoding & GRDB
+}
+
+// MARK: - Database Support
+
+extension Entry {
     private enum CodingKeys: String, CodingKey {
         case mangaId, sourceId, title, cover, fetchUrl, unread
         case inLibrary, addedAt, updatedAt, lastReadAt
     }
+}
+
+// MARK: - GRDB TableRecord
+
+extension Entry: TableRecord {
+    static let databaseTableName = "entry" // References the view created in Database+Views
     
     enum Columns {
         static let mangaId = Column(CodingKeys.mangaId)
@@ -86,28 +114,26 @@ struct Entry: Codable, Hashable, Identifiable, QueueOperationIdentifiable, Fetch
         
         static let unread = Column(CodingKeys.unread)
     }
-    
-    // Custom initializer
-    init(
-        mangaId: Int64? = nil,
-        sourceId: Int64? = nil,
-        title: String,
-        cover: String? = nil,
-        fetchUrl: String? = nil,
-        inLibrary: Bool = false,
-        unread: Int = -1,
-        match: EntryMatch? = EntryMatch.none
-    ) {
-        self.mangaId = mangaId
-        self.sourceId = sourceId
-        self.title = title
-        self.cover = cover
-        self.fetchUrl = fetchUrl
-        self.inLibrary = inLibrary
-        self.unread = unread
-        self.match = match ?? .none
-    }
 }
+
+// MARK: - GRDB FetchableRecord
+
+extension Entry: FetchableRecord {}
+
+// MARK: - Entry Match Type
+
+enum EntryMatch {
+    // Does not exist in library at all
+    case none
+    
+    // Same title
+    case partial
+    
+    // Exact ID
+    case exact
+}
+
+// MARK: - Recommended Entries
 
 struct RecommendedEntries {
     // Similar in your library
