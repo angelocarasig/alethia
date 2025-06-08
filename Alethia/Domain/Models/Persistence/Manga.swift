@@ -8,6 +8,8 @@
 import Foundation
 import GRDB
 
+// MARK: - Manga Model
+
 struct Manga: Codable, Identifiable {
     var id: Int64?
     
@@ -29,6 +31,8 @@ struct Manga: Codable, Identifiable {
     }
 }
 
+// MARK: - Static Associations
+
 extension Manga {
     static let titles = hasMany(Title.self)
     static let covers = hasMany(Cover.self)
@@ -43,6 +47,8 @@ extension Manga {
     static let mangaCollection = hasMany(MangaCollection.self)
     static let collections = hasMany(Collection.self, through: mangaCollection, using: MangaCollection.collection)
 }
+
+// MARK: - Instance Association Requests
 
 extension Manga {
     var titles: QueryInterfaceRequest<Title> {
@@ -70,6 +76,8 @@ extension Manga {
     }
 }
 
+// MARK: - GRDB TableRecord
+
 extension Manga: TableRecord {
     enum Columns {
         static let id = Column(Manga.CodingKeys.id)
@@ -85,9 +93,12 @@ extension Manga: TableRecord {
     }
 }
 
-extension Manga: FetchableRecord { }
+// MARK: - GRDB Record Protocols
 
+extension Manga: FetchableRecord { }
 extension Manga: PersistableRecord { }
+
+// MARK: - Database Migration
 
 extension Manga: DatabaseModel {
     static var version: Version = Version(1, 0, 3)
@@ -130,7 +141,7 @@ extension Manga: DatabaseModel {
                         WHERE id = ?
                     """
                     
-                    try db.execute(sql: sql, arguments: [mangaId, mangaId])  // Use mangaId, not id
+                    try db.execute(sql: sql, arguments: [mangaId, mangaId])
                 }
             }
         }
@@ -145,8 +156,9 @@ extension Manga: DatabaseModel {
     }
 }
 
+// MARK: - Entry View Requests
+
 extension Manga {
-    // static version would return all entries anyway
     static var entry: QueryInterfaceRequest<Entry> {
         return Entry.all()
     }
@@ -158,7 +170,11 @@ extension Manga {
         
         return Entry.filter(Entry.Columns.mangaId == id)
     }
-    
+}
+
+// MARK: - Query Requests
+
+extension Manga {
     var chapters: QueryInterfaceRequest<ChapterExtended> {
         guard let id = id else {
             fatalError("Manga ID is required to fetch chapters.")
@@ -185,9 +201,6 @@ extension Manga {
         // We need to get chapter numbers first, then for each chapter number,
         // select the chapter with the lowest origin priority, then the lowest scanlator priority
         
-        // This is a modification of the approach using common table expressions,
-        // but implemented with subqueries since GRDB doesn't directly support CTEs in the SQL builder
-        
         // First, get the best chapter for each chapter number using window functions
         let bestChapterSQL = """
         WITH RankedChapters AS (
@@ -196,11 +209,11 @@ extension Manga {
                 c.number,
                 ROW_NUMBER() OVER (
                     PARTITION BY c.number 
-                    ORDER BY o.priority ASC, s.priority ASC
+                    ORDER BY o.priority ASC, os.priority ASC
                 ) as rank
             FROM chapter c
             JOIN origin o ON c.originId = o.id
-            JOIN scanlator s ON c.scanlatorId = s.id
+            JOIN originScanlator os ON os.originId = o.id AND os.scanlatorId = c.scanlatorId
             WHERE o.mangaId = ?
         )
         SELECT id FROM RankedChapters WHERE rank = 1
@@ -221,9 +234,7 @@ extension Manga {
             .including(required: Chapter.origin.including(optional: Origin.source)) // optional for detached sources
             .asRequest(of: ChapterExtended.self)
     }
-}
-
-extension Manga {
+    
     var collectionsExtended: QueryInterfaceRequest<CollectionExtended> {
         guard let id = id else {
             fatalError("Manga ID is required to fetch collections.")
@@ -267,5 +278,28 @@ extension Manga {
             .annotated(with: hostAuthorColumn)
             .order(Origin.Columns.priority.asc)
             .asRequest(of: OriginExtended.self)
+    }
+    
+    var scanlatorsExtended: QueryInterfaceRequest<ScanlatorExtended> {
+        guard let id = id else {
+            fatalError("Manga ID is required to fetch extended scanlators.")
+        }
+        
+        // Get all scanlators for this manga through OriginScanlator join table
+        return OriginScanlator
+            .joining(required: OriginScanlator.origin
+                .filter(Origin.Columns.mangaId == id)
+            )
+            .joining(required: OriginScanlator.scanlator)
+            .including(required: OriginScanlator.scanlator.forKey("scanlator"))
+            .including(required: OriginScanlator.origin.forKey("underlyingOrigin")
+                .including(optional: Origin.source.forKey("underlyingSource")
+                    .including(optional: Source.host.forKey("underlyingHost"))
+                )
+            )
+            .annotated(with: OriginScanlator.Columns.priority.forKey("priority"))
+            .annotated(with: OriginScanlator.Columns.originId.forKey("originId"))
+            .order(OriginScanlator.Columns.priority.asc)
+            .asRequest(of: ScanlatorExtended.self)
     }
 }

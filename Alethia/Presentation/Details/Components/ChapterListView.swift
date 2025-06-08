@@ -73,7 +73,8 @@ private struct ChapterHeaderView: View {
                 .buttonStyle(.borderedProminent)
                 
                 NavigationLink {
-                    // Preferences screen (not yet implemented)
+                    PriorityManagementView()
+                        .environmentObject(vm)
                 } label: {
                     Image(systemName: "gearshape.fill")
                         .font(.system(size: 16, weight: .semibold))

@@ -17,4 +17,5 @@ struct Detail: Decodable, FetchableRecord {
     var origins: [OriginExtended]
     var chapters: [ChapterExtended]
     var collections: [CollectionExtended]
+    var scanlators: [ScanlatorExtended]
 }

@@ -68,11 +68,11 @@ private extension DatabaseProvider {
                             c.progress,
                             ROW_NUMBER() OVER (
                                 PARTITION BY c.number 
-                                ORDER BY o.priority ASC, s.priority ASC
+                                ORDER BY o.priority ASC, os.priority ASC
                             ) as rank
                         FROM chapter c
                         JOIN origin o ON c.originId = o.id
-                        JOIN scanlator s ON c.scanlatorId = s.id
+                        JOIN originScanlator os ON os.originId = o.id AND os.scanlatorId = c.scanlatorId
                         WHERE o.mangaId = m.id
                         AND (m.showHalfChapters = 1 OR CAST(c.number AS INTEGER) = c.number)
                     )

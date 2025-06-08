@@ -26,7 +26,7 @@ erDiagram
     Origin }|--|| Source : "belongs to"
     Origin ||--o{ Chapter : "has many"
     Origin }|--|| Manga : "belongs to"
-    Origin ||--o{ Scanlator : "has many"
+    Origin }o--o{ Scanlator : "many-to-many"
     
     Scanlator ||--o{ Chapter : "has many"
     Chapter }|--|| Origin : "belongs to"
@@ -40,7 +40,9 @@ erDiagram
     
     MangaCollection }|--|| Manga : "joins"
     MangaCollection }|--|| Collection : "joins"
-
+    
+    OriginScanlator }|--|| Origin : "joins"
+    OriginScanlator }|--|| Scanlator : "joins"
     Host {
         int64 id PK
         string name
@@ -127,9 +129,7 @@ erDiagram
     
     Scanlator {
         int64 id PK
-        int64 originId FK
-        string name
-        int priority
+        string name UK
     }
     
     Chapter {
@@ -142,6 +142,12 @@ erDiagram
         datetime date
         double progress
         string localPath
+    }
+    
+    OriginScanlator {
+        int64 originId FK
+        int64 scanlatorId FK
+        int priority
     }
     
     MangaAuthor {
@@ -161,6 +167,22 @@ erDiagram
 ```
 
 ## Version History
+
+### Changes from 1.0.3 to 1.0.4
+- Scanlator table restructured to be globally unique:
+- Removed originId foreign key
+- Removed priority column
+- Added unique constraint on name column
+
+<details>
+<summary><b><u>OriginScanlator join table added</u></b></summary>
+
+- Links Origins to Scanlators with many-to-many relationship
+- Includes priority column for per-origin scanlator ordering
+- Composite primary key on (originId, scanlatorId)
+- Unique constraint on (originId, priority) to ensure unique priorities per origin
+
+</details>
 
 ### Changes from 1.0.2 to 1.0.3
 - Added `lastReadAt` column to `Manga` table to track reading history

@@ -8,7 +8,11 @@
 import Foundation
 import GRDB
 
-struct OriginExtended: Decodable, FetchableRecord, Identifiable {
+struct OriginExtended: Decodable, FetchableRecord, Identifiable, Equatable {
+    static func == (lhs: OriginExtended, rhs: OriginExtended) -> Bool {
+        lhs.origin.slug == rhs.origin.slug
+    }
+    
     var id: String {
         origin.slug
     }

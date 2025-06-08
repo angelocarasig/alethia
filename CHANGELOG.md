@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.4] - 2025-06-08
+### Database Migration
+- **Version**: 1.0.3 → 1.0.4
+- **Tables Affected**: `scanlator`, `originScanlator` (new), `chapter`
+- **Migration**: 
+ - Restructure scanlator table to be globally unique
+ - Create new `originScanlator` join table for many-to-many relationships
+ - Migrate existing scanlator data preserving all relationships and priorities
+- **Reason**: Enable global scanlator management while maintaining per-origin priority ordering
+
+### Added
+- MINOR New `OriginScanlator` join table model for many-to-many relationship between origins and scanlators
+- Added `originScanlator` table with composite primary key and priority management
+- Added `scanlatorsExtended` query interface to fetch scanlators with their per-origin priorities
+
+### Changed
+- MAJOR Restructured `Scanlator` model to be globally unique (similar to Authors and Tags)
+- Removed `originId` and `priority` from `Scanlator` table
+- Updated `ScanlatorExtended` virtual model to include origin-specific priority and origin information
+- Modified chapter queries to work with new global scanlator structure
+
+### Migration Details
+- Extracts unique scanlator names from existing data
+- Creates origin-scanlator relationships preserving original priorities
+- Updates chapter references to use new global scanlator IDs
+- Maintains data integrity throughout migration process
+
+---
+
 ## [1.0.3] - 2025-06-05
 
 ### Database Migration
@@ -75,7 +104,7 @@ erDiagram
     Origin }|--|| Source : "belongs to"
     Origin ||--o{ Chapter : "has many"
     Origin }|--|| Manga : "belongs to"
-    Origin ||--o{ Scanlator : "has many"
+    Origin }o--o{ Scanlator : "many-to-many"
     
     Scanlator ||--o{ Chapter : "has many"
     Chapter }|--|| Origin : "belongs to"
@@ -89,7 +118,9 @@ erDiagram
     
     MangaCollection }|--|| Manga : "joins"
     MangaCollection }|--|| Collection : "joins"
-
+    
+    OriginScanlator }|--|| Origin : "joins"
+    OriginScanlator }|--|| Scanlator : "joins"
     Host {
         int64 id PK
         string name
@@ -176,9 +207,7 @@ erDiagram
     
     Scanlator {
         int64 id PK
-        int64 originId FK
-        string name
-        int priority
+        string name UK
     }
     
     Chapter {
@@ -191,6 +220,12 @@ erDiagram
         datetime date
         double progress
         string localPath
+    }
+    
+    OriginScanlator {
+        int64 originId FK
+        int64 scanlatorId FK
+        int priority
     }
     
     MangaAuthor {

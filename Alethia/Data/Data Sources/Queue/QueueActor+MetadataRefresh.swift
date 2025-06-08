@@ -267,34 +267,50 @@ private extension QueueActor {
         let chaptersByScanlator = Dictionary(grouping: chaptersToInsert) { $0.scanlator }
         
         // Get existing scanlators for this origin
-        let existingScanlators = try Scanlator
-            .filter(Scanlator.Columns.originId == originId)
-            .order(Scanlator.Columns.priority.asc)
+        let originScanlators = try OriginScanlator
+            .filter(OriginScanlator.Columns.originId == originId)
+            .order(OriginScanlator.Columns.priority.asc)
             .fetchAll(db)
         
-        var nextPriority = existingScanlators.last?.priority ?? -1
+        // Create a map of scanlator names to their IDs for this origin
+        var scanlatorNameToId: [String: Int64] = [:]
+        for originScanlator in originScanlators {
+            if let scanlator = try Scanlator.fetchOne(db, id: originScanlator.scanlatorId) {
+                scanlatorNameToId[scanlator.name.lowercased()] = scanlator.id
+            }
+        }
+        
+        var nextPriority = originScanlators.last?.priority ?? -1
         
         // Process each scanlator group
         for (scanlatorName, chapters) in chaptersByScanlator {
-            let scanlator: Scanlator
+            let scanlatorId: Int64
             
-            if let existing = existingScanlators.first(where: { $0.name == scanlatorName }) {
-                scanlator = existing
+            // Check if this scanlator already exists for this origin (case-insensitive)
+            if let existingId = scanlatorNameToId[scanlatorName.lowercased()] {
+                scanlatorId = existingId
             } else {
-                // Create new scanlator with next available priority
+                // Check if scanlator exists globally
+                if let existingScanlator = try Scanlator
+                    .filter(Scanlator.Columns.name == scanlatorName)
+                    .fetchOne(db) {
+                    scanlatorId = existingScanlator.id!
+                } else {
+                    // Create new global scanlator
+                    let newScanlator = try Scanlator(name: scanlatorName).insertAndFetch(db)
+                    scanlatorId = newScanlator.id!
+                }
+                
+                // Create origin-scanlator relationship with next priority
                 nextPriority += 1
-                var newScanlator = Scanlator(
+                try OriginScanlator(
                     originId: originId,
-                    name: scanlatorName,
+                    scanlatorId: scanlatorId,
                     priority: nextPriority
-                )
-                newScanlator = try newScanlator.insertAndFetch(db)
-                scanlator = newScanlator
+                ).insert(db)
             }
             
             // Insert new chapters for this scanlator
-            guard let scanlatorId = scanlator.id else { continue }
-            
             for chapterDTO in chapters {
                 try Chapter(
                     originId: originId,

@@ -508,16 +508,17 @@ private extension MangaLocalDataSource {
     }
     
     func fetchDetailWithChapters(db: Database, manga: Manga) throws -> Detail? {
-        let titles: [Title] = try manga.titles.order(Title.Columns.title).fetchAll(db)
-        let covers: [Cover] = try manga.covers.fetchAll(db)
-        let authors: [Author] = try manga.authors.fetchAll(db)
-        let tags: [Tag] = try manga.tags.fetchAll(db)
-        let origins: [OriginExtended] = try manga.originsExtended.fetchAll(db)
+        // from regular relations
+        let titles:         [Title] = try manga.titles.order(Title.Columns.title).fetchAll(db)
+        let covers:         [Cover] = try manga.covers.fetchAll(db)
+        let authors:        [Author] = try manga.authors.fetchAll(db)
+        let tags:           [Tag] = try manga.tags.fetchAll(db)
         
-        // Use the chapters query interface request from the Manga model
-        let chapters = try manga.chapters.fetchAll(db)
-        
-        let collections = try manga.collectionsExtended.fetchAll(db)
+        // via query interface requests
+        let origins:        [OriginExtended] = try manga.originsExtended.fetchAll(db)
+        let chapters:       [ChapterExtended] = try manga.chapters.fetchAll(db)
+        let collections:    [CollectionExtended] = try manga.collectionsExtended.fetchAll(db)
+        let scanlators:     [ScanlatorExtended] = try manga.scanlatorsExtended.fetchAll(db)
         
         return Detail(
             manga: manga,
@@ -527,7 +528,8 @@ private extension MangaLocalDataSource {
             tags: tags,
             origins: origins,
             chapters: chapters,
-            collections: collections
+            collections: collections,
+            scanlators: scanlators
         )
     }
 }
@@ -666,48 +668,61 @@ private extension MangaLocalDataSource {
         // Group chapters by scanlator to process them efficiently
         let chaptersByScanlator = Dictionary(grouping: chapterPayloads) { $0.scanlator }
         
-        // Get existing scanlators for this origin to determine next priority
-        let existingScanlators = try Scanlator
-            .filter(Scanlator.Columns.originId == originId)
-            .order(Scanlator.Columns.priority.asc)
+        // Get existing origin-scanlator relationships
+        let originScanlators = try OriginScanlator
+            .filter(OriginScanlator.Columns.originId == originId)
+            .order(OriginScanlator.Columns.priority.asc)
             .fetchAll(db)
         
+        // Create a map of scanlator names to their IDs for this origin
+        var scanlatorNameToId: [String: Int64] = [:]
+        for originScanlator in originScanlators {
+            if let scanlator = try Scanlator.fetchOne(db, id: originScanlator.scanlatorId) {
+                scanlatorNameToId[scanlator.name.lowercased()] = scanlator.id
+            }
+        }
+        
         // Track the highest priority so far
-        var nextPriority = existingScanlators.last?.priority ?? -1 // -1 so if none found it increments to 0 (highest priority)
+        var nextPriority = originScanlators.last?.priority ?? -1 // -1 so if none found it increments to 0 (highest priority)
         
         // Process each scanlator group
         for (scanlatorName, chapters) in chaptersByScanlator {
-            // Try to find existing scanlator for this origin
-            let existingScanlator = existingScanlators.first { $0.name == scanlatorName }
+            let scanlatorId: Int64
             
-            let scanlator: Scanlator
-            if let existing = existingScanlator {
-                // Use existing scanlator
-                scanlator = existing
+            // Check if this scanlator already exists for this origin (case-insensitive)
+            if let existingId = scanlatorNameToId[scanlatorName.lowercased()] {
+                scanlatorId = existingId
             } else {
-                // Create new scanlator with next available priority
+                // Check if scanlator exists globally
+                if let existingScanlator = try Scanlator
+                    .filter(Scanlator.Columns.name == scanlatorName)
+                    .fetchOne(db) {
+                    scanlatorId = existingScanlator.id!
+                } else {
+                    // Create new global scanlator
+                    let newScanlator = try Scanlator(name: scanlatorName).insertAndFetch(db)
+                    scanlatorId = newScanlator.id!
+                }
+                
+                // Create origin-scanlator relationship with next priority
                 nextPriority += 1
-                var newScanlator = Scanlator(
+                try OriginScanlator(
                     originId: originId,
-                    name: scanlatorName,
+                    scanlatorId: scanlatorId,
                     priority: nextPriority
-                )
-                newScanlator = try newScanlator.insertAndFetch(db)
-                scanlator = newScanlator
+                ).insert(db)
             }
             
             // Insert all chapters for this scanlator
-            if let scanlatorId = scanlator.id {
-                for chapterPayload in chapters {
-                    try Chapter(
-                        originId: originId,
-                        scanlatorId: scanlatorId,
-                        title: chapterPayload.title,
-                        slug: chapterPayload.slug,
-                        number: chapterPayload.number,
-                        date: Date.javascriptDate(chapterPayload.date)
-                    ).insert(db)
-                }
+            for chapterPayload in chapters {
+                try Chapter(
+                    originId: originId,
+                    scanlatorId: scanlatorId,
+                    title: chapterPayload.title,
+                    slug: chapterPayload.slug,
+                    number: chapterPayload.number,
+                    date: Date.javascriptDate(chapterPayload.date)
+                ).insert(db)
             }
         }
     }

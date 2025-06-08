@@ -27,6 +27,9 @@ extension Origin {
     static let manga = belongsTo(Manga.self)
     static let source = belongsTo(Source.self)
     static let chapters = hasMany(Chapter.self)
+    
+    static let originScanlator = hasMany(OriginScanlator.self)
+    static let scanlators = hasMany(Scanlator.self, through: originScanlator, using: OriginScanlator.scanlator)
 }
 
 extension Origin {
@@ -40,6 +43,10 @@ extension Origin {
     
     var chapters: QueryInterfaceRequest<Chapter> {
         request(for: Origin.chapters)
+    }
+    
+    var scanlators: QueryInterfaceRequest<Scanlator> {
+        request(for: Origin.scanlators)
     }
 }
 

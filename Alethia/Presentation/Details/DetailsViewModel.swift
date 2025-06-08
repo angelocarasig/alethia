@@ -141,6 +141,7 @@ extension DetailsViewModel {
             .sink { [weak self] completion in
                 if case .failure(let error) = completion {
                     withAnimation {
+                        print("Failed to load details: \(error)")
                         self?.state = .error(error)
                     }
                 }

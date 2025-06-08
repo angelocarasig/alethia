@@ -10,40 +10,39 @@ import GRDB
 
 struct Scanlator: Codable, Identifiable {
     var id: Int64?
-    
-    var originId: Int64
-    
     var name: String
-    var priority: Int = -1
-}
-
-extension Scanlator {
-    static let origin = belongsTo(Origin.self)
-    static let chapters = hasMany(Chapter.self)
-}
-
-extension Scanlator {
-    var origin: QueryInterfaceRequest<Origin> {
-        request(for: Scanlator.origin)
-    }
     
+    init(name: String) {
+        self.name = name
+    }
+}
+
+extension Scanlator {
+    static let chapters = hasMany(Chapter.self)
+    static let originScanlator = hasMany(OriginScanlator.self)
+    static let origins = hasMany(Origin.self, through: originScanlator, using: OriginScanlator.origin)
+}
+
+extension Scanlator {
     var chapters: QueryInterfaceRequest<Chapter> {
         request(for: Scanlator.chapters)
+    }
+    
+    var origins: QueryInterfaceRequest<Origin> {
+        request(for: Scanlator.origins)
     }
 }
 
 extension Scanlator: TableRecord {
     enum Columns {
-        static let id = Column(Scanlator.CodingKeys.id)
-        static let originId = Column(Scanlator.CodingKeys.originId)
-        
-        static let name = Column(Scanlator.CodingKeys.name)
-        static let priority = Column(Scanlator.CodingKeys.priority)
+        static let id = Column(CodingKeys.id)
+        static let name = Column(CodingKeys.name)
     }
 }
 
 extension Scanlator: FetchableRecord {}
 extension Scanlator: PersistableRecord {}
+
 extension Scanlator: DatabaseUnique {
     static func uniqueFilter(for instance: Scanlator) -> QueryInterfaceRequest<Scanlator> {
         filter(Columns.name == instance.name)
@@ -51,31 +50,64 @@ extension Scanlator: DatabaseUnique {
 }
 
 extension Scanlator: DatabaseModel {
-    static var version: Version = Version(1, 0, 0)
+    static var version: Version = Version(1, 0, 4)
     
     static func createTable(db: Database) throws {
-        try db.create(table: self.databaseTableName, body: { t in
+        try db.create(table: databaseTableName, body: { t in
             t.autoIncrementedPrimaryKey(Columns.id.name)
             
             t.column(Columns.name.name, .text)
                 .notNull()
+                .unique()
                 .collate(.nocase)
-            t.column(Columns.priority.name, .integer).notNull()
-            
-            t.column(Columns.originId.name, .integer)
-                .notNull()
                 .indexed()
-                .references(Origin.databaseTableName, onDelete: .cascade)
-            
-            // No duplicate priority values for the same origin
-            t.uniqueKey([Columns.priority.name, Columns.originId.name], onConflict: .fail)
-            
-            // Scanlator names should be unique per origin
-            t.uniqueKey([Columns.name.name, Columns.originId.name], onConflict: .ignore)
         })
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
-        // Nothing for now
+        if version < Version(1, 0, 3) {
+            print("Starting Migration for scanlator")
+            migrator.registerMigration("migrate to global scanlators") { db in
+                // 1. Rename old table
+                try db.rename(table: databaseTableName, to: "\(databaseTableName)_old")
+                
+                // 2. Create new scanlator table
+                try createTable(db: db)
+                
+                // 3. Create OriginScanlator table
+                try OriginScanlator.createTable(db: db)
+                
+                // 4. Insert unique scanlator names
+                try db.execute(sql: """
+                    INSERT INTO \(databaseTableName) (name)
+                    SELECT DISTINCT name FROM \(databaseTableName)_old
+                """)
+                
+                // 5. Create origin-scanlator relationships
+                try db.execute(sql: """
+                    INSERT INTO \(OriginScanlator.databaseTableName) (originId, scanlatorId, priority)
+                    SELECT 
+                        old.originId,
+                        new.id,
+                        old.priority
+                    FROM \(databaseTableName)_old old
+                    JOIN \(databaseTableName) new ON old.name = new.name COLLATE NOCASE
+                """)
+                
+                // 6. Update chapters to reference new scanlator IDs
+                try db.execute(sql: """
+                    UPDATE \(Chapter.databaseTableName)
+                    SET scanlatorId = (
+                        SELECT new.id
+                        FROM \(databaseTableName)_old old
+                        JOIN \(databaseTableName) new ON old.name = new.name COLLATE NOCASE
+                        WHERE old.id = \(Chapter.databaseTableName).scanlatorId
+                    )
+                """)
+                
+                // 7. Drop old table
+                try db.drop(table: "\(databaseTableName)_old")
+            }
+        }
     }
 }

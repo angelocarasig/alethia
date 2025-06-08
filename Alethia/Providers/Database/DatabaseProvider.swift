@@ -10,24 +10,34 @@ import GRDB
 import Combine
 
 final class DatabaseProvider {
-    public let version: Version = Version(1, 0, 3)
+    public let version: Version = Version(1, 0, 4)
     
     public let models: [DatabaseMigratable.Type] = [
-        // MARK: Fetching
-        Host.self, Source.self, SourceRoute.self,
+        // MARK: - Source Infrastructure
+        Host.self,
+        Source.self,
+        SourceRoute.self,
         
-        // MARK: Main Metadata
-        Manga.self, Origin.self,
+        // MARK: - Core Entities
+        Manga.self,
+        Origin.self,
+        Chapter.self,
         
-        // MARK: One-to-Many
-        Title.self, Cover.self,
-        Scanlator.self, Chapter.self,
+        // MARK: - Manga Relationships (One-to-Many)
+        Title.self,
+        Cover.self,
         
-        // MARK: Many-to-Many
-        Author.self, MangaAuthor.self,
-        Tag.self, MangaTag.self,
+        // MARK: - Global Entities (Many-to-Many)
+        Author.self,
+        Tag.self,
+        Collection.self,
+        Scanlator.self,
         
-        Collection.self, MangaCollection.self,
+        // MARK: - Join Tables
+        MangaAuthor.self,
+        MangaTag.self,
+        MangaCollection.self,
+        OriginScanlator.self,
     ]
     
     private(set) var writer: DatabaseWriter
