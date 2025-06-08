@@ -1,13 +1,18 @@
+//
+//  LibraryScreen.swift
+//  Alethia
+//
+//  Created by Angelo Carasig on 18/4/2025.
+//
+
 import SwiftUI
 
-// MARK: - LibraryScreen
 struct LibraryScreen: View {
     @StateObject private var vm = LibraryViewModel()
     @Namespace private var animation
     
     var body: some View {
         NavigationStack {
-            // Main Content
             LibraryContent(animation: animation)
                 .sheet(isPresented: $vm.showFilters) {
                     LibraryFilterView()
@@ -39,14 +44,41 @@ struct LibraryScreen: View {
                     let operationCount = QueueProvider.shared.operations.count
                     
                     Image(systemName: "hourglass")
-                        .foregroundStyle(operationCount > 0 ? Color.accentColor : Color.secondary)
+                        .overlay(alignment: .topTrailing) {
+                            if operationCount > 0 {
+                                Image(systemName: "circle.fill")
+                                    .font(.system(size: 8))
+                                    .foregroundStyle(.red)
+                                    .background(
+                                        Circle()
+                                            .fill(.white)
+                                            .frame(width: 10, height: 10)
+                                    )
+                                    .offset(x: 4, y: -4)
+                                    .scaleEffect(operationCount > 0 ? 1.0 : 0.8)
+                                    .animation(
+                                        .easeInOut(duration: 0.6)
+                                        .repeatForever(autoreverses: true),
+                                        value: operationCount > 0
+                                    )
+                            }
+                        }
                 }
                 
                 Button {
                     vm.showFilters = true
                 } label: {
                     Image(systemName: "line.horizontal.3.decrease")
-                        .badge(vm.filters.activeFilters.isEmpty ? nil : "\(vm.filters.activeFilters.count)")
+                        .overlay {
+                            if !vm.filters.activeFilters.isEmpty {
+                                Text("\(vm.filters.activeFilters.count)")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                    .padding(Constants.Padding.regular)
+                                    .background(Circle().fill(Color.red))
+                                    .offset(x: 10, y: -10)
+                            }
+                        }
                 }
                 
                 NavigationLink(destination: Text("Hi")) {
@@ -57,7 +89,6 @@ struct LibraryScreen: View {
     }
 }
 
-// MARK: - Library Content
 private struct LibraryContent: View {
     @EnvironmentObject private var vm: LibraryViewModel
     let animation: Namespace.ID
@@ -66,7 +97,6 @@ private struct LibraryContent: View {
         VStack(spacing: 0) {
             LibraryHeader()
             
-            // Direct state-based view rendering without ZStack
             Group {
                 switch vm.state {
                 case .loading:
@@ -84,7 +114,6 @@ private struct LibraryContent: View {
     }
 }
 
-// MARK: - Library Header
 private struct LibraryHeader: View {
     @EnvironmentObject private var vm: LibraryViewModel
     
@@ -92,7 +121,6 @@ private struct LibraryHeader: View {
         VStack {
             SearchBar(searchText: $vm.filters.searchText)
             
-            // Conditional view without extra container
             if !vm.filters.searchText.isEmpty {
                 NavigationLink(destination: SearchHomeView(initialSearchValue: vm.filters.searchText)) {
                     HStack {
@@ -184,34 +212,38 @@ private struct ErrorState: View {
     }
 }
 
-// MARK: - Success State
 private struct SuccessState: View {
     @EnvironmentObject private var vm: LibraryViewModel
     let animation: Namespace.ID
     
-    let spacing: CGFloat = Constants.Spacing.regular
-    let columns: Int = 3
+    private let spacing: CGFloat = Constants.Spacing.minimal
+    private let topSpacing: CGFloat = 12
+    private let columns: Int = 3
     
     private var gridColumns: [GridItem] {
         Array(repeating: GridItem(.flexible(), spacing: spacing), count: columns)
     }
     
     var body: some View {
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: false) {
             LazyVGrid(columns: gridColumns, spacing: spacing) {
-                ForEach(vm.items, id: \.libraryViewId) { EntryGridItem(entry: $0, animation: animation) }
+                ForEach(vm.items, id: \.libraryViewId) {
+                    EntryGridItem(entry: $0, animation: animation)
+                }
             }
-            .padding(.top, 2) // to account for unread badges
-            .padding()
-            .animation(.smooth(duration: 0.3, extraBounce: 0.1), value: vm.items.map(\.id))
+            .padding(.top, topSpacing) // to account for unread badges
         }
+        .contentMargins(.trailing, Constants.Padding.regular, for: .scrollContent)
+        .padding(.vertical, Constants.Padding.screen)
+        .animation(.smooth(duration: 0.3, extraBounce: 0.1), value: vm.items.map(\.id))
         .refreshable {
             vm.onRefresh()
         }
     }
 }
 
-// MARK: - Entry Grid Item
+// MARK: - Misc Components
+
 private struct EntryGridItem: View {
     let entry: Entry
     let animation: Namespace.ID
