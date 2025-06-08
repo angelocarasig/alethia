@@ -12,8 +12,7 @@ struct PriorityManagementView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var vm: DetailsViewModel
     
-    @State private var selectedTab: Tab = .origins
-    @State private var editMode: EditMode = .inactive
+    @State private var editMode: Bool = false
     
     // Local copies for editing
     @State private var origins: [OriginExtended] = []
@@ -22,8 +21,6 @@ struct PriorityManagementView: View {
     // Original copies for comparison
     @State private var originalOrigins: [OriginExtended] = []
     @State private var originalScanlators: [ScanlatorExtended] = []
-    
-    @State private var showingDiscardAlert: Bool = false
     
     private var hasChanges: Bool {
         // Compare origins by their order
@@ -47,320 +44,308 @@ struct PriorityManagementView: View {
         return false
     }
     
-    private enum Tab: String, CaseIterable {
-        case origins = "Origins"
-        case scanlators = "Scanlators"
-        
-        var icon: String {
-            switch self {
-            case .origins: return "network"
-            case .scanlators: return "person.2.fill"
+    var body: some View {
+        List {
+            // Display Settings Section
+            Section(header: Text("Display Settings").textCase(.uppercase)) {
+                Toggle("Show All Chapters", isOn: Binding(
+                    get: { vm.details?.manga.showAllChapters ?? false },
+                    set: { newValue in
+                        // TODO: Update manga settings
+                        vm.updateChapters()
+                    }
+                ))
+                .tint(.green)
+                
+                Toggle("Show Half Chapters", isOn: Binding(
+                    get: { vm.details?.manga.showHalfChapters ?? true },
+                    set: { newValue in
+                        // TODO: Update manga settings
+                        vm.updateChapters()
+                    }
+                ))
+                .tint(.green)
+                .opacity((vm.details?.manga.showAllChapters ?? false) ? 0.5 : 1)
+                .disabled(vm.details?.manga.showAllChapters ?? false)
+            }
+            .listStyle(.insetGrouped)
+            
+            // Source Priority Section
+            Section(header: Text("Source Priority")
+                .textCase(.uppercase)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ) {
+                VStack(spacing: Constants.Spacing.regular) {
+                    ForEach(Array(origins.enumerated()), id: \.element.id) { index, origin in
+                        OriginPriorityRow(
+                            origin: origin,
+                            index: index,
+                            isEditing: editMode
+                        )
+                        .background(Color(UIColor.secondarySystemGroupedBackground))
+                        .cornerRadius(Constants.Corner.Radius.regular)
+                        .padding(.horizontal, Constants.Padding.screen)
+                    }
+                    .onMove(perform: editMode ? handleOriginMove : nil)
+                    .moveDisabled(!editMode)
+                }
+                .padding(.top, Constants.Padding.regular)
+            }
+            .listStyle(.plain)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets())
+            
+            // Scanlator Priority Section
+            Section(header: Text("Scanlator Priority")
+                .textCase(.uppercase)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ) {
+                VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+                    ForEach(groupedScanlators(), id: \.origin.id) { group in
+                        ScanlatorGroupSection(
+                            group: group,
+                            isEditing: editMode,
+                            onMove: handleScanlatorMove
+                        )
+                    }
+                }
+                .padding(.top, Constants.Padding.regular)
+            }
+            .listStyle(.plain)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets())
+        }
+        .scrollIndicators(.hidden)
+        .environment(\.defaultMinListRowHeight, 0)
+        .navigationTitle("Chapter Settings")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(editMode ? "Done" : "Edit") {
+                    withAnimation {
+                        if editMode && hasChanges {
+                            saveChanges()
+                        }
+                        editMode.toggle()
+                    }
+                }
             }
         }
+        .onAppear {
+            loadData()
+        }
     }
+}
+
+// MARK: - Origin Priority Row
+private struct OriginPriorityRow: View {
+    let origin: OriginExtended
+    let index: Int
+    let isEditing: Bool
     
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Tab Picker
-                TabPicker()
-                
-                // Content
-                TabView(selection: $selectedTab) {
-                    OriginsListView()
-                        .tag(Tab.origins)
-                    
-                    ScanlatorsListView()
-                        .tag(Tab.scanlators)
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.easeInOut, value: selectedTab)
-            }
-            .navigationTitle("Priority Management")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        handleCancel()
-                    }
-                }
-                
-                ToolbarItem(placement: .confirmationAction) {
-                    if editMode == .active {
-                        Button("Save") {
-                            handleSave()
-                        }
-                        .fontWeight(.semibold)
-                        .disabled(!hasChanges)
-                    } else {
-                        Button("Edit") {
-                            withAnimation {
-                                editMode = .active
-                            }
-                        }
-                    }
-                }
-            }
-            .environment(\.editMode, $editMode)
-            .onAppear {
-                loadData()
-            }
-            .alert("Discard Changes?", isPresented: $showingDiscardAlert) {
-                Button("Keep Editing", role: .cancel) { }
-                Button("Discard", role: .destructive) {
-                    dismiss()
-                }
-            } message: {
-                Text("You have unsaved changes. Do you want to discard them?")
-            }
-        }
-    }
-}
-
-// MARK: - Tab Picker
-
-private extension PriorityManagementView {
-    @ViewBuilder
-    func TabPicker() -> some View {
-        Picker("Tab", selection: $selectedTab) {
-            ForEach(Tab.allCases, id: \.self) { tab in
-                Label(tab.rawValue, systemImage: tab.icon)
-            }
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal, Constants.Padding.screen)
-        .padding(.vertical, Constants.Padding.regular)
-        .background(Color(.systemGroupedBackground))
-    }
-}
-
-// MARK: - Origins List
-
-private extension PriorityManagementView {
-    @ViewBuilder
-    func OriginsListView() -> some View {
-        List {
-            Section {
-                ForEach(Array(origins.enumerated()), id: \.element.id) { index, origin in
-                    OriginRow(origin: origin, index: index)
-                        .listRowInsets(EdgeInsets(
-                            top: Constants.Padding.regular,
-                            leading: Constants.Padding.screen,
-                            bottom: Constants.Padding.regular,
-                            trailing: Constants.Padding.screen
-                        ))
-                }
-                .onMove(perform: editMode == .active ? handleOriginMove : nil)
-                .onDelete(perform: editMode == .active ? handleOriginDelete : nil)
-            } header: {
-                if editMode == .active {
-                    Text("Drag to reorder priority")
-                        .textCase(.none)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            } footer: {
-                Text("Higher priority origins will be used first when loading chapters.")
-                    .textCase(.none)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .background(Color(.systemGroupedBackground))
-    }
-    
-    @ViewBuilder
-    func OriginRow(origin: OriginExtended, index: Int) -> some View {
-        HStack(spacing: Constants.Spacing.large) {
-            // Priority Badge
-            PriorityBadge(priority: index)
-            
-            // Source Icon
+        HStack {
             KFImage(URL(fileURLWithPath: origin.sourceIcon))
-                .placeholder {
-                    RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
-                        .fill(Color.gray.opacity(0.3))
-                        .shimmer()
-                }
+                .placeholder { Color.tint.shimmer() }
                 .resizable()
-                .aspectRatio(contentMode: .fill)
+                .scaledToFit()
                 .frame(width: Constants.Icon.Size.regular, height: Constants.Icon.Size.regular)
                 .cornerRadius(Constants.Corner.Radius.regular)
             
-            // Origin Info
             VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
                 Text(origin.sourceName)
-                    .font(.headline)
                     .lineLimit(1)
+                    .font(.body)
+                    .foregroundColor(.primary)
                 
                 Text(origin.sourceHost)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                
-                HStack(spacing: Constants.Spacing.minimal) {
-                    Image(systemName: "doc.text")
-                        .font(.caption2)
-                    Text("^[\(origin.chapterCount) chapter](inflect: true)")
-                        .font(.caption)
-                }
-                .foregroundStyle(.secondary)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
             }
             
             Spacer()
             
-            // Status Indicators
-            HStack(spacing: Constants.Spacing.regular) {
-                if origin.source?.disabled ?? false {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                }
-                
-                if editMode == .inactive {
-                    Image(systemName: "line.3.horizontal")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
+            Text("(\(origin.chapterCount) Chapters)")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            if isEditing {
+                Image(systemName: "line.3.horizontal")
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, Constants.Padding.regular)
             }
         }
+        .padding(.vertical, Constants.Padding.regular)
+        .padding(.horizontal, Constants.Padding.minimal)
+        .padding(.bottom, Constants.Padding.minimal)
         .opacity(origin.source?.disabled ?? false ? 0.6 : 1.0)
     }
 }
 
-// MARK: - Scanlators List
-
-private extension PriorityManagementView {
-    @ViewBuilder
-    func ScanlatorsListView() -> some View {
-        List {
-            // Group scanlators by origin
-            ForEach(groupedScanlators(), id: \.origin.id) { group in
-                Section {
-                    ForEach(Array(group.scanlators.enumerated()), id: \.element.id) { index, scanlator in
-                        ScanlatorRow(scanlator: scanlator, index: index)
-                            .listRowInsets(EdgeInsets(
-                                top: Constants.Padding.regular,
-                                leading: Constants.Padding.screen,
-                                bottom: Constants.Padding.regular,
-                                trailing: Constants.Padding.screen
-                            ))
-                    }
-                    .onMove(perform: editMode == .active ? { source, destination in
-                        handleScanlatorMove(from: source, to: destination, originId: group.origin.origin.id!)
-                    } : nil)
-                    .onDelete(perform: editMode == .active ? { indexSet in
-                        handleScanlatorDelete(at: indexSet, originId: group.origin.origin.id!)
-                    } : nil)
-                } header: {
+// MARK: - Scanlator Group Section
+private struct ScanlatorGroupSection: View {
+    let group: (origin: OriginExtended, scanlators: [ScanlatorExtended])
+    let isEditing: Bool
+    let onMove: (IndexSet, Int, Int64) -> Void
+    @State private var isExpanded: Bool = true
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Expandable header
+            Button {
+                withAnimation {
+                    isExpanded.toggle()
+                }
+            } label: {
+                VStack {
                     HStack(spacing: Constants.Spacing.regular) {
+                        // Origin icon
                         KFImage(URL(fileURLWithPath: group.origin.sourceIcon))
-                            .placeholder {
-                                Circle()
-                                    .fill(Color.gray.opacity(0.3))
-                                    .shimmer()
-                            }
+                            .placeholder { Color.tint.shimmer() }
                             .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 20, height: 20)
-                            .clipShape(Circle())
+                            .scaledToFit()
+                            .frame(width: 32, height: 32)
+                            .cornerRadius(Constants.Corner.Radius.regular)
                         
-                        Text(group.origin.sourceName)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+                        // Origin info
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(group.origin.sourceName)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                            
+                            Text("\(group.scanlators.count) scanlator\(group.scanlators.count == 1 ? "" : "s")")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                         
                         Spacer()
                         
-                        Text("^[\(group.scanlators.count) scanlator](inflect: true)")
+                        // Chevron indicator
+                        Image(systemName: "chevron.right")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.tertiary)
+                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     }
-                    .textCase(.none)
+                    
+                    if isExpanded {
+                        Divider()
+                    }
                 }
+                .padding(.horizontal, Constants.Padding.screen)
+                .padding(.top, Constants.Padding.regular)
+                .padding(.bottom, Constants.Padding.minimal)
+                .background(Color(UIColor.secondarySystemGroupedBackground))
+                .cornerRadius(Constants.Corner.Radius.button)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.horizontal, Constants.Padding.screen)
+            .padding(.bottom, isExpanded ? Constants.Spacing.regular : 0)
+            
+            // Scanlator list
+            if isExpanded {
+                List {
+                    ForEach(group.scanlators, id: \.id) { scanlator in
+                        let index = group.scanlators.firstIndex(where: { $0.id == scanlator.id }) ?? 0
+                        ScanlatorPriorityRow(
+                            scanlator: scanlator,
+                            isEditing: isEditing,
+                            index: index + 1,
+                            total: group.scanlators.count
+                        )
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                        .listRowSeparator(.hidden)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .top).combined(with: .opacity),
+                            removal: .move(edge: .top).combined(with: .opacity)
+                        ))
+                    }
+                    .onMove { source, destination in
+                        onMove(source, destination, group.origin.origin.id!)
+                    }
+                    .moveDisabled(!isEditing)
+                }
+                .listStyle(.plain)
+                .frame(height: CGFloat(group.scanlators.count) * 56) // Approximate height per row
+                .padding(.horizontal, Constants.Padding.screen)
+                .scrollDisabled(true)
+                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: group.scanlators)
             }
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .background(Color(.systemGroupedBackground))
+        .padding(.bottom, Constants.Padding.regular)
     }
+}
+
+// MARK: - Scanlator Priority Row
+private struct ScanlatorPriorityRow: View {
+    let scanlator: ScanlatorExtended
+    let isEditing: Bool
+    let index: Int
+    let total: Int
     
-    @ViewBuilder
-    func ScanlatorRow(scanlator: ScanlatorExtended, index: Int) -> some View {
-        HStack(spacing: Constants.Spacing.large) {
-            // Priority Badge
-            PriorityBadge(priority: index)
-            
-            // Scanlator Info
-            VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
-                Text(scanlator.scanlator.name)
-                    .font(.headline)
-                    .lineLimit(1)
-                
-                if let chapterCount = getChapterCount(for: scanlator) {
-                    HStack(spacing: Constants.Spacing.minimal) {
-                        Image(systemName: "doc.text")
-                            .font(.caption2)
-                        Text("^[\(chapterCount) chapter](inflect: true)")
-                            .font(.caption)
-                    }
-                    .foregroundStyle(.secondary)
-                }
-            }
-            
-            Spacer()
-            
-            // Drag Handle
-            if editMode == .inactive {
-                Image(systemName: "line.3.horizontal")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-    }
-}
-
-// MARK: - Shared Components
-
-private extension PriorityManagementView {
-    @ViewBuilder
-    func PriorityBadge(priority: Int) -> some View {
-        Text("\(priority + 1)")
-            .font(.caption)
-            .fontWeight(.semibold)
-            .foregroundStyle(.white)
-            .frame(width: 24, height: 24)
-            .background(priorityColor(for: priority))
-            .clipShape(Circle())
-    }
-}
-
-// MARK: - Helper Methods
-
-private extension PriorityManagementView {
-    func priorityColor(for priority: Int) -> Color {
-        switch priority {
-        case 0: return .green
-        case 1: return .blue
-        case 2: return .orange
+    private var priorityColor: Color {
+        switch index {
+        case 1: return .green
+        case 2: return .blue
+        case 3: return .orange
         default: return .secondary
         }
     }
     
-    func groupedScanlators() -> [(origin: OriginExtended, scanlators: [ScanlatorExtended])] {
-        // Group scanlators by their origin ID
-        let grouped = Dictionary(grouping: scanlators) { scanlator in
-            scanlator.originId
+    var body: some View {
+        HStack(spacing: Constants.Spacing.regular) {
+            // Priority indicator
+            Circle()
+                .fill(priorityColor.opacity(0.2))
+                .frame(width: 28, height: 28)
+                .overlay(
+                    Text("\(index)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(priorityColor)
+                )
+            
+            // Scanlator name
+            Text(scanlator.scanlator.name)
+                .font(.callout)
+                .foregroundColor(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            
+            // Drag handle in edit mode
+            if isEditing {
+                Image(systemName: "line.3.horizontal")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+            }
         }
+        .padding(.horizontal, Constants.Padding.screen)
+        .padding(.vertical, Constants.Padding.regular + Constants.Padding.minimal)
+        .background(
+            RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
+                .fill(Color(UIColor.tertiarySystemGroupedBackground))
+        )
+    }
+}
+
+// MARK: - Helper Methods
+private extension PriorityManagementView {
+    func groupedScanlators() -> [(origin: OriginExtended, scanlators: [ScanlatorExtended])] {
+        let grouped = Dictionary(grouping: scanlators) { $0.originId }
         
-        // Map to origin-scanlator pairs, maintaining origin order
         return origins.compactMap { origin in
             guard let originId = origin.origin.id,
                   let scanlatorsForOrigin = grouped[originId] else {
                 return nil
             }
             
-            // Sort by current index to maintain display order
             let sortedScanlators = scanlatorsForOrigin.sorted { s1, s2 in
                 let index1 = scanlators.firstIndex(where: { $0.id == s1.id }) ?? 0
                 let index2 = scanlators.firstIndex(where: { $0.id == s2.id }) ?? 0
@@ -370,44 +355,36 @@ private extension PriorityManagementView {
             return (origin: origin, scanlators: sortedScanlators)
         }
     }
-    
-    func getChapterCount(for scanlator: ScanlatorExtended) -> Int? {
-        // TODO: Implement chapter count for scanlator within this origin
-        // This would need to be added to the ScanlatorExtended query
-        return nil
-    }
 }
 
 // MARK: - Data Management
-
 private extension PriorityManagementView {
     func loadData() {
         origins = vm.details?.origins ?? []
         scanlators = vm.details?.scanlators ?? []
         
-        // Store original state for comparison
+        originalOrigins = origins
+        originalScanlators = scanlators
+    }
+    
+    func saveChanges() {
+        // TODO: Implement actual save using modelContext
+        // Update origin priorities
+        // Update scanlator priorities
+        
+        // For now, just update the original state
         originalOrigins = origins
         originalScanlators = scanlators
     }
 }
 
-// MARK: - Origin Actions
-
+// MARK: - Actions
 private extension PriorityManagementView {
     func handleOriginMove(from source: IndexSet, to destination: Int) {
         origins.move(fromOffsets: source, toOffset: destination)
     }
     
-    func handleOriginDelete(at indexSet: IndexSet) {
-        origins.remove(atOffsets: indexSet)
-    }
-}
-
-// MARK: - Scanlator Actions
-
-private extension PriorityManagementView {
     func handleScanlatorMove(from source: IndexSet, to destination: Int, originId: Int64) {
-        // Find the indices of scanlators for this origin in the main array
         var indices: [Int] = []
         for (index, scanlator) in scanlators.enumerated() {
             if scanlator.originId == originId {
@@ -415,67 +392,19 @@ private extension PriorityManagementView {
             }
         }
         
-        // Extract scanlators for this origin in order
         var scanlatorsForOrigin = indices.map { scanlators[$0] }
-        
-        // Move within the subset
         scanlatorsForOrigin.move(fromOffsets: source, toOffset: destination)
         
-        // Replace them back in the main array
         for (subIndex, mainIndex) in indices.enumerated() {
             scanlators[mainIndex] = scanlatorsForOrigin[subIndex]
         }
     }
-    
-    func handleScanlatorDelete(at indexSet: IndexSet, originId: Int64) {
-        // Get scanlators for this origin
-        let scanlatorsForOrigin = scanlators.filter { $0.originId == originId }
-        
-        // Remove the selected scanlators
-        for index in indexSet.reversed() {
-            if index < scanlatorsForOrigin.count {
-                let scanlatorToRemove = scanlatorsForOrigin[index]
-                scanlators.removeAll { $0.id == scanlatorToRemove.id && $0.originId == originId }
-            }
-        }
-    }
 }
 
-// MARK: - Navigation Actions
-
-private extension PriorityManagementView {
-    func handleCancel() {
-        if hasChanges {
-            showingDiscardAlert = true
-        } else {
-            dismiss()
-        }
-    }
-    
-    func handleSave() {
-        // TODO: Implement save functionality
-        // This should:
-        // 1. Update origin priorities based on their order
-        // 2. Update OriginScanlator priorities based on their order within each origin
-        // 3. Call appropriate use cases to persist changes
-        
-        // For now, update the original state and switch to non-edit mode
-        originalOrigins = origins
-        originalScanlators = scanlators
-        
-        withAnimation {
-            editMode = .inactive
-        }
-        
-        // Eventually this should save to database and dismiss
-        // dismiss()
-    }
-}
-
-// MARK: - Extensions
-
-private extension Array {
-    subscript(safe index: Index) -> Element? {
-        indices.contains(index) ? self[index] : nil
+// MARK: - ViewModel Extension
+extension DetailsViewModel {
+    func updateChapters() {
+        // TODO: Implement chapter list update based on settings
+        objectWillChange.send()
     }
 }

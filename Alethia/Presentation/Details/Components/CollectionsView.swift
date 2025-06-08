@@ -46,9 +46,9 @@ struct CollectionsView: View {
     @ViewBuilder
     private func EmptyStateView() -> some View {
         ContentUnavailableView {
-            Label("No Collections Yet", systemImage: "folder.badge.plus")
+            Label("No Collections", systemImage: "folder.badge.plus")
         } description: {
-            Text("This manga doesn't belong to any collections.")
+            Text("This doesn't belong to any collections yet.")
         } actions: {
             NavigationLink {
                 ManageCollectionsView()

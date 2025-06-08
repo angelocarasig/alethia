@@ -90,8 +90,7 @@ private struct QuickButtonsView: View {
     
     private enum ActionType: String, CaseIterable {
         case editDetails = "Edit Details"
-        case refreshChapters = "Refresh Chapters"
-        case refreshMetadata = "Refresh Metadata"
+        case refresh = "Refresh"
         case mergeWizard = "Merge Wizard"
         case downloadAllChapters = "Download All Chapters"
         case removeAllDownloads = "Remove All Downloads"
@@ -101,8 +100,7 @@ private struct QuickButtonsView: View {
         var systemImage: String {
             switch self {
             case .editDetails:          return "pencil"
-            case .refreshChapters:      return "arrow.clockwise"
-            case .refreshMetadata:      return "rectangle.and.text.magnifyingglass"
+            case .refresh:              return "rectangle.and.text.magnifyingglass"
             case .mergeWizard:          return "plus.rectangle.fill.on.rectangle.fill"
             case .downloadAllChapters:  return "arrow.down.circle.fill"
             case .removeAllDownloads:   return "trash.fill"
@@ -113,7 +111,7 @@ private struct QuickButtonsView: View {
         
         var requiresConfirmation: Bool {
             switch self {
-            case .removeAllDownloads, .markAllAsRead, .markAllAsUnread:
+            case .refresh, .removeAllDownloads, .markAllAsRead, .markAllAsUnread:
                 return true
             default:
                 return false
@@ -122,6 +120,8 @@ private struct QuickButtonsView: View {
         
         var confirmationMessage: String {
             switch self {
+            case .refresh:
+                return "This will fetch all latest chapters and metadata."
             case .markAllAsRead:
                 return "Are you sure you want to mark all chapters as read?"
             case .markAllAsUnread:
@@ -194,10 +194,7 @@ private struct QuickButtonsView: View {
             // Implement edit details action
             break
             
-        case .refreshChapters:
-            vm.refreshMetadata()
-            
-        case .refreshMetadata:
+        case .refresh:
             vm.refreshMetadata()
             
         case .mergeWizard:

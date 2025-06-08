@@ -89,6 +89,8 @@ struct SourcesView: View {
                 .padding(.leading, Constants.Padding.regular)
             }
         }
+        .padding(.horizontal, Constants.Padding.minimal)
+        .padding(.vertical, Constants.Padding.regular)
         .disabled(sourceDisabled)
         .opacity(sourceDisabled ? 0.5 : 1.0)
         .foregroundStyle(sourceDisabled ? .gray : .text)

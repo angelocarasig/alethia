@@ -264,7 +264,7 @@ private struct CollectionRow: View {
             }
             .padding(.horizontal, Constants.Padding.screen + Constants.Padding.minimal)
             .padding(.vertical, Constants.Padding.regular)
-            .background(Color.tint.opacity(0.25))
+            .background(Color.tint.opacity(0.50))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
