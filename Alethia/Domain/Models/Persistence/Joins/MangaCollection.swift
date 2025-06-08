@@ -28,8 +28,6 @@ extension MangaCollection: TableRecord {
 extension MangaCollection: FetchableRecord, PersistableRecord {}
 
 extension MangaCollection: DatabaseModel {
-    static var version = Version(1, 0, 0)
-    
     static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             t.column(Columns.mangaId.name, .integer)
@@ -45,6 +43,6 @@ extension MangaCollection: DatabaseModel {
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
-        
+        // No migrations needed - current schema is baseline
     }
 }

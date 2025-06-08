@@ -10,30 +10,31 @@ import GRDB
 import Combine
 
 final class DatabaseProvider {
-    public let version: Version = Version(1, 0, 4)
+    // Set this as baseline version - no migrations needed
+    public let version: Version = Version(1, 0, 0)
     
     public let models: [DatabaseMigratable.Type] = [
-        // MARK: - Source Infrastructure
+        // MARK: - Source Infrastructure (No dependencies)
         Host.self,
         Source.self,
         SourceRoute.self,
         
-        // MARK: - Core Entities
-        Manga.self,
-        Origin.self,
-        Chapter.self,
-        
-        // MARK: - Manga Relationships (One-to-Many)
-        Title.self,
-        Cover.self,
-        
-        // MARK: - Global Entities (Many-to-Many)
+        // MARK: - Global Entities (No dependencies)
         Author.self,
         Tag.self,
         Collection.self,
         Scanlator.self,
         
-        // MARK: - Join Tables
+        // MARK: - Core Entities (Depends on above)
+        Manga.self,
+        Origin.self,
+        Chapter.self, // Depends on Origin and Scanlator
+        
+        // MARK: - Manga Relationships (Depends on Manga)
+        Title.self,
+        Cover.self,
+        
+        // MARK: - Join Tables (Depends on multiple tables)
         MangaAuthor.self,
         MangaTag.self,
         MangaCollection.self,

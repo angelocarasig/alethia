@@ -63,48 +63,6 @@ extension Scanlator: DatabaseModel {
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
-        if version <= Version(1, 0, 4) {
-            migrator.registerMigration("migrate to global scanlators") { db in
-                // 1. Rename old table
-                try db.rename(table: databaseTableName, to: "\(databaseTableName)_old")
-                
-                // 2. Create new scanlator table
-                try createTable(db: db)
-                
-                // 3. Create OriginScanlator table
-                try OriginScanlator.createTable(db: db)
-                
-                // 4. Insert unique scanlator names
-                try db.execute(sql: """
-                    INSERT INTO \(databaseTableName) (name)
-                    SELECT DISTINCT name FROM \(databaseTableName)_old
-                """)
-                
-                // 5. Create origin-scanlator relationships
-                try db.execute(sql: """
-                    INSERT INTO \(OriginScanlator.databaseTableName) (originId, scanlatorId, priority)
-                    SELECT 
-                        old.originId,
-                        new.id,
-                        old.priority
-                    FROM \(databaseTableName)_old old
-                    JOIN \(databaseTableName) new ON old.name = new.name COLLATE NOCASE
-                """)
-                
-                // 6. Update chapters to reference new scanlator IDs
-                try db.execute(sql: """
-                    UPDATE \(Chapter.databaseTableName)
-                    SET scanlatorId = (
-                        SELECT new.id
-                        FROM \(databaseTableName)_old old
-                        JOIN \(databaseTableName) new ON old.name = new.name COLLATE NOCASE
-                        WHERE old.id = \(Chapter.databaseTableName).scanlatorId
-                    )
-                """)
-                
-                // 7. Drop old table
-                try db.drop(table: "\(databaseTableName)_old")
-            }
-        }
+        // No migrations needed - current schema is baseline
     }
 }

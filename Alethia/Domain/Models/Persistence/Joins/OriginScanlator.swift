@@ -56,6 +56,6 @@ extension OriginScanlator: DatabaseModel {
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
-        // No migrations needed for initial version
+        // No migrations needed - current schema is baseline
     }
 }

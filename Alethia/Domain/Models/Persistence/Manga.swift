@@ -111,6 +111,7 @@ extension Manga: DatabaseModel {
             t.column(Columns.synopsis.name, .text).notNull()
             t.column(Columns.addedAt.name, .datetime).notNull()
             t.column(Columns.updatedAt.name, .datetime).notNull()
+            t.column(Columns.lastReadAt.name, .datetime) // Include from start
             
             // Global
             t.column(Columns.inLibrary.name, .boolean).notNull()
@@ -121,36 +122,7 @@ extension Manga: DatabaseModel {
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
-        if version <= Version(1, 0, 1) {
-            migrator.registerMigration("update manga updatedAt from chapters") { db in
-                // Get all manga IDs
-                let allMangaIds = try Int64.fetchAll(db, sql: "SELECT id FROM manga")
-                
-                for mangaId in allMangaIds {
-                    let sql = """
-                        UPDATE manga
-                        SET updatedAt = COALESCE(
-                            (SELECT MAX(c.date)
-                             FROM chapter c
-                             JOIN origin o ON c.originId = o.id
-                             WHERE o.mangaId = ?),
-                            updatedAt
-                        )
-                        WHERE id = ?
-                    """
-                    
-                    try db.execute(sql: sql, arguments: [mangaId, mangaId])
-                }
-            }
-        }
-        
-        if version < Version(1, 0, 3) {
-            migrator.registerMigration("add lastReadAt to manga") { db in
-                try db.alter(table: databaseTableName) { t in
-                    t.add(column: Columns.lastReadAt.name, .datetime)
-                }
-            }
-        }
+        // No migrations needed - current schema is baseline
     }
 }
 

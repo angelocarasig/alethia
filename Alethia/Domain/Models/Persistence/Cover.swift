@@ -59,20 +59,17 @@ extension Cover: DatabaseModel {
                 .notNull()
                 .references(Manga.databaseTableName, onDelete: .cascade)
         })
+        
+        // Create unique index to ensure only 1 cover can be 'active' for a given mangaId at a time
+        let sql = """
+            CREATE UNIQUE INDEX IF NOT EXISTS cover_one_active_per_manga
+            ON cover(mangaId)
+            WHERE active = 1
+        """
+        try db.execute(sql: sql)
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
-        if version <= Version(1, 0 , 0) {
-            /// Create unique index to ensure only 1 cover can be 'active' for a given mangaId at a time
-            migrator.registerMigration("restrict cover to only 1 active per manga") { db in
-                let sql = """
-                    CREATE UNIQUE INDEX IF NOT EXISTS cover_one_active_per_manga
-                    ON cover(mangaId)
-                    WHERE active = 1
-                """
-                
-                try db.execute(sql: sql)
-            }
-        }
+        // No migrations needed - current schema is baseline
     }
 }

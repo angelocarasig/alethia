@@ -46,6 +46,6 @@ extension MangaTag: DatabaseModel {
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
-        // Nothing for now
+        // No migrations needed - current schema is baseline
     }
 }
