@@ -56,13 +56,37 @@ struct HeaderView: View {
                 .clipShape(.rect(cornerRadius: Constants.Corner.Radius.regular, style: .continuous))
                 .onTapGesture { showArtwork = true }
             
-            Text(title)
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            Text(authors.map { $0.name }.joined(separator: ", "))
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+            VStack(alignment: .leading) {
+                Text(title)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Text(authors.map { $0.name }.joined(separator: ", "))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .contextMenu {
+                Button {
+                    UIPasteboard.general.string = title
+                    
+                    // Haptic feedback
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                    impactFeedback.impactOccurred()
+                } label: {
+                    Label("Copy Title", systemImage: "doc.on.doc")
+                }
+                
+                Button {
+                    let authorsText = authors.map { $0.name }.joined(separator: ", ")
+                    UIPasteboard.general.string = authorsText
+                    
+                    // Haptic feedback
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                    impactFeedback.impactOccurred()
+                } label: {
+                    Label("Copy ^[\(authors.count) Author](inflect: true)", systemImage: "doc.on.doc")
+                }
+            }
         }
         .sheet(isPresented: $showArtwork) {
             ArtworkListView()

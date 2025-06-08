@@ -340,9 +340,9 @@ private extension PriorityManagementView {
 private extension PriorityManagementView {
     func priorityColor(for priority: Int) -> Color {
         switch priority {
-        case 0: return .appGreen
-        case 1: return .appBlue
-        case 2: return .appOrange
+        case 0: return .green
+        case 1: return .blue
+        case 2: return .orange
         default: return .secondary
         }
     }

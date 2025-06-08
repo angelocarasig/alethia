@@ -23,11 +23,11 @@ extension CollectionLocalDataSource {
             throw CollectionError.badName(name)
         }
         
-        guard name.count > Constants.Collections.maximumCollectionNameLength else {
+        guard name.count < Constants.Collections.maximumCollectionNameLength else {
             throw CollectionError.maximumLengthReached(name.count)
         }
         
-        guard name.count < Constants.Collections.minimumCollectionNameLength else {
+        guard name.count > Constants.Collections.minimumCollectionNameLength else {
             throw CollectionError.minimumLengthNotReached(name.count)
         }
         

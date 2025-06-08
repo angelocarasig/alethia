@@ -4,6 +4,7 @@
 //
 //  Created by Angelo Carasig on 4/6/2025.
 //
+
 import Foundation
 
 enum CollectionError: LocalizedError {
@@ -32,9 +33,13 @@ enum CollectionError: LocalizedError {
                 return "The collection name provided is invalid."
             }
         case .minimumLengthNotReached(let length):
-            return "The collection name must be at least ^[\(Constants.Collections.minimumCollectionNameLength) character](inflect: true) long but got \(length)."
+            let minLength = Constants.Collections.minimumCollectionNameLength
+            let characterWord = minLength == 1 ? "character" : "characters"
+            return "The collection name must be at least \(minLength) \(characterWord) long but got \(length)."
         case .maximumLengthReached(let length):
-            return "The collection name cannot exceed ^[\(Constants.Collections.maximumCollectionNameLength) character](inflect: true) but got \(length)."
+            let maxLength = Constants.Collections.maximumCollectionNameLength
+            let characterWord = maxLength == 1 ? "character" : "characters"
+            return "The collection name cannot exceed \(maxLength) \(characterWord) but got \(length)."
         }
     }
 }
