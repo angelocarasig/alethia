@@ -47,8 +47,6 @@ extension Host: DatabaseUnique {
 }
 
 extension Host: DatabaseModel {
-    static var version: Version = Version(1, 0, 0)
-    
     static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             // Persistence

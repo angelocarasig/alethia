@@ -101,8 +101,6 @@ extension Manga: PersistableRecord { }
 // MARK: - Database Migration
 
 extension Manga: DatabaseModel {
-    static var version: Version = Version(1, 0, 3)
-    
     static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             // Persistence
@@ -123,7 +121,7 @@ extension Manga: DatabaseModel {
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
-        if version < Version(1, 0, 1) {
+        if version <= Version(1, 0, 1) {
             migrator.registerMigration("update manga updatedAt from chapters") { db in
                 // Get all manga IDs
                 let allMangaIds = try Int64.fetchAll(db, sql: "SELECT id FROM manga")

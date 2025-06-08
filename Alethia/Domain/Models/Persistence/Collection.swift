@@ -39,8 +39,6 @@ extension Collection: DatabaseUnique {
 }
 
 extension Collection: DatabaseModel {
-    static var version: Version = Version(1, 0, 2)
-    
     static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             t.autoIncrementedPrimaryKey(Columns.id.name)
@@ -63,7 +61,7 @@ extension Collection: DatabaseModel {
     }
     
     static func migrate(with migrator: inout GRDB.DatabaseMigrator, from version: Version) throws {
-        if version < Version(1, 0, 2) {
+        if version <= Version(1, 0, 2) {
             migrator.registerMigration("collection icons and colors") { db in
                 try db.alter(table: databaseTableName) { t in
                     t.add(column: Columns.color.name, .text)

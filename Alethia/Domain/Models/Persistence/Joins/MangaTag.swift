@@ -29,8 +29,6 @@ extension MangaTag: FetchableRecord {}
 extension MangaTag: PersistableRecord {}
 
 extension MangaTag: DatabaseModel {
-    static var version: Version = Version(1, 0, 0)
-    
     static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             t.column(Columns.tagId.name, .integer)

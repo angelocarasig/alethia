@@ -258,6 +258,7 @@ private struct EntryGridItem: View {
                 lineLimit: 2,
                 showUnread: true
             )
+            .padding(.bottom, Constants.Padding.regular)
             .matchedTransitionSource(id: entry.transitionId, in: animation)
         }
         .contentShape(.rect)

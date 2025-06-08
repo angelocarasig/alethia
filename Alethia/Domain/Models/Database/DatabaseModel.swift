@@ -9,5 +9,4 @@ import Foundation
 import GRDB
 
 protocol DatabaseModel: DatabaseMigratable {
-    static var version: Version { get }
 }

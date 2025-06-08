@@ -40,8 +40,6 @@ extension SourceRoute: FetchableRecord {}
 extension SourceRoute: PersistableRecord {}
 
 extension SourceRoute: DatabaseModel {
-    static var version: Version = Version(1, 0, 0)
-    
     static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             t.autoIncrementedPrimaryKey(Columns.id.name)

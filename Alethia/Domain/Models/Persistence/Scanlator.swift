@@ -50,8 +50,6 @@ extension Scanlator: DatabaseUnique {
 }
 
 extension Scanlator: DatabaseModel {
-    static var version: Version = Version(1, 0, 4)
-    
     static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             t.autoIncrementedPrimaryKey(Columns.id.name)
@@ -65,8 +63,7 @@ extension Scanlator: DatabaseModel {
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
-        if version < Version(1, 0, 3) {
-            print("Starting Migration for scanlator")
+        if version <= Version(1, 0, 4) {
             migrator.registerMigration("migrate to global scanlators") { db in
                 // 1. Rename old table
                 try db.rename(table: databaseTableName, to: "\(databaseTableName)_old")
