@@ -370,10 +370,10 @@ extension EndDetails {
                         .padding(.vertical, 4)
                         .background(Color.accentColor)
                         .foregroundStyle(.white)
-                        .clipShape(Capsule())
+                        .clipShape(.capsule)
                 }
             }
-            .contentShape(Rectangle())
+            .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .disabled(isCurrentChapter)

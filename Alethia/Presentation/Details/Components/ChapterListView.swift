@@ -176,7 +176,7 @@ struct ChapterRow: View {
                     ProgressView(value: item.chapter.progress)
                         .tint(Color.accentColor)
                         .frame(height: 3)
-                        .clipShape(Capsule())
+                        .clipShape(.capsule)
                 }
             }
             

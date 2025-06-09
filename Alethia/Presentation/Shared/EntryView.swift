@@ -66,7 +66,7 @@ struct EntryView: View {
             Text(item.title)
                 .font(.system(size: 14))
                 .fontWeight(.medium)
-                .lineLimit(lineLimit, reservesSpace: false)
+                .lineLimit(lineLimit, reservesSpace: true)
                 .multilineTextAlignment(.leading)
                 .truncationMode(.tail)
                 .foregroundStyle(.text)

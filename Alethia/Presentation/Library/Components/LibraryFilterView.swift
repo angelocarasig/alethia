@@ -21,7 +21,7 @@ struct LibraryFilterView: View {
                     Spacer()
                     Text("Reset to Default")
                         .foregroundColor(vm.filters.isEmpty ? .secondary : .accentColor)
-                        .onTapGesture { vm.filters.reset() }
+                        .tappable { vm.filters.reset() }
                         .disabled(vm.filters.isEmpty)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -118,8 +118,8 @@ struct LibraryFilterView: View {
                 .foregroundColor(.text)
                 .background(isActive ? Color.appBlue : Color.tint)
                 .cornerRadius(Constants.Corner.Radius.button)
-                .contentShape(Rectangle())
-                .onTapGesture {
+                .contentShape(.rect)
+                .tappable {
                     withAnimation {
                         if isActive {
                             vm.filters.sortDirection.toggle()
@@ -171,7 +171,7 @@ struct LibraryFilterView: View {
                 Spacer()
                 Text("Clear")
                     .foregroundStyle(canClear ? Color.accentColor : Color.secondary)
-                    .onTapGesture(perform: onClear)
+                    .tappable { onClear() }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -246,7 +246,7 @@ struct LibraryFilterView: View {
                 Spacer()
                 Text("Clear")
                     .foregroundStyle(vm.filters.isPresent(.metadata) ? Color.accentColor : Color.secondary)
-                    .onTapGesture { vm.clearFilter(for: .metadata) }
+                    .tappable { vm.clearFilter(for: .metadata) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -268,8 +268,8 @@ struct LibraryFilterView: View {
                     .padding(Constants.Padding.screen)
                     .background(vm.filters.publishStatus.contains(status) ? status.color : .tint.opacity(0.5))
                     .cornerRadius(Constants.Corner.Radius.regular)
-                    .contentShape(Rectangle())
-                    .onTapGesture { vm.togglePublishStatus(status: status) }
+                    .contentShape(.rect)
+                    .tappable { vm.togglePublishStatus(status: status) }
                 }
             }
 
@@ -293,8 +293,8 @@ struct LibraryFilterView: View {
                     .padding(Constants.Padding.screen)
                     .background(vm.filters.classification.contains(classification) ? classification.color : .tint.opacity(0.5))
                     .cornerRadius(Constants.Corner.Radius.regular)
-                    .contentShape(Rectangle())
-                    .onTapGesture { vm.toggleClassification(classification: classification) }
+                    .contentShape(.rect)
+                    .tappable { vm.toggleClassification(classification: classification) }
                 }
             }
         }

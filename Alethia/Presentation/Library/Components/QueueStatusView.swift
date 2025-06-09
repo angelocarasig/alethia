@@ -376,9 +376,9 @@ private struct ActiveOperationCard: View {
                         .padding(.vertical, 6)
                         .background(Color.red.opacity(0.1))
                         .foregroundColor(.red)
-                        .clipShape(Capsule())
+                        .clipShape(.capsule)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(.plain)
             }
             
             if case .ongoing(let progress) = operation.state {
@@ -530,7 +530,7 @@ private struct PendingOperationCard: View {
                     .padding(Constants.Spacing.regular)
                     .background(Circle().fill(Color(.systemGray5)))
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
         }
         .padding(Constants.Padding.screen)
         .background(
@@ -664,7 +664,7 @@ private struct FailedOperationCard: View {
                         .padding(Constants.Spacing.regular)
                         .background(Circle().fill(Color(.systemGray5)))
                 }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(.plain)
             }
             .onTapGesture {
                 withAnimation {
@@ -684,9 +684,9 @@ private struct FailedOperationCard: View {
                             .padding(.vertical, Constants.Spacing.regular)
                             .background(Color.blue.opacity(0.1))
                             .foregroundColor(.blue)
-                            .clipShape(Capsule())
+                            .clipShape(.capsule)
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .buttonStyle(.plain)
                     
                     Button {
                         // View details action
@@ -698,9 +698,9 @@ private struct FailedOperationCard: View {
                             .padding(.vertical, Constants.Spacing.regular)
                             .background(Color(.systemGray5))
                             .foregroundColor(.primary)
-                            .clipShape(Capsule())
+                            .clipShape(.capsule)
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .buttonStyle(.plain)
                 }
                 .transition(.asymmetric(
                     insertion: .move(edge: .top).combined(with: .opacity),
@@ -741,7 +741,7 @@ private struct OperationTypePill: View {
         .padding(.vertical, 3)
         .background(color.opacity(0.15))
         .foregroundColor(color)
-        .clipShape(Capsule())
+        .clipShape(.capsule)
     }
     
     private var icon: String {

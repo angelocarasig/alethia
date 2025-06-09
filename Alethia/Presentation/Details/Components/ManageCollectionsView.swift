@@ -265,7 +265,7 @@ private struct CollectionRow: View {
             .padding(.horizontal, Constants.Padding.screen + Constants.Padding.minimal)
             .padding(.vertical, Constants.Padding.regular)
             .background(Color.tint.opacity(0.50))
-            .contentShape(Rectangle())
+            .contentShape(.rect)
         }
         .buttonStyle(.plain)
     }
@@ -325,8 +325,9 @@ private struct PulsingIcon: View {
 
 // MARK: - Change Indicator
 private struct ChangeIndicator: View {
-    let count: Int
     @State private var isPulsing = false
+    
+    let count: Int
     
     var body: some View {
         HStack(spacing: Constants.Spacing.regular) {
@@ -354,7 +355,7 @@ private struct ChangeIndicator: View {
                     )
             }
             
-            Text("Unsaved Changes")
+            Text(count == 1 ? "Unsaved Change" : "Unsaved Changes")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(.primary)

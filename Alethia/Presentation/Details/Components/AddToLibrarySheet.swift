@@ -192,15 +192,13 @@ struct AddToLibrarySheet: View {
         let isSelected = selectedCollections.contains(collectionId)
         
         return AnyView(
-            Button {
+            CollectionRowView(
+                collection: collection,
+                isSelected: isSelected
+            )
+            .tappable {
                 toggleCollection(collectionId)
-            } label: {
-                CollectionRowView(
-                    collection: collection,
-                    isSelected: isSelected
-                )
             }
-                .buttonStyle(.plain)
         )
     }
     

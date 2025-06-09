@@ -59,7 +59,7 @@ struct CollectionRowView: View {
             }
         }
         .padding(.horizontal, Constants.Padding.screen)
-        .padding(.vertical, Constants.Padding.regular)
+        .padding(.vertical, 12)
         .background(
             CollectionBackground(isSelected: isSelected, showSelected: showSelected, color: color)
         )

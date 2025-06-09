@@ -80,7 +80,7 @@ private extension SourceHeaderView {
             .resizable()
             .scaledToFit()
             .frame(width: 72, height: 72)
-            .clipShape(Circle())
+            .clipShape(.circle)
     }
     
     var titleSection: some View {

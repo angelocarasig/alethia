@@ -183,6 +183,8 @@ struct ArtworkListView: View {
                             isSelected: selectedIndex == index,
                             index: index
                         )
+                        .padding(.horizontal, selectedIndex == index ? Constants.Padding.minimal : 0)
+                        .pressable()
                         .onTapGesture {
                             withAnimation {
                                 selectedIndex = index

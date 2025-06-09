@@ -241,7 +241,7 @@ private struct ScanlatorGroupSection: View {
                 .background(Color(UIColor.secondarySystemGroupedBackground))
                 .cornerRadius(Constants.Corner.Radius.button)
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
             .padding(.horizontal, Constants.Padding.screen)
             .padding(.bottom, isExpanded ? Constants.Spacing.regular : 0)
             
@@ -323,7 +323,7 @@ private struct ScanlatorPriorityRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(width: 24, height: 24)
-                    .contentShape(Rectangle())
+                    .contentShape(.rect)
             }
         }
         .padding(.horizontal, Constants.Padding.screen)
