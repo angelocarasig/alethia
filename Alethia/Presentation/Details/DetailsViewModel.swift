@@ -47,6 +47,11 @@ final class DetailsViewModel: ObservableObject {
     private let addCollectionUseCase: AddCollectionUseCase
     private let updateMangaCollectionsUseCase: UpdateMangaCollectionsUseCase
     
+    // Priority management
+    private let updateOriginPriorityUseCase: UpdateOriginPriorityUseCase
+    private let updateScanlatorPriorityUseCase: UpdateScanlatorPriorityUseCase
+    private let updateMangaSettingsUseCase: UpdateMangaSettingsUseCase
+    
     // Downloads
     private let downloadChapterUseCase: DownloadChapterUseCase
     
@@ -68,6 +73,11 @@ final class DetailsViewModel: ObservableObject {
         self.getAllCollectionsUseCase = injector.makeGetAllCollectionsUseCase()
         self.addCollectionUseCase = injector.makeAddCollectionUseCase()
         self.updateMangaCollectionsUseCase = injector.makeUpdateMangaCollectionsUseCase()
+        
+        // Priority operations
+        self.updateOriginPriorityUseCase = injector.makeUpdateOriginPriorityUseCase()
+        self.updateScanlatorPriorityUseCase = injector.makeUpdateScanlatorPriorityUseCase()
+        self.updateMangaSettingsUseCase = injector.makeUpdateMangaSettingsUseCase()
         
         // Download operations
         self.downloadChapterUseCase = injector.makeDownloadChapterUseCase()
@@ -389,6 +399,93 @@ extension DetailsViewModel {
         }
         
         try updateMangaCollectionsUseCase.execute(mangaId: mangaId, collectionIds: collections)
+    }
+}
+
+// MARK: - Priority Oeperations
+extension DetailsViewModel {
+    func updateOriginPriorities(_ reorderedOrigins: [OriginExtended]) {
+        guard let mangaId = details?.manga.id else { return }
+        
+        // Get ALL origins for this manga from current state
+        guard let allOrigins = details?.origins else { return }
+        
+        // Create a mapping of the reordered priorities
+        var originPriorityMap: [Int64: Int] = [:]
+        for (index, origin) in reorderedOrigins.enumerated() {
+            if let originId = origin.origin.id {
+                originPriorityMap[originId] = index
+            }
+        }
+        
+        // Build complete priority list including unchanged origins
+        let newPriorities = allOrigins.compactMap { origin -> (originId: Int64, priority: Int)? in
+            guard let originId = origin.origin.id else { return nil }
+            
+            if let newPriority = originPriorityMap[originId] {
+                return (originId: originId, priority: newPriority)
+            } else {
+                // Keep original priority for unchanged origins
+                return (originId: originId, priority: origin.origin.priority)
+            }
+        }
+        
+        do {
+            try updateOriginPriorityUseCase.execute(mangaId: mangaId, newPriorities: newPriorities)
+        } catch {
+            withAnimation {
+                state = .error(error)
+            }
+        }
+    }
+    
+    func updateScanlatorPriorities(_ reorderedScanlators: [ScanlatorExtended], for originId: Int64) {
+        // Get ALL scanlators for this origin from current state
+        guard let allScanlators = details?.scanlators.filter({ $0.originId == originId }) else { return }
+        
+        // Create a mapping of the reordered priorities
+        var scanlatorPriorityMap: [Int64: Int] = [:]
+        for (index, scanlator) in reorderedScanlators.enumerated() {
+            if let scanlatorId = scanlator.scanlator.id {
+                scanlatorPriorityMap[scanlatorId] = index
+            }
+        }
+        
+        // Build complete priority list including unchanged scanlators
+        let newPriorities = allScanlators.compactMap { scanlator -> (scanlatorId: Int64, priority: Int)? in
+            guard let scanlatorId = scanlator.scanlator.id else { return nil }
+            
+            if let newPriority = scanlatorPriorityMap[scanlatorId] {
+                return (scanlatorId: scanlatorId, priority: newPriority)
+            } else {
+                // Keep original priority for unchanged scanlators
+                return (scanlatorId: scanlatorId, priority: scanlator.priority)
+            }
+        }
+        
+        do {
+            try updateScanlatorPriorityUseCase.execute(originId: originId, newPriorities: newPriorities)
+        } catch {
+            withAnimation {
+                state = .error(error)
+            }
+        }
+    }
+    
+    func updateMangaSettings(showAllChapters: Bool? = nil, showHalfChapters: Bool? = nil) {
+        guard let mangaId = details?.manga.id else { return }
+        
+        do {
+            try updateMangaSettingsUseCase.execute(
+                mangaId: mangaId,
+                showAllChapters: showAllChapters,
+                showHalfChapters: showHalfChapters
+            )
+        } catch {
+            withAnimation {
+                state = .error(error)
+            }
+        }
     }
 }
 

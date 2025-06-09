@@ -352,6 +352,101 @@ extension MangaLocalDataSource {
     }
 }
 
+// MARK: - Manga Priority Management
+extension MangaLocalDataSource {
+    func updateOriginPriorities(mangaId: Int64, newPriorities: [(originId: Int64, priority: Int)]) throws {
+        try database.write { db in
+            // sanity checks...
+            guard try Manga.fetchOne(db, key: mangaId) != nil else {
+                throw MangaError.notFound
+            }
+            
+            let existingOrigins = try Origin
+                .filter(Origin.Columns.mangaId == mangaId)
+                .fetchAll(db)
+            
+            let existingIds = Set(existingOrigins.compactMap(\.id))
+            let newIds = Set(newPriorities.map(\.originId))
+            
+            guard existingIds == newIds else {
+                throw OriginError.invalid("Must provide priorities for all origins. Missing: \(existingIds.subtracting(newIds)), Extra: \(newIds.subtracting(existingIds))")
+            }
+            
+            // set temp swap offset
+            let baseOffset = -65535
+            for (index, (originId, _)) in newPriorities.enumerated() {
+                let tempPriority = baseOffset + index
+                try Origin
+                    .filter(Origin.Columns.id == originId)
+                    .updateAll(db, Origin.Columns.priority.set(to: tempPriority))
+            }
+            
+            // update
+            for (originId, newPriority) in newPriorities {
+                try Origin
+                    .filter(Origin.Columns.id == originId)
+                    .updateAll(db, Origin.Columns.priority.set(to: newPriority))
+            }
+        }
+    }
+    
+    func updateScanlatorPriorities(originId: Int64, newPriorities: [(scanlatorId: Int64, priority: Int)]) throws {
+        try database.write { db in
+            // sanity checks
+            guard try Origin.fetchOne(db, key: originId) != nil else {
+                throw OriginError.notFound
+            }
+            
+            let existingScanlators = try OriginScanlator
+                .filter(OriginScanlator.Columns.originId == originId)
+                .fetchAll(db)
+            
+            let existingIds = Set(existingScanlators.map(\.scanlatorId))
+            let newIds = Set(newPriorities.map(\.scanlatorId))
+            
+            guard existingIds == newIds else {
+                throw ScanlatorError.invalid("Must provide priorities for all scanlators. Missing: \(existingIds.subtracting(newIds)), Extra: \(newIds.subtracting(existingIds))")
+            }
+            
+            // set temp swap offsets
+            let baseOffset = -65535
+            for (index, (scanlatorId, _)) in newPriorities.enumerated() {
+                let tempPriority = baseOffset + index
+                try OriginScanlator
+                    .filter(OriginScanlator.Columns.originId == originId)
+                    .filter(OriginScanlator.Columns.scanlatorId == scanlatorId)
+                    .updateAll(db, OriginScanlator.Columns.priority.set(to: tempPriority))
+            }
+            
+            // update
+            for (scanlatorId, newPriority) in newPriorities {
+                try OriginScanlator
+                    .filter(OriginScanlator.Columns.originId == originId)
+                    .filter(OriginScanlator.Columns.scanlatorId == scanlatorId)
+                    .updateAll(db, OriginScanlator.Columns.priority.set(to: newPriority))
+            }
+        }
+    }
+    
+    func updateMangaSettings(mangaId: Int64, showAllChapters: Bool?, showHalfChapters: Bool?) throws {
+        try database.write { db in
+            guard var manga = try Manga.fetchOne(db, key: mangaId) else {
+                throw MangaError.notFound
+            }
+            
+            if let showAllChapters = showAllChapters {
+                manga.showAllChapters = showAllChapters
+            }
+            
+            if let showHalfChapters = showHalfChapters {
+                manga.showHalfChapters = showHalfChapters
+            }
+            
+            try manga.update(db)
+        }
+    }
+}
+
 // MARK: - Private Methods
 
 // MARK: Library Filtering Helpers

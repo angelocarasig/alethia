@@ -96,6 +96,18 @@ extension MangaRepositoryImpl: MangaRepository {
     func updateMangaCollections(mangaId: Int64, collectionIds: [Int64]) throws {
         try local.updateMangaCollections(mangaId: mangaId, collectionIds: collectionIds)
     }
+    
+    func updateOriginPriorities(mangaId: Int64, newPriorities: [(originId: Int64, priority: Int)]) throws {
+        try local.updateOriginPriorities(mangaId: mangaId, newPriorities: newPriorities)
+    }
+    
+    func updateScanlatorPriorities(originId: Int64, newPriorities: [(scanlatorId: Int64, priority: Int)]) throws {
+        try local.updateScanlatorPriorities(originId: originId, newPriorities: newPriorities)
+    }
+    
+    func updateMangaSettings(mangaId: Int64, showAllChapters: Bool?, showHalfChapters: Bool?) throws {
+        try local.updateMangaSettings(mangaId: mangaId, showAllChapters: showAllChapters, showHalfChapters: showHalfChapters)
+    }
 }
 
 // MARK: Helpers

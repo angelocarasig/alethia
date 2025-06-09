@@ -90,6 +90,18 @@ extension DependencyInjector {
     func makeUpdateMangaCollectionsUseCase() -> UpdateMangaCollectionsUseCase {
         return UpdateMangaCollectionsUseCaseImpl(repository: mangaRepository)
     }
+    
+    func makeUpdateOriginPriorityUseCase() -> UpdateOriginPriorityUseCase {
+        return UpdateOriginPriorityUseCaseImpl(repository: mangaRepository)
+    }
+    
+    func makeUpdateScanlatorPriorityUseCase() -> UpdateScanlatorPriorityUseCase {
+        return UpdateScanlatorPriorityUseCaseImpl(repository: mangaRepository)
+    }
+    
+    func makeUpdateMangaSettingsUseCase() -> UpdateMangaSettingsUseCase {
+        return UpdateMangaSettingsUseCaseImpl(repository: mangaRepository)
+    }
 }
 
 // MARK: Sources

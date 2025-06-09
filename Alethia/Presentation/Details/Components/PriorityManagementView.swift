@@ -14,30 +14,34 @@ struct PriorityManagementView: View {
     
     @State private var editMode: Bool = false
     
-    // Local copies for editing
-    @State private var origins: [OriginExtended] = []
-    @State private var scanlators: [ScanlatorExtended] = []
+    @State private var originGroups: [OriginGroup] = []
+    @State private var originalOriginGroups: [OriginGroup] = []
     
-    // Original copies for comparison
-    @State private var originalOrigins: [OriginExtended] = []
-    @State private var originalScanlators: [ScanlatorExtended] = []
+    struct OriginGroup: Identifiable {
+        let id: Int64
+        let origin: OriginExtended
+        var scanlators: [ScanlatorExtended]
+        
+        init(origin: OriginExtended, scanlators: [ScanlatorExtended]) {
+            self.id = origin.origin.id!
+            self.origin = origin
+            self.scanlators = scanlators
+        }
+    }
     
     private var hasChanges: Bool {
-        // Compare origins by their order
-        if origins.map(\.origin.id) != originalOrigins.map(\.origin.id) {
-            return true
-        }
+        guard originGroups.count == originalOriginGroups.count else { return true }
         
-        // Compare scanlators by their order within each origin
-        let currentGrouped = Dictionary(grouping: scanlators) { $0.originId }
-        let originalGrouped = Dictionary(grouping: originalScanlators) { $0.originId }
-        
-        for originId in currentGrouped.keys {
-            let current = currentGrouped[originId] ?? []
-            let original = originalGrouped[originId] ?? []
+        for (index, group) in originGroups.enumerated() {
+            let originalGroup = originalOriginGroups[index]
             
-            if current.map(\.scanlator.id) != original.map(\.scanlator.id) {
-                return true
+            if group.id != originalGroup.id { return true }
+            
+            if group.scanlators.count != originalGroup.scanlators.count { return true }
+            
+            for (scanlatorIndex, scanlator) in group.scanlators.enumerated() {
+                let originalScanlator = originalGroup.scanlators[scanlatorIndex]
+                if scanlator.id != originalScanlator.id { return true }
             }
         }
         
@@ -46,13 +50,11 @@ struct PriorityManagementView: View {
     
     var body: some View {
         List {
-            // Display Settings Section
             Section(header: Text("Display Settings").textCase(.uppercase)) {
                 Toggle("Show All Chapters", isOn: Binding(
                     get: { vm.details?.manga.showAllChapters ?? false },
                     set: { newValue in
-                        // TODO: Update manga settings
-                        vm.updateChapters()
+                        vm.updateMangaSettings(showAllChapters: newValue)
                     }
                 ))
                 .tint(.green)
@@ -60,8 +62,7 @@ struct PriorityManagementView: View {
                 Toggle("Show Half Chapters", isOn: Binding(
                     get: { vm.details?.manga.showHalfChapters ?? true },
                     set: { newValue in
-                        // TODO: Update manga settings
-                        vm.updateChapters()
+                        vm.updateMangaSettings(showHalfChapters: newValue)
                     }
                 ))
                 .tint(.green)
@@ -70,16 +71,15 @@ struct PriorityManagementView: View {
             }
             .listStyle(.insetGrouped)
             
-            // Source Priority Section
             Section(header: Text("Source Priority")
                 .textCase(.uppercase)
                 .font(.caption)
                 .foregroundStyle(.secondary)
             ) {
                 VStack(spacing: Constants.Spacing.regular) {
-                    ForEach(Array(origins.enumerated()), id: \.element.id) { index, origin in
+                    ForEach(Array(originGroups.enumerated()), id: \.element.id) { index, group in
                         OriginPriorityRow(
-                            origin: origin,
+                            origin: group.origin,
                             index: index,
                             isEditing: editMode
                         )
@@ -96,16 +96,16 @@ struct PriorityManagementView: View {
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets())
             
-            // Scanlator Priority Section
             Section(header: Text("Scanlator Priority")
                 .textCase(.uppercase)
                 .font(.caption)
                 .foregroundStyle(.secondary)
             ) {
                 VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
-                    ForEach(groupedScanlators(), id: \.origin.id) { group in
+                    ForEach(Array(originGroups.enumerated()), id: \.element.id) { groupIndex, group in
                         ScanlatorGroupSection(
                             group: group,
+                            groupIndex: groupIndex,
                             isEditing: editMode,
                             onMove: handleScanlatorMove
                         )
@@ -136,6 +136,95 @@ struct PriorityManagementView: View {
         .onAppear {
             loadData()
         }
+    }
+}
+
+private struct ScanlatorGroupSection: View {
+    let group: PriorityManagementView.OriginGroup
+    let groupIndex: Int
+    let isEditing: Bool
+    let onMove: (IndexSet, Int, Int) -> Void
+    @State private var isExpanded: Bool = true
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            Button {
+                withAnimation {
+                    isExpanded.toggle()
+                }
+            } label: {
+                VStack {
+                    HStack(spacing: Constants.Spacing.regular) {
+                        KFImage(URL(fileURLWithPath: group.origin.sourceIcon))
+                            .placeholder { Color.tint.shimmer() }
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 32, height: 32)
+                            .cornerRadius(Constants.Corner.Radius.regular)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(group.origin.sourceName)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                            
+                            Text("\(group.scanlators.count) scanlator\(group.scanlators.count == 1 ? "" : "s")")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.tertiary)
+                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    }
+                    
+                    if isExpanded {
+                        Divider()
+                    }
+                }
+                .padding(.horizontal, Constants.Padding.screen)
+                .padding(.top, Constants.Padding.regular)
+                .padding(.bottom, Constants.Padding.minimal)
+                .background(Color(UIColor.secondarySystemGroupedBackground))
+                .cornerRadius(Constants.Corner.Radius.button)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, Constants.Padding.screen)
+            .padding(.bottom, isExpanded ? Constants.Spacing.regular : 0)
+            
+            if isExpanded {
+                List {
+                    ForEach(Array(group.scanlators.enumerated()), id: \.element.id) { index, scanlator in
+                        ScanlatorPriorityRow(
+                            scanlator: scanlator,
+                            isEditing: isEditing,
+                            index: index + 1,
+                            total: group.scanlators.count
+                        )
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                        .listRowSeparator(.hidden)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .top).combined(with: .opacity),
+                            removal: .move(edge: .top).combined(with: .opacity)
+                        ))
+                    }
+                    .onMove { source, destination in
+                        onMove(source, destination, groupIndex)
+                    }
+                    .moveDisabled(!isEditing)
+                }
+                .listStyle(.plain)
+                .frame(height: CGFloat(group.scanlators.count) * 56)
+                .padding(.horizontal, Constants.Padding.screen)
+                .scrollDisabled(true)
+                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: group.scanlators)
+            }
+        }
+        .padding(.bottom, Constants.Padding.regular)
     }
 }
 
@@ -185,101 +274,6 @@ private struct OriginPriorityRow: View {
     }
 }
 
-// MARK: - Scanlator Group Section
-private struct ScanlatorGroupSection: View {
-    let group: (origin: OriginExtended, scanlators: [ScanlatorExtended])
-    let isEditing: Bool
-    let onMove: (IndexSet, Int, Int64) -> Void
-    @State private var isExpanded: Bool = true
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Expandable header
-            Button {
-                withAnimation {
-                    isExpanded.toggle()
-                }
-            } label: {
-                VStack {
-                    HStack(spacing: Constants.Spacing.regular) {
-                        // Origin icon
-                        KFImage(URL(fileURLWithPath: group.origin.sourceIcon))
-                            .placeholder { Color.tint.shimmer() }
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 32, height: 32)
-                            .cornerRadius(Constants.Corner.Radius.regular)
-                        
-                        // Origin info
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(group.origin.sourceName)
-                                .font(.headline)
-                                .foregroundStyle(.primary)
-                            
-                            Text("\(group.scanlators.count) scanlator\(group.scanlators.count == 1 ? "" : "s")")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        // Chevron indicator
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.tertiary)
-                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    }
-                    
-                    if isExpanded {
-                        Divider()
-                    }
-                }
-                .padding(.horizontal, Constants.Padding.screen)
-                .padding(.top, Constants.Padding.regular)
-                .padding(.bottom, Constants.Padding.minimal)
-                .background(Color(UIColor.secondarySystemGroupedBackground))
-                .cornerRadius(Constants.Corner.Radius.button)
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, Constants.Padding.screen)
-            .padding(.bottom, isExpanded ? Constants.Spacing.regular : 0)
-            
-            // Scanlator list
-            if isExpanded {
-                List {
-                    ForEach(group.scanlators, id: \.id) { scanlator in
-                        let index = group.scanlators.firstIndex(where: { $0.id == scanlator.id }) ?? 0
-                        ScanlatorPriorityRow(
-                            scanlator: scanlator,
-                            isEditing: isEditing,
-                            index: index + 1,
-                            total: group.scanlators.count
-                        )
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
-                        .listRowSeparator(.hidden)
-                        .transition(.asymmetric(
-                            insertion: .move(edge: .top).combined(with: .opacity),
-                            removal: .move(edge: .top).combined(with: .opacity)
-                        ))
-                    }
-                    .onMove { source, destination in
-                        onMove(source, destination, group.origin.origin.id!)
-                    }
-                    .moveDisabled(!isEditing)
-                }
-                .listStyle(.plain)
-                .frame(height: CGFloat(group.scanlators.count) * 56) // Approximate height per row
-                .padding(.horizontal, Constants.Padding.screen)
-                .scrollDisabled(true)
-                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: group.scanlators)
-            }
-        }
-        .padding(.bottom, Constants.Padding.regular)
-    }
-}
-
 // MARK: - Scanlator Priority Row
 private struct ScanlatorPriorityRow: View {
     let scanlator: ScanlatorExtended
@@ -298,7 +292,6 @@ private struct ScanlatorPriorityRow: View {
     
     var body: some View {
         HStack(spacing: Constants.Spacing.regular) {
-            // Priority indicator
             Circle()
                 .fill(priorityColor.opacity(0.2))
                 .frame(width: 28, height: 28)
@@ -309,7 +302,6 @@ private struct ScanlatorPriorityRow: View {
                         .foregroundStyle(priorityColor)
                 )
             
-            // Scanlator name
             Text(scanlator.scanlator.name)
                 .font(.callout)
                 .foregroundColor(.primary)
@@ -317,7 +309,6 @@ private struct ScanlatorPriorityRow: View {
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
-            // Drag handle in edit mode
             if isEditing {
                 Image(systemName: "line.3.horizontal")
                     .font(.caption)
@@ -335,76 +326,74 @@ private struct ScanlatorPriorityRow: View {
     }
 }
 
-// MARK: - Helper Methods
 private extension PriorityManagementView {
-    func groupedScanlators() -> [(origin: OriginExtended, scanlators: [ScanlatorExtended])] {
-        let grouped = Dictionary(grouping: scanlators) { $0.originId }
+    func loadData() {
+        guard let details = vm.details else { return }
         
-        return origins.compactMap { origin in
+        let origins = details.origins.sorted { $0.origin.priority < $1.origin.priority }
+        let scanlators = details.scanlators
+        
+        let scanlatorsByOrigin = Dictionary(grouping: scanlators) { $0.originId }
+        
+        originGroups = origins.compactMap { origin in
             guard let originId = origin.origin.id,
-                  let scanlatorsForOrigin = grouped[originId] else {
+                  let scanlatorsForOrigin = scanlatorsByOrigin[originId] else {
                 return nil
             }
             
-            let sortedScanlators = scanlatorsForOrigin.sorted { s1, s2 in
-                let index1 = scanlators.firstIndex(where: { $0.id == s1.id }) ?? 0
-                let index2 = scanlators.firstIndex(where: { $0.id == s2.id }) ?? 0
-                return index1 < index2
-            }
+            let sortedScanlators = scanlatorsForOrigin.sorted { $0.priority < $1.priority }
             
-            return (origin: origin, scanlators: sortedScanlators)
+            return OriginGroup(origin: origin, scanlators: sortedScanlators)
         }
-    }
-}
-
-// MARK: - Data Management
-private extension PriorityManagementView {
-    func loadData() {
-        origins = vm.details?.origins ?? []
-        scanlators = vm.details?.scanlators ?? []
         
-        originalOrigins = origins
-        originalScanlators = scanlators
+        originalOriginGroups = originGroups.map { group in
+            OriginGroup(origin: group.origin, scanlators: group.scanlators)
+        }
     }
     
     func saveChanges() {
-        // TODO: Implement actual save using modelContext
-        // Update origin priorities
-        // Update scanlator priorities
+        print("💾 Saving changes:")
         
-        // For now, just update the original state
-        originalOrigins = origins
-        originalScanlators = scanlators
-    }
-}
-
-// MARK: - Actions
-private extension PriorityManagementView {
-    func handleOriginMove(from source: IndexSet, to destination: Int) {
-        origins.move(fromOffsets: source, toOffset: destination)
-    }
-    
-    func handleScanlatorMove(from source: IndexSet, to destination: Int, originId: Int64) {
-        var indices: [Int] = []
-        for (index, scanlator) in scanlators.enumerated() {
-            if scanlator.originId == originId {
-                indices.append(index)
+        let originalOriginOrder = originalOriginGroups.map { $0.origin.origin.id! }
+        let currentOriginOrder = originGroups.map { $0.origin.origin.id! }
+        
+        if originalOriginOrder != currentOriginOrder {
+            print("  📋 Origin order changed")
+            let reorderedOrigins = originGroups.map { $0.origin }
+            vm.updateOriginPriorities(reorderedOrigins)
+        }
+        
+        for (index, group) in originGroups.enumerated() {
+            let originalGroup = originalOriginGroups[index]
+            let originalScanlatorOrder = originalGroup.scanlators.map { $0.scanlator.id! }
+            let currentScanlatorOrder = group.scanlators.map { $0.scanlator.id! }
+            
+            if originalScanlatorOrder != currentScanlatorOrder {
+                print("  🔄 Scanlator order changed for origin: \(group.origin.sourceName)")
+                vm.updateScanlatorPriorities(group.scanlators, for: group.origin.origin.id!)
             }
         }
         
-        var scanlatorsForOrigin = indices.map { scanlators[$0] }
-        scanlatorsForOrigin.move(fromOffsets: source, toOffset: destination)
-        
-        for (subIndex, mainIndex) in indices.enumerated() {
-            scanlators[mainIndex] = scanlatorsForOrigin[subIndex]
+        originalOriginGroups = originGroups.map { group in
+            OriginGroup(origin: group.origin, scanlators: group.scanlators)
         }
+        
+        print("💾 Save completed!")
     }
-}
-
-// MARK: - ViewModel Extension
-extension DetailsViewModel {
-    func updateChapters() {
-        // TODO: Implement chapter list update based on settings
-        objectWillChange.send()
+    
+    func handleOriginMove(from source: IndexSet, to destination: Int) {
+        originGroups.move(fromOffsets: source, toOffset: destination)
+    }
+    
+    func handleScanlatorMove(from source: IndexSet, to destination: Int, groupIndex: Int) {
+        guard groupIndex < originGroups.count else { return }
+        
+        print("🔄 Moving scanlator in group \(groupIndex)")
+        print("   From: \(source) To: \(destination)")
+        print("   Before: \(originGroups[groupIndex].scanlators.map { $0.scanlator.name })")
+        
+        originGroups[groupIndex].scanlators.move(fromOffsets: source, toOffset: destination)
+        
+        print("   After: \(originGroups[groupIndex].scanlators.map { $0.scanlator.name })")
     }
 }

@@ -31,4 +31,8 @@ protocol MangaRepository {
     func resolveMangaOrientation(detail: Detail) -> Orientation
     
     func updateMangaCollections(mangaId: Int64, collectionIds: [Int64]) throws -> Void
+    
+    func updateOriginPriorities(mangaId: Int64, newPriorities: [(originId: Int64, priority: Int)]) throws -> Void
+    func updateScanlatorPriorities(originId: Int64, newPriorities: [(scanlatorId: Int64, priority: Int)]) throws -> Void
+    func updateMangaSettings(mangaId: Int64, showAllChapters: Bool?, showHalfChapters: Bool?) throws -> Void
 }

@@ -163,58 +163,34 @@ extension Manga {
             fatalError("Manga ID is required to fetch chapters.")
         }
         
-        // Define origins subquery to get all origins for this manga
-        let origins = Origin
-            .filter(Origin.Columns.mangaId == id)
-            .order(Origin.Columns.priority.asc)
-        
-        // Start with filtering chapters by origins
-        var query = Chapter
-            .filter(origins.select(Origin.Columns.id).contains(Chapter.Columns.originId))
-        
-        // If showAllChapters is true, just return all chapters sorted
+        // If showAllChapters is true, return all chapters without filtering
         if showAllChapters {
-            return query
+            let origins = Origin
+                .filter(Origin.Columns.mangaId == id)
+                .order(Origin.Columns.priority.asc)
+            
+            return Chapter
+                .filter(origins.select(Origin.Columns.id).contains(Chapter.Columns.originId))
                 .order(Chapter.Columns.number.desc)
                 .including(required: Chapter.scanlator)
                 .including(required: Chapter.origin.including(required: Origin.source))
                 .asRequest(of: ChapterExtended.self)
         }
         
-        // We need to get chapter numbers first, then for each chapter number,
-        // select the chapter with the lowest origin priority, then the lowest scanlator priority
-        
-        // First, get the best chapter for each chapter number using window functions
+        // Use the best_chapter view
         let bestChapterSQL = """
-        WITH RankedChapters AS (
-            SELECT 
-                c.id,
-                c.number,
-                ROW_NUMBER() OVER (
-                    PARTITION BY c.number 
-                    ORDER BY o.priority ASC, os.priority ASC
-                ) as rank
-            FROM chapter c
-            JOIN origin o ON c.originId = o.id
-            JOIN originScanlator os ON os.originId = o.id AND os.scanlatorId = c.scanlatorId
-            WHERE o.mangaId = ?
-        )
-        SELECT id FROM RankedChapters WHERE rank = 1
+            SELECT id FROM best_chapter 
+            WHERE mangaId = ? 
+            AND rank = 1
+            \(showHalfChapters ? "" : "AND CAST(number AS INTEGER) = number")
         """
         
-        // Filter to only include chapters that are the best for their number
-        query = query.filter(sql: "Chapter.id IN (\(bestChapterSQL))", arguments: [id])
-        
-        // If showHalfChapters is false, filter out non-integer chapter numbers
-        if !showHalfChapters {
-            query = query.filter(sql: "CAST(Chapter.number AS INTEGER) = Chapter.number")
-        }
-        
-        // Return the filtered chapters with required associations
-        return query
+        // Filter chapters using the optimized view
+        return Chapter
+            .filter(sql: "Chapter.id IN (\(bestChapterSQL))", arguments: [id])
             .order(Chapter.Columns.number.desc)
             .including(required: Chapter.scanlator)
-            .including(required: Chapter.origin.including(optional: Origin.source)) // optional for detached sources
+            .including(required: Chapter.origin.including(optional: Origin.source))
             .asRequest(of: ChapterExtended.self)
     }
     
