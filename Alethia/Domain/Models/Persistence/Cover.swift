@@ -50,7 +50,7 @@ extension Cover: DatabaseModel {
             
             t.column(Columns.active.name, .boolean)
                 .notNull()
-                .indexed()
+                // no indexing here since below's index only on 'active' column
             
             t.column(Columns.url.name, .text).notNull()
             t.column(Columns.path.name, .text).notNull()
@@ -67,6 +67,12 @@ extension Cover: DatabaseModel {
             WHERE active = 1
         """
         try db.execute(sql: sql)
+        
+        try db.execute(sql: """
+            CREATE INDEX idx_cover_active_manga 
+            ON cover(mangaId) 
+            WHERE active = 1
+        """)
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {

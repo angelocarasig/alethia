@@ -42,6 +42,7 @@ extension Title: DatabaseModel {
         try db.create(table: self.databaseTableName, body: { t in
             t.autoIncrementedPrimaryKey(Columns.id.name)
             
+            // titles are not unique - they can be resolved in UI
             t.column(Columns.title.name, .text)
                 .notNull()
                 .indexed()

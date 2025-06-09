@@ -11,7 +11,6 @@ import Combine
 import GRDB
 
 final class LibraryViewModel: ObservableObject {
-    // MARK: - Published Properties
     @Published private(set) var state: ViewState = .loading
     @Published var filters: LibraryFilters = .init()
     @Published var showFilters: Bool = false
@@ -20,16 +19,13 @@ final class LibraryViewModel: ObservableObject {
     @Published private(set) var collections: [CollectionExtended] = []
     @Published private(set) var activeCollection: Collection? = nil
     
-    // MARK: - Properties
     private var cancellables: Set<AnyCancellable> = []
     private var _items: [Entry] = []
     
-    // MARK: - Use Cases
     private let getLibraryUseCase: GetLibraryUseCase
     private let getAllCollectionsUseCase: GetAllCollectionsUseCase
     private let addCollectionUseCase: AddCollectionUseCase
     
-    // MARK: - View State
     enum ViewState {
         case loading
         case success
@@ -37,7 +33,6 @@ final class LibraryViewModel: ObservableObject {
         case empty
     }
     
-    // MARK: - Computed Properties
     var items: [Entry] {
         switch state {
         case .loading, .empty, .error:
@@ -47,7 +42,6 @@ final class LibraryViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Initialization
     init() {
         let injector = DependencyInjector.shared
         self.getLibraryUseCase = injector.makeGetLibraryUseCase()
@@ -56,7 +50,6 @@ final class LibraryViewModel: ObservableObject {
     }
 }
 
-// MARK: - Lifecycle
 extension LibraryViewModel {
     func onAppear() {
         guard cancellables.isEmpty else { return }
@@ -64,8 +57,9 @@ extension LibraryViewModel {
     }
     
     func refreshCollection() {
-        state = .loading
-        // Trigger refresh by updating filters
+        withAnimation(.easeInOut(duration: 0.2)) {
+            state = .loading
+        }
         filters = filters
     }
     
@@ -76,27 +70,35 @@ extension LibraryViewModel {
     }
     
     private func bind() {
-        state = .loading
+        withAnimation(.easeInOut(duration: 0.2)) {
+            state = .loading
+        }
         
-        // Load collections
         getAllCollectionsUseCase.execute()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] collections in
-                self?.collections = collections
+                withAnimation(.smooth(duration: 0.3)) {
+                    self?.collections = collections
+                }
             }
             .store(in: &cancellables)
         
         Publishers.CombineLatest($filters, $activeCollection)
             .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
             .handleEvents(receiveOutput: { [weak self] _ in
-                self?.state = .loading
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    self?.state = .loading
+                }
             })
             .map { [unowned self] filters, activeCollection in
                 self.getLibraryUseCase
                     .execute(filters: filters, collection: activeCollection?.id)
                     .catch { error -> AnyPublisher<[Entry], Never> in
                         DispatchQueue.main.async { [weak self] in
-                            self?.state = .error(error)
+                            print("Something Went Wrong: \(error)")
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                self?.state = .error(error)
+                            }
                         }
                         return Just([]).eraseToAnyPublisher()
                     }
@@ -114,19 +116,20 @@ extension LibraryViewModel {
                     isInErrorState = false
                 }
                 
-                if updated.isEmpty && !isInErrorState {
-                    self.state = .empty
-                    self._items = []
-                } else if !updated.isEmpty {
-                    self._items = updated
-                    self.state = .success
+                withAnimation(.smooth(duration: 0.3, extraBounce: 0.1)) {
+                    if updated.isEmpty && !isInErrorState {
+                        self.state = .empty
+                        self._items = []
+                    } else if !updated.isEmpty {
+                        self._items = updated
+                        self.state = .success
+                    }
                 }
             }
             .store(in: &cancellables)
     }
 }
 
-// MARK: - Collection Management
 extension LibraryViewModel {
     func setActiveCollection(_ collection: Collection?) {
         withAnimation(.smooth) {
@@ -139,7 +142,6 @@ extension LibraryViewModel {
     }
 }
 
-// MARK: - Filter Management
 extension LibraryViewModel {
     func togglePublishStatus(status: PublishStatus) {
         if let index = filters.publishStatus.firstIndex(of: status) {
@@ -184,7 +186,6 @@ extension LibraryViewModel {
     }
 }
 
-// MARK: - UI State Management
 extension LibraryViewModel {
     func toggleFilters() {
         withAnimation {

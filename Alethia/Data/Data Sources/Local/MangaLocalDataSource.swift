@@ -59,7 +59,8 @@ extension MangaLocalDataSource {
                 
                 return try request.fetchAll(db)
             }
-            .publisher(in: database, scheduling: .immediate)
+            .publisher(in: database, scheduling: .async(onQueue: .global(qos: .userInitiated)))
+            .receive(on: DispatchQueue.main)
             .eraseToAnyPublisher()
     }
     
@@ -430,16 +431,17 @@ private extension MangaLocalDataSource {
         to request: QueryInterfaceRequest<Entry>,
         search: String
     ) -> QueryInterfaceRequest<Entry> {
+        guard !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return request
+        }
+        
+        guard let pattern = FTS5Pattern(matchingAnyTokenIn: search + "*") else {
+            return request.filter(sql: "0 = 1")
+        }
+        
         return request.filter(
-            sql: """
-            (INSTR(LOWER(title), LOWER(?)) > 0 OR 
-             EXISTS(
-                SELECT 1 FROM title t 
-                WHERE t.mangaId = entry.mangaId 
-                AND INSTR(LOWER(t.title), LOWER(?)) > 0
-             ))
-            """,
-            arguments: [search, search]
+            sql: "mangaId IN (SELECT rowid FROM manga_fts WHERE manga_fts MATCH ?)",
+            arguments: [pattern]
         )
     }
     

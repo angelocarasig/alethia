@@ -95,6 +95,18 @@ extension Chapter: DatabaseModel {
                 .indexed()
                 .references(Scanlator.databaseTableName, onDelete: .restrict)
         })
+        
+        try db.create(index: "idx_chapter_origin_scanlator",
+                      on: Chapter.databaseTableName,
+                      columns: [Columns.originId.name, Columns.scanlatorId.name])
+        
+        try db.create(index: "idx_chapter_number_origin",
+                      on: Chapter.databaseTableName,
+                      columns: [Columns.number.name, Columns.originId.name])
+        
+        try db.create(index: "idx_chapter_progress",
+                      on: Chapter.databaseTableName,
+                      columns: [Columns.progress.name])
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {

@@ -133,7 +133,7 @@ private struct LibraryHeader: View {
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
-                    .padding(.vertical, Constants.Padding.regular)
+                    .padding(Constants.Padding.screen)
                     .background(.quaternary.opacity(0.5))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
@@ -155,10 +155,7 @@ private struct LibraryHeader: View {
 private struct LoadingState: View {
     var body: some View {
         VStack(spacing: Constants.Spacing.regular) {
-            LoadingView()
-            Text("Loading library \(SymbolsProvider.randomKaomoji)")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            LoadingView(message: "Loading library \(SymbolsProvider.randomKaomoji)")
         }
     }
 }
@@ -227,42 +224,31 @@ private struct SuccessState: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             LazyVGrid(columns: gridColumns, spacing: spacing) {
-                ForEach(vm.items, id: \.libraryViewId) {
-                    EntryGridItem(entry: $0, animation: animation)
+                ForEach(vm.items, id: \.libraryViewId) { entry in
+                    NavigationLink {
+                        DetailsScreen(entry: entry, source: nil)
+                            .navigationTransition(.zoom(sourceID: entry.transitionId, in: animation))
+                    } label: {
+                        EntryView(
+                            item: entry,
+                            lineLimit: 2,
+                            showUnread: true
+                        )
+                        .padding(.bottom, Constants.Padding.regular)
+                        .matchedTransitionSource(id: entry.transitionId, in: animation)
+                    }
+                    .contentShape(.rect)
+                    .buttonStyle(.plain)
+                    .unread(entry.unread)
+                    .id("library-\(entry.libraryViewId)")
                 }
             }
             .padding(.top, topSpacing) // to account for unread badges
         }
         .contentMargins(.trailing, Constants.Padding.regular, for: .scrollContent)
         .padding(.vertical, Constants.Padding.screen)
-        .animation(.smooth(duration: 0.3, extraBounce: 0.1), value: vm.items.map(\.id))
         .refreshable {
             vm.onRefresh()
         }
-    }
-}
-
-// MARK: - Misc Components
-
-private struct EntryGridItem: View {
-    let entry: Entry
-    let animation: Namespace.ID
-    
-    var body: some View {
-        NavigationLink {
-            DetailsScreen(entry: entry, source: nil)
-                .navigationTransition(.zoom(sourceID: entry.transitionId, in: animation))
-        } label: {
-            EntryView(
-                item: entry,
-                lineLimit: 2,
-                showUnread: true
-            )
-            .padding(.bottom, Constants.Padding.regular)
-            .matchedTransitionSource(id: entry.transitionId, in: animation)
-        }
-        .contentShape(.rect)
-        .buttonStyle(.plain)
-        .unread(entry.unread)
     }
 }

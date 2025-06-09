@@ -4,10 +4,15 @@
 //
 //  Created by Angelo Carasig on 11/5/2025.
 //
-
 import SwiftUI
 
 struct LoadingView: View {
+    let message: String?
+    
+    init(message: String? = nil) {
+        self.message = message
+    }
+    
     var body: some View {
         ContentUnavailableView {
             ModernSpinner()
@@ -16,7 +21,7 @@ struct LoadingView: View {
                     height: Constants.Icon.Size.large
                 )
         } description: {
-            Text("Please Wait")
+            Text(message ?? "Please Wait")
                 .font(.title3)
                 .padding(.top, Constants.Padding.screen)
         }
@@ -65,5 +70,8 @@ struct LoadingView: View {
 }
 
 #Preview {
-    LoadingView()
+    VStack {
+        LoadingView()
+        LoadingView(message: "Loading your manga...")
+    }
 }

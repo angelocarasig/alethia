@@ -97,6 +97,10 @@ extension Origin: DatabaseModel {
             // Ensure no duplicate sources for the same manga
             t.uniqueKey([Columns.sourceId.name, Columns.mangaId.name], onConflict: .fail)
         })
+        
+        try db.create(index: "idx_origin_manga_priority",
+                      on: Origin.databaseTableName,
+                      columns: [Columns.mangaId.name, Columns.priority.name])
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {

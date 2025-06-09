@@ -40,6 +40,10 @@ extension MangaCollection: DatabaseModel {
                 .indexed()
                 .references(Collection.databaseTableName, onDelete: .cascade)
         })
+        
+        try db.create(index: "idx_manga_collection_covering",
+                      on: MangaCollection.databaseTableName,
+                      columns: [Columns.collectionId.name, Columns.mangaId.name])
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {

@@ -39,6 +39,10 @@ final class DatabaseProvider {
         MangaTag.self,
         MangaCollection.self,
         OriginScanlator.self,
+        
+        // MARK: - Extensions
+        /// FTS
+        MangaFTS.self,
     ]
     
     private(set) var writer: DatabaseWriter

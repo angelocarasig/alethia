@@ -119,6 +119,19 @@ extension Manga: DatabaseModel {
             t.column(Columns.showAllChapters.name, .boolean).notNull()
             t.column(Columns.showHalfChapters.name, .boolean).notNull()
         })
+        
+        // For library filtering
+        try db.create(index: "idx_manga_library_updated",
+                      on: Manga.databaseTableName,
+                      columns: [Columns.inLibrary.name, Columns.updatedAt.name])
+        
+        try db.create(index: "idx_manga_library_added",
+                      on: Manga.databaseTableName,
+                      columns: [Columns.inLibrary.name, Columns.addedAt.name])
+        
+        try db.create(index: "idx_manga_library_lastread",
+                      on: Manga.databaseTableName,
+                      columns: [Columns.inLibrary.name, Columns.lastReadAt.name])
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {

@@ -14,11 +14,8 @@ extension DatabaseProvider {
             try createMangaEntryView(db)
         }
     }
-}
-
-// MARK: - Manga Entry
-private extension DatabaseProvider {
-    private func createMangaEntryView(_ db: Database) throws {
+    
+    func createMangaEntryView(_ db: Database) throws {
         // Drop existing view if it exists
         try db.execute(sql: "DROP VIEW IF EXISTS entry")
         
@@ -59,30 +56,52 @@ private extension DatabaseProvider {
                  ORDER BY c.id DESC
                  LIMIT 1) AS cover,
                 
-                -- Calculate unread count
-                CAST(IFNULL((SELECT COUNT(*) FROM (
-                    WITH RankedChapters AS (
-                        SELECT 
-                            c.id,
-                            c.number,
-                            c.progress,
-                            ROW_NUMBER() OVER (
-                                PARTITION BY c.number 
-                                ORDER BY o.priority ASC, os.priority ASC
-                            ) as rank
-                        FROM chapter c
-                        JOIN origin o ON c.originId = o.id
-                        JOIN originScanlator os ON os.originId = o.id AND os.scanlatorId = c.scanlatorId
-                        WHERE o.mangaId = m.id
-                        AND (m.showHalfChapters = 1 OR CAST(c.number AS INTEGER) = c.number)
-                    )
-                    SELECT id FROM RankedChapters 
-                    WHERE rank = 1 AND (progress IS NULL OR progress < 1.0)
-                )), 0) AS INTEGER) AS unread
+                -- Optimized unread count calculation
+                CAST(IFNULL((
+                    SELECT COUNT(DISTINCT c.number)
+                    FROM chapter c
+                    JOIN origin o ON c.originId = o.id
+                    JOIN originScanlator os ON os.originId = o.id AND os.scanlatorId = c.scanlatorId
+                    WHERE o.mangaId = m.id
+                    AND (c.progress IS NULL OR c.progress < 1.0)
+                    AND (m.showHalfChapters = 1 OR CAST(c.number AS INTEGER) = c.number)
+                    AND o.priority = (SELECT MIN(priority) FROM origin WHERE mangaId = m.id)
+                    AND os.priority = (SELECT MIN(priority) FROM originScanlator WHERE originId = o.id)
+                ), 0) AS INTEGER) AS unread
                 
             FROM manga m
         """
         
         try db.execute(sql: sql)
+        
+        // Add strategic indexes for the optimized view
+        try createEntryViewIndexes(db)
+    }
+    
+    private func createEntryViewIndexes(_ db: Database) throws {
+        // Index for chapter progress and unread calculations
+        try db.execute(sql: """
+            CREATE INDEX IF NOT EXISTS idx_chapter_progress_origin 
+            ON chapter(originId, progress, number)
+        """)
+        
+        // Covering index for origin priority lookups
+        try db.execute(sql: """
+            CREATE INDEX IF NOT EXISTS idx_origin_manga_priority_covering 
+            ON origin(mangaId, priority, id, sourceId)
+        """)
+        
+        // Covering index for originScanlator priority lookups
+        try db.execute(sql: """
+            CREATE INDEX IF NOT EXISTS idx_origin_scanlator_priority_covering
+            ON originScanlator(originId, priority, scanlatorId)
+        """)
+        
+        // Index for active cover lookups (already exists but ensuring it's here)
+        try db.execute(sql: """
+            CREATE INDEX IF NOT EXISTS idx_cover_active_manga 
+            ON cover(mangaId, active, id, url) 
+            WHERE active = 1
+        """)
     }
 }

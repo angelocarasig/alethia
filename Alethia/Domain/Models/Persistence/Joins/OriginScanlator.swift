@@ -53,6 +53,10 @@ extension OriginScanlator: DatabaseModel {
             // Ensure unique priority per origin
             t.uniqueKey([Columns.originId.name, Columns.priority.name], onConflict: .fail)
         })
+        
+        try db.create(index: "idx_origin_scanlator_priority",
+                      on: OriginScanlator.databaseTableName,
+                      columns: [Columns.originId.name, Columns.priority.name])
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
