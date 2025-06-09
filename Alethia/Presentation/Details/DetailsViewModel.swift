@@ -46,6 +46,8 @@ final class DetailsViewModel: ObservableObject {
     private let getAllCollectionsUseCase: GetAllCollectionsUseCase
     private let addCollectionUseCase: AddCollectionUseCase
     private let updateMangaCollectionsUseCase: UpdateMangaCollectionsUseCase
+    private let updateCollectionUseCase: UpdateCollectionUseCase
+    private let deleteCollectionUseCase: DeleteCollectionUseCase
     
     // Priority management
     private let updateOriginPriorityUseCase: UpdateOriginPriorityUseCase
@@ -73,6 +75,8 @@ final class DetailsViewModel: ObservableObject {
         self.getAllCollectionsUseCase = injector.makeGetAllCollectionsUseCase()
         self.addCollectionUseCase = injector.makeAddCollectionUseCase()
         self.updateMangaCollectionsUseCase = injector.makeUpdateMangaCollectionsUseCase()
+        self.updateCollectionUseCase = injector.makeUpdateCollectionUseCase()
+        self.deleteCollectionUseCase = injector.makeDeleteCollectionUseCase()
         
         // Priority operations
         self.updateOriginPriorityUseCase = injector.makeUpdateOriginPriorityUseCase()
@@ -401,6 +405,14 @@ extension DetailsViewModel {
         }
         
         try updateMangaCollectionsUseCase.execute(mangaId: mangaId, collectionIds: collections)
+    }
+    
+    func updateCollection(collectionId: Int64, newName: String, newIcon: String, newColor: String) throws -> Void {
+        try updateCollectionUseCase.execute(collectionId: collectionId, newName: newName, newIcon: newIcon, newColor: newColor)
+    }
+    
+    func deleteCollection(collectionId: Int64) throws -> Void {
+        try deleteCollectionUseCase.execute(collectionId: collectionId)
     }
 }
 

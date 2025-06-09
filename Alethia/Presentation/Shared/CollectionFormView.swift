@@ -1,5 +1,5 @@
 //
-//  NewCollectionView.swift
+//  CollectionFormView.swift
 //  Alethia
 //
 //  Created by Angelo Carasig on 4/6/2025.
@@ -7,20 +7,47 @@
 
 import SwiftUI
 
-struct NewCollectionView: View {
+struct CollectionFormView: View {
     @Environment(\.dismiss) private var dismiss
     
-    // Callback for creating collection
-    typealias CreateCollectionResult = Result<Void, Error>
-    private let onCreateCollection: (String, String, String) -> CreateCollectionResult
+    // Configuration
+    enum Mode {
+        case create
+        case edit(Collection)
+        
+        var title: String {
+            switch self {
+            case .create: return "New Collection"
+            case .edit: return "Edit Collection"
+            }
+        }
+        
+        var actionButtonTitle: String {
+            switch self {
+            case .create: return "Create"
+            case .edit: return "Save"
+            }
+        }
+    }
     
+    let mode: Mode
+    
+    // Callbacks
+    typealias CollectionResult = Result<Void, Error>
+    private let onSave: (String, String, String) -> CollectionResult
+    
+    // Form state
     @State private var collectionName: String = ""
     @State private var selectedColor: Color = .blue
     @State private var selectedIcon: String = "folder.fill"
-    @State private var isCreating: Bool = false
+    @State private var isProcessing: Bool = false
     @State private var showingIconPicker: Bool = false
-    
     @State private var errorMessage: String? = nil
+    
+    // For edit mode - track original values
+    @State private var originalName: String = ""
+    @State private var originalColor: String = ""
+    @State private var originalIcon: String = ""
     
     // Popular icon options for quick selection
     private let popularIcons: [String] = [
@@ -34,8 +61,20 @@ struct NewCollectionView: View {
         !collectionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
-    init(onCreateCollection: @escaping (String, String, String) -> CreateCollectionResult) {
-        self.onCreateCollection = onCreateCollection
+    private var hasChanges: Bool {
+        switch mode {
+        case .create:
+            return true // Always allow saving in create mode
+        case .edit:
+            return collectionName != originalName ||
+            selectedColor.hex != originalColor ||
+            selectedIcon != originalIcon
+        }
+    }
+    
+    init(mode: Mode, onSave: @escaping (String, String, String) -> CollectionResult) {
+        self.mode = mode
+        self.onSave = onSave
     }
     
     var body: some View {
@@ -44,7 +83,7 @@ struct NewCollectionView: View {
                 Section {
                     CollectionRowPreview(
                         name: collectionName,
-                        itemCount: 0,
+                        itemCount: itemCount,
                         icon: selectedIcon,
                         color: selectedColor
                     )
@@ -74,6 +113,7 @@ struct NewCollectionView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
                         .submitLabel(.done)
+                        .onChange(of: collectionName) { errorMessage = nil }
                 } header: {
                     Text("Collection Name")
                 }
@@ -104,39 +144,68 @@ struct NewCollectionView: View {
                 }
             }
             .listSectionSpacing(.compact)
-            .navigationTitle("New Collection")
+            .navigationTitle(mode.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") {
-                        createCollection()
+                    Button(mode.actionButtonTitle) {
+                        saveCollection()
                     }
                     .fontWeight(.semibold)
-                    .disabled(!isFormValid || isCreating)
+                    .disabled(!isFormValid || isProcessing || !hasChanges)
                 }
             }
             .sheet(isPresented: $showingIconPicker) {
                 IconPickerSheet(selectedIcon: $selectedIcon, selectedColor: selectedColor)
             }
+            .onAppear {
+                setupInitialValues()
+            }
         }
     }
     
-    private func createCollection() {
+    private var itemCount: Int {
+        switch mode {
+        case .create:
+            return 0
+        case .edit:
+            return 999
+        }
+    }
+    
+    private func setupInitialValues() {
+        switch mode {
+        case .create:
+            // Default values are already set
+            break
+        case .edit(let collection):
+            collectionName = collection.name
+            selectedColor = Color(hex: collection.color)
+            selectedIcon = collection.icon
+            
+            // Store original values
+            originalName = collection.name
+            originalColor = collection.color
+            originalIcon = collection.icon
+        }
+    }
+    
+    private func saveCollection() {
         guard isFormValid else { return }
         
         errorMessage = nil
-        isCreating = true
+        isProcessing = true
         
-        let result = onCreateCollection(collectionName, selectedColor.hex, selectedIcon)
+        let result = onSave(collectionName, selectedColor.hex, selectedIcon)
         
         switch result {
         case .success:
-            isCreating = false
+            isProcessing = false
             dismiss()
             
         case .failure(let error):
             withAnimation {
-                isCreating = false
+                isProcessing = false
                 errorMessage = error.localizedDescription
             }
         }

@@ -117,7 +117,7 @@ struct CollectionSelectorView: View {
             showingNewCollectionSheet = true
         }
         .sheet(isPresented: $showingNewCollectionSheet) {
-            NewCollectionView { name, color, icon in
+            CollectionFormView(mode: .create) { name, color, icon in
                 do {
                     try vm.createCollection(name: name, color: color, icon: icon)
                     return .success(())

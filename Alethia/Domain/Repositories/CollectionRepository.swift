@@ -14,4 +14,8 @@ protocol CollectionRepository {
     func getAllCollections() -> AnyPublisher<[CollectionExtended], Never>
     
     func addCollection(name: String, color: String, icon: String) throws -> Void
+    
+    func updateCollection(collectionId: Int64, newName: String, newIcon: String, newColor: String) throws -> Void
+    
+    func deleteCollection(collectionId: Int64) throws -> Void
 }

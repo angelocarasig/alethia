@@ -179,7 +179,7 @@ struct CollectionRowPreview: View {
             itemCount: itemCount,
             icon: icon,
             color: color,
-            isSelected: false
+            isSelected: true
         )
         .listRowInsets(EdgeInsets())
         .listRowBackground(Color.clear)

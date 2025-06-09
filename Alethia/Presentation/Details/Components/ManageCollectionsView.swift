@@ -11,6 +11,7 @@ struct ManageCollectionsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var vm: DetailsViewModel
     
+    // MARK: - State Properties
     @State private var selectedCollections: Set<Int64> = []
     @State private var searchText: String = ""
     @State private var hasChanges: Bool = false
@@ -18,8 +19,9 @@ struct ManageCollectionsView: View {
     @State private var showError: Bool = false
     @State private var errorMessage: String = ""
     @State private var showCreateSheet: Bool = false
+    @State private var collectionToDelete: Collection? = nil
+    @State private var showDeleteConfirmation: Bool = false
     
-    // MARK: - Computed Properties
     private var currentCollections: Set<Int64> {
         Set(vm.details?.collections.compactMap(\.collection.id) ?? [])
     }
@@ -32,123 +34,183 @@ struct ManageCollectionsView: View {
     }
     
     private var changeCount: Int {
-        abs(selectedCollections.count - currentCollections.count)
+        // Filter out any selected collections that no longer exist in vm.collections
+        let existingCollectionIds = Set(vm.collections.compactMap(\.collection.id))
+        let validSelectedCollections = selectedCollections.intersection(existingCollectionIds)
+        let validCurrentCollections = currentCollections.intersection(existingCollectionIds)
+        
+        // Calculate the symmetric difference between valid collections
+        let changes = validSelectedCollections.symmetricDifference(validCurrentCollections)
+        return changes.count
     }
     
     // MARK: - Body
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 32) {
-                        SearchBar(searchText: $searchText)
-                        CollectionsSection()
-                    }
-                    .padding(.top, 24)
-                    .padding(.bottom, hasChanges ? 100 : 24)
-                    .padding(.horizontal, Constants.Padding.screen)
-                }
-                
-                if hasChanges {
-                    BottomActionBar()
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
+                mainContent
+                bottomActionBar
             }
             .navigationTitle("Manage Collections")
             .navigationBarTitleDisplayMode(.automatic)
             .toolbar { toolbarContent }
-            .onAppear { selectedCollections = currentCollections }
+            .onAppear { setupInitialState() }
             .onChange(of: selectedCollections) { updateChangeState() }
-            .alert("Error", isPresented: $showError) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(errorMessage)
+            .alert("Error", isPresented: $showError) { errorAlert }
+            .confirmationDialog(
+                "Delete Collection",
+                isPresented: $showDeleteConfirmation,
+                titleVisibility: .visible,
+                presenting: collectionToDelete
+            ) { collection in
+                deleteConfirmationActions(for: collection)
+            } message: { collection in
+                Text("Are you sure you want to delete \"\(collection.name)\"? This action cannot be undone.")
             }
-            .sheet(isPresented: $showCreateSheet) {
-                NewCollectionView { name, color, icon in
-                    do {
-                        try vm.addCollection(name: name, color: color, icon: icon)
-                        return .success(())
-                    } catch {
-                        return .failure(error)
-                    }
-                }
-            }
+            .sheet(isPresented: $showCreateSheet) { createCollectionSheet }
         }
     }
 }
 
-// MARK: - View Components
+// MARK: - Main Content
 private extension ManageCollectionsView {
     @ViewBuilder
-    func CollectionsSection() -> some View {
-        if vm.collections.isEmpty {
-            EmptyStateView(showCreateSheet: $showCreateSheet)
-        } else if filteredCollections.isEmpty && !searchText.isEmpty {
-            NoResultsView()
-        } else {
-            LazyVStack(spacing: 0) {
-                ForEach(filteredCollections, id: \.collection.id) { collection in
-                    if let id = collection.collection.id {
-                        CollectionRow(
-                            collection: collection,
-                            isSelected: selectedCollections.contains(id),
-                            isInCurrentCollections: currentCollections.contains(id),
-                            hasChanges: hasChanges,
-                            onToggle: { toggleCollection(id) }
-                        )
-                    }
-                }
+    var mainContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 32) {
+                searchBar
+                collectionsSection
             }
-            .cornerRadius(Constants.Corner.Radius.panel)
+            .padding(.top, 24)
+            .padding(.bottom, hasChanges ? 100 : 24)
+            .padding(.horizontal, Constants.Padding.screen)
         }
     }
     
     @ViewBuilder
-    func BottomActionBar() -> some View {
-        VStack(spacing: 0) {
-            Divider()
-            
-            HStack(spacing: Constants.Spacing.toolbar) {
-                ChangeIndicator(count: changeCount)
-                
-                Spacer()
-                
-                Button("Discard") {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        selectedCollections = currentCollections
-                    }
-                }
-                .foregroundStyle(.red)
-                
-                Button(action: saveChanges) {
-                    Group {
-                        if isSaving {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        } else {
-                            Text("Save")
-                                .fontWeight(.semibold)
-                        }
-                    }
-                    .frame(width: 60, height: 36)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(isSaving)
-            }
-            .padding(.horizontal, Constants.Padding.screen + Constants.Padding.minimal)
-            .padding(.vertical, Constants.Padding.regular)
-            .background(.regularMaterial)
+    var searchBar: some View {
+        SearchBar(searchText: $searchText)
+    }
+    
+    @ViewBuilder
+    var collectionsSection: some View {
+        if vm.collections.isEmpty {
+            emptyCollectionsView
+        } else if filteredCollections.isEmpty && !searchText.isEmpty {
+            noSearchResultsView
+        } else {
+            collectionsList
         }
     }
     
+    @ViewBuilder
+    var collectionsList: some View {
+        LazyVStack(spacing: 0) {
+            ForEach(filteredCollections, id: \.collection.id) { collectionExtended in
+                if let id = collectionExtended.collection.id {
+                    CollectionRow(
+                        collection: collectionExtended,
+                        isSelected: selectedCollections.contains(id),
+                        isInCurrentCollections: currentCollections.contains(id),
+                        hasChanges: hasChanges,
+                        onToggle: { toggleCollection(id) },
+                        onDelete: {
+                            collectionToDelete = collectionExtended.collection
+                            showDeleteConfirmation = true
+                        }
+                    )
+                }
+            }
+        }
+        .cornerRadius(Constants.Corner.Radius.panel)
+    }
+}
+
+// MARK: - Content Unavailable Views
+private extension ManageCollectionsView {
+    @ViewBuilder
+    var emptyCollectionsView: some View {
+        ContentUnavailableView {
+            Label("No Collections", systemImage: "folder")
+        } description: {
+            Text("Create your first collection to organize your library")
+        } actions: {
+            Button("Create Collection") {
+                showCreateSheet = true
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(.vertical, 60)
+    }
+    
+    @ViewBuilder
+    var noSearchResultsView: some View {
+        ContentUnavailableView.search(text: searchText)
+            .padding(.vertical, 60)
+    }
+}
+
+// MARK: - Bottom Action Bar
+private extension ManageCollectionsView {
+    @ViewBuilder
+    var bottomActionBar: some View {
+        if hasChanges {
+            VStack(spacing: 0) {
+                Divider()
+                
+                HStack(spacing: Constants.Spacing.toolbar) {
+                    ChangeIndicator(count: changeCount)
+                    
+                    Spacer()
+                    
+                    discardButton
+                    saveButton
+                }
+                .padding(.horizontal, Constants.Padding.screen + Constants.Padding.minimal)
+                .padding(.vertical, Constants.Padding.regular)
+                .background(.regularMaterial)
+            }
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+    
+    @ViewBuilder
+    var discardButton: some View {
+        Button("Discard") {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                selectedCollections = currentCollections
+            }
+        }
+        .foregroundStyle(.red)
+    }
+    
+    @ViewBuilder
+    var saveButton: some View {
+        Button(action: saveChanges) {
+            Group {
+                if isSaving {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                } else {
+                    Text("Save")
+                        .fontWeight(.semibold)
+                }
+            }
+            .frame(width: 60, height: 36)
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(isSaving)
+    }
+}
+
+// MARK: - Toolbar
+private extension ManageCollectionsView {
     @ToolbarContentBuilder
     var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .navigationBarTrailing) {
             Button {
                 showCreateSheet = true
-            }
-            label: {
+            } label: {
                 Image(systemName: "plus")
                     .fontWeight(.medium)
             }
@@ -156,8 +218,45 @@ private extension ManageCollectionsView {
     }
 }
 
+// MARK: - Alerts & Dialogs
+private extension ManageCollectionsView {
+    @ViewBuilder
+    var errorAlert: some View {
+        Button("OK", role: .cancel) { }
+    }
+    
+    @ViewBuilder
+    func deleteConfirmationActions(for collection: Collection) -> some View {
+        Button("Delete", role: .destructive) {
+            deleteCollection(collection)
+        }
+        Button("Cancel", role: .cancel) {
+            collectionToDelete = nil
+        }
+    }
+}
+
+// MARK: - Sheets
+private extension ManageCollectionsView {
+    @ViewBuilder
+    var createCollectionSheet: some View {
+        CollectionFormView(mode: .create) { name, color, icon in
+            do {
+                try vm.addCollection(name: name, color: color, icon: icon)
+                return .success(())
+            } catch {
+                return .failure(error)
+            }
+        }
+    }
+}
+
 // MARK: - Actions
 private extension ManageCollectionsView {
+    func setupInitialState() {
+        selectedCollections = currentCollections
+    }
+    
     func updateChangeState() {
         withAnimation(.easeInOut(duration: 0.15)) {
             hasChanges = selectedCollections != currentCollections
@@ -187,16 +286,36 @@ private extension ManageCollectionsView {
             UINotificationFeedbackGenerator().notificationOccurred(.error)
         }
     }
+    
+    func deleteCollection(_ collection: Collection) {
+        guard let id = collection.id else { return }
+        
+        do {
+            try vm.deleteCollection(collectionId: id)
+            selectedCollections.remove(id)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        } catch {
+            errorMessage = "Failed to delete collection: \(error.localizedDescription)"
+            showError = true
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+        }
+        
+        collectionToDelete = nil
+    }
 }
 
 // MARK: - Collection Row
 private struct CollectionRow: View {
+    @EnvironmentObject private var vm: DetailsViewModel
+    
     let collection: CollectionExtended
     let isSelected: Bool
     let isInCurrentCollections: Bool
     let hasChanges: Bool
     let onToggle: () -> Void
+    let onDelete: () -> Void
     
+    // MARK: - Computed Properties
     private var color: Color {
         Color(hex: collection.collection.color)
     }
@@ -220,47 +339,15 @@ private struct CollectionRow: View {
         return nil
     }
     
+    // MARK: - Body
     var body: some View {
         Button(action: onToggle) {
             HStack(spacing: Constants.Spacing.toolbar) {
-                // Icon
-                CollectionIcon(
-                    icon: collection.collection.icon,
-                    color: color
-                )
-                
-                // Content
-                VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
-                    HStack(spacing: Constants.Spacing.regular / 2) {
-                        Text(collection.collection.name)
-                            .lineLimit(1)
-                            .font(.body)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.primary)
-                        
-                        if let (iconName, iconColor) = statusIcon {
-                            PulsingIcon(
-                                systemName: iconName,
-                                color: iconColor,
-                                isPulsing: isPendingAdd || isPendingRemove
-                            )
-                            .transition(.scale.combined(with: .opacity))
-                        }
-                    }
-                    .animation(.easeInOut(duration: 0.2), value: statusIcon?.name)
-                    
-                    Text("^[\(collection.itemCount) item](inflect: true)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                
+                selectionIndicator
+                collectionIcon
+                collectionContent
                 Spacer()
-                
-                // Selection indicator
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 24))
-                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
-                    .animation(.easeInOut(duration: 0.2), value: isSelected)
+                menuButton
             }
             .padding(.horizontal, Constants.Padding.screen + Constants.Padding.minimal)
             .padding(.vertical, Constants.Padding.regular)
@@ -269,9 +356,88 @@ private struct CollectionRow: View {
         }
         .buttonStyle(.plain)
     }
+    
+    // MARK: - Components
+    @ViewBuilder
+    private var selectionIndicator: some View {
+        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+            .font(.system(size: 24))
+            .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+            .animation(.easeInOut(duration: 0.2), value: isSelected)
+    }
+    
+    @ViewBuilder
+    private var collectionIcon: some View {
+        CollectionIcon(
+            icon: collection.collection.icon,
+            color: color
+        )
+    }
+    
+    @ViewBuilder
+    private var collectionContent: some View {
+        VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
+            HStack(spacing: Constants.Spacing.regular / 2) {
+                Text(collection.collection.name)
+                    .lineLimit(1)
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.primary)
+                
+                if let (iconName, iconColor) = statusIcon {
+                    PulsingIcon(
+                        systemName: iconName,
+                        color: iconColor,
+                        isPulsing: isPendingAdd || isPendingRemove
+                    )
+                    .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: statusIcon?.name)
+            
+            Text("^[\(collection.itemCount) item](inflect: true)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+    }
+    
+    @ViewBuilder
+    private var menuButton: some View {
+        Menu {
+            NavigationLink {
+                CollectionFormView(mode: .edit(collection.collection)) { name, color, icon in
+                    do {
+                        guard let collectionId = collection.collection.id else {
+                            throw CollectionError.notFound(collection.collection.id)
+                        }
+                        
+                        try vm.updateCollection(collectionId: collectionId, newName: name, newIcon: icon, newColor: color)
+                        
+                        return .success(())
+                    } catch {
+                        return .failure(error)
+                    }
+                }
+            } label: {
+                Label("Edit Collection", systemImage: "pencil")
+            }
+            
+            Divider()
+            
+            Button(role: .destructive, action: onDelete) {
+                Label("Delete Collection", systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 16))
+                .foregroundStyle(.secondary)
+                .frame(width: 44, height: 44)
+                .contentShape(.rect)
+        }
+    }
 }
 
-// MARK: - Collection Icon
+// MARK: - Supporting Components
 private struct CollectionIcon: View {
     let icon: String
     let color: Color
@@ -289,7 +455,6 @@ private struct CollectionIcon: View {
     }
 }
 
-// MARK: - Pulsing Icon
 private struct PulsingIcon: View {
     let systemName: String
     let color: Color
@@ -302,28 +467,33 @@ private struct PulsingIcon: View {
             .font(.system(size: 16))
             .foregroundStyle(color)
             .opacity(isPulsing ? (animationPhase ? 0.3 : 1.0) : 1.0)
-            .onAppear {
-                if isPulsing {
-                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                        animationPhase = true
-                    }
-                }
-            }
+            .onAppear { startAnimation() }
             .onChange(of: isPulsing) { _, newValue in
-                if newValue {
-                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                        animationPhase = true
-                    }
-                } else {
-                    withAnimation(.default) {
-                        animationPhase = false
-                    }
-                }
+                updateAnimation(newValue)
             }
+    }
+    
+    private func startAnimation() {
+        if isPulsing {
+            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                animationPhase = true
+            }
+        }
+    }
+    
+    private func updateAnimation(_ shouldPulse: Bool) {
+        if shouldPulse {
+            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                animationPhase = true
+            }
+        } else {
+            withAnimation(.default) {
+                animationPhase = false
+            }
+        }
     }
 }
 
-// MARK: - Change Indicator
 private struct ChangeIndicator: View {
     @State private var isPulsing = false
     
@@ -331,97 +501,64 @@ private struct ChangeIndicator: View {
     
     var body: some View {
         HStack(spacing: Constants.Spacing.regular) {
-            ZStack {
-                // Background circle with pulsing glow
-                Circle()
-                    .fill(.orange.opacity(0.2))
-                    .frame(width: 32, height: 32)
-                    .overlay(
-                        Circle()
-                            .stroke(.orange.opacity(isPulsing ? 0.6 : 0.3), lineWidth: 2)
-                            .scaleEffect(isPulsing ? 1.2 : 1.0)
-                            .opacity(isPulsing ? 0 : 1)
-                    )
-                
-                // Count badge
-                Text("\(count)")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .frame(width: 24, height: 24)
-                    .background(
-                        Circle()
-                            .fill(.orange)
-                            .shadow(color: .orange.opacity(0.3), radius: Constants.Spacing.minimal, x: 0, y: 2)
-                    )
-            }
-            
-            Text(count == 1 ? "Unsaved Change" : "Unsaved Changes")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.primary)
+            pulsingBadge
+            changeText
         }
         .padding(.horizontal, Constants.Padding.regular + Constants.Padding.minimal)
         .padding(.vertical, Constants.Padding.regular / 2)
-        .background(
-            RoundedRectangle(cornerRadius: Constants.Corner.Radius.panel)
-                .fill(.orange.opacity(0.1))
-                .overlay(
-                    RoundedRectangle(cornerRadius: Constants.Corner.Radius.panel)
-                        .stroke(.orange.opacity(0.2), lineWidth: 1)
-                )
-        )
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: false)) {
-                isPulsing = true
-            }
-        }
+        .background(indicatorBackground)
+        .onAppear { startPulsing() }
     }
-}
-
-// MARK: - Empty States
-private struct EmptyStateView: View {
-    @Binding var showCreateSheet: Bool
     
-    var body: some View {
-        VStack(spacing: Constants.Spacing.large + Constants.Spacing.regular) {
-            Image(systemName: "plus.rectangle.on.folder")
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
+    @ViewBuilder
+    private var pulsingBadge: some View {
+        ZStack {
+            Circle()
+                .fill(.orange.opacity(0.2))
+                .frame(width: 32, height: 32)
+                .overlay(pulsingOverlay)
             
-            VStack(spacing: Constants.Spacing.regular) {
-                Text("No collections yet")
-                    .font(.headline)
-                
-                Text("Create your first collection to organize your library")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            
-            Button("Create Collection") {
-                showCreateSheet = true
-            }
-            .fontWeight(.medium)
-            .buttonStyle(.borderedProminent)
+            Text("\(count)")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .frame(width: 24, height: 24)
+                .background(
+                    Circle()
+                        .fill(.orange)
+                        .shadow(color: .orange.opacity(0.3), radius: Constants.Spacing.minimal, x: 0, y: 2)
+                )
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
-        .padding(.horizontal, Constants.Icon.Size.regular)
     }
-}
-
-private struct NoResultsView: View {
-    var body: some View {
-        VStack(spacing: Constants.Spacing.toolbar) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 32))
-                .foregroundStyle(.secondary)
-            
-            Text("No results found")
-                .font(.headline)
-                .foregroundStyle(.secondary)
+    
+    @ViewBuilder
+    private var pulsingOverlay: some View {
+        Circle()
+            .stroke(.orange.opacity(isPulsing ? 0.6 : 0.3), lineWidth: 2)
+            .scaleEffect(isPulsing ? 1.2 : 1.0)
+            .opacity(isPulsing ? 0 : 1)
+    }
+    
+    @ViewBuilder
+    private var changeText: some View {
+        Text(count == 1 ? "Unsaved Change" : "Unsaved Changes")
+            .font(.caption)
+            .fontWeight(.semibold)
+            .foregroundStyle(.primary)
+    }
+    
+    @ViewBuilder
+    private var indicatorBackground: some View {
+        RoundedRectangle(cornerRadius: Constants.Corner.Radius.panel)
+            .fill(.orange.opacity(0.1))
+            .overlay(
+                RoundedRectangle(cornerRadius: Constants.Corner.Radius.panel)
+                    .stroke(.orange.opacity(0.2), lineWidth: 1)
+            )
+    }
+    
+    private func startPulsing() {
+        withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: false)) {
+            isPulsing = true
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
     }
 }

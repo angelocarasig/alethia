@@ -296,14 +296,16 @@ struct AddToLibrarySheet: View {
     private func ActionFooter() -> some View {
         VStack(spacing: Constants.Spacing.large) {
             // Create New Collection Button
-            NavigationLink(destination: NewCollectionView { name, color, icon in
-                do {
-                    try vm.addCollection(name: name, color: color, icon: icon)
-                    return .success(())
-                } catch {
-                    return .failure(error)
+            NavigationLink {
+                CollectionFormView(mode: .create) { name, color, icon in
+                    do {
+                        try vm.addCollection(name: name, color: color, icon: icon)
+                        return .success(())
+                    } catch {
+                        return .failure(error)
+                    }
                 }
-            }) {
+            } label: {
                 Label("Create New Collection", systemImage: "plus")
                     .font(.headline)
                     .fontWeight(.semibold)

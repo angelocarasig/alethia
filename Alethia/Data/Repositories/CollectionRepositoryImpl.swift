@@ -28,4 +28,12 @@ extension CollectionRepositoryImpl: CollectionRepository {
     func addCollection(name: String, color: String, icon: String) throws {
         try local.addCollection(name: name, color: color, icon: icon)
     }
+    
+    func updateCollection(collectionId: Int64, newName: String, newIcon: String, newColor: String) throws {
+        try local.updateCollection(collectionId: collectionId, newName: newName, newIcon: newIcon, newColor: newColor)
+    }
+    
+    func deleteCollection(collectionId: Int64) throws {
+        try local.deleteCollection(collectionId: collectionId)
+    }
 }
