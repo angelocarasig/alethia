@@ -60,14 +60,16 @@ struct SourceHomeScreen: View {
             }
             
             ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: Constants.Spacing.toolbar) {
-                    NavigationLink(destination: SearchSourceView(source: source)) {
-                        Image(systemName: "magnifyingglass")
-                    }
+                NavigationLink(destination: SearchSourceView(source: source)) {
+                    Image(systemName: "magnifyingglass")
+                }
+            }
+            
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
                     
-                    Button(action: {}) {
-                        Image(systemName: "gearshape.fill")
-                    }
+                } label: {
+                    Image(systemName: "gearshape.fill")
                 }
             }
         }

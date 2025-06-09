@@ -18,4 +18,7 @@ protocol CollectionRepository {
     func updateCollection(collectionId: Int64, newName: String, newIcon: String, newColor: String) throws -> Void
     
     func deleteCollection(collectionId: Int64) throws -> Void
+    
+    // where each ID maps to their new ordering value
+    func updateCollectionOrder(collections: [Int64: Int]) throws -> Void
 }

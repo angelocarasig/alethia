@@ -36,54 +36,58 @@ struct LibraryScreen: View {
     
     @ToolbarContentBuilder
     var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button {
+                vm.showQueue = true
+            } label: {
+                let operationCount = QueueProvider.shared.operations.count
+                
+                Image(systemName: "hourglass")
+                    .overlay(alignment: .topTrailing) {
+                        if operationCount > 0 {
+                            Image(systemName: "circle.fill")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.red)
+                                .background(
+                                    Circle()
+                                        .fill(.white)
+                                        .frame(width: 10, height: 10)
+                                )
+                                .offset(x: 4, y: -4)
+                                .scaleEffect(operationCount > 0 ? 1.0 : 0.8)
+                                .animation(
+                                    .easeInOut(duration: 0.6)
+                                    .repeatForever(autoreverses: true),
+                                    value: operationCount > 0
+                                )
+                        }
+                    }
+            }
+        }
+        
         ToolbarItem(placement: .topBarTrailing) {
-            HStack(spacing: Constants.Spacing.toolbar) {
-                Button {
-                    vm.showQueue = true
-                } label: {
-                    let operationCount = QueueProvider.shared.operations.count
-                    
-                    Image(systemName: "hourglass")
-                        .overlay(alignment: .topTrailing) {
-                            if operationCount > 0 {
-                                Image(systemName: "circle.fill")
-                                    .font(.system(size: 8))
-                                    .foregroundStyle(.red)
-                                    .background(
-                                        Circle()
-                                            .fill(.white)
-                                            .frame(width: 10, height: 10)
-                                    )
-                                    .offset(x: 4, y: -4)
-                                    .scaleEffect(operationCount > 0 ? 1.0 : 0.8)
-                                    .animation(
-                                        .easeInOut(duration: 0.6)
-                                        .repeatForever(autoreverses: true),
-                                        value: operationCount > 0
-                                    )
-                            }
+            Button {
+                vm.showFilters = true
+            } label: {
+                Image(systemName: "line.horizontal.3.decrease")
+                    .overlay {
+                        if !vm.filters.activeFilters.isEmpty {
+                            Text("\(vm.filters.activeFilters.count)")
+                                .font(.caption)
+                                .foregroundColor(.white)
+                                .padding(Constants.Padding.regular)
+                                .background(Circle().fill(Color.red))
+                                .offset(x: 10, y: -10)
                         }
-                }
-                
-                Button {
-                    vm.showFilters = true
-                } label: {
-                    Image(systemName: "line.horizontal.3.decrease")
-                        .overlay {
-                            if !vm.filters.activeFilters.isEmpty {
-                                Text("\(vm.filters.activeFilters.count)")
-                                    .font(.caption)
-                                    .foregroundColor(.white)
-                                    .padding(Constants.Padding.regular)
-                                    .background(Circle().fill(Color.red))
-                                    .offset(x: 10, y: -10)
-                            }
-                        }
-                }
-                
-                NavigationLink(destination: Text("Hi")) {
-                    Image(systemName: "gearshape")
-                }
+                    }
+            }
+        }
+        
+        ToolbarItem(placement: .topBarTrailing) {
+            NavigationLink {
+                SettingsLibraryView()
+            } label: {
+                Image(systemName: "gearshape")
             }
         }
     }

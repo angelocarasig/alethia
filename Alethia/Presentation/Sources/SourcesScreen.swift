@@ -50,21 +50,25 @@ struct SourcesScreen: View {
             .environmentObject(vm)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: Constants.Spacing.toolbar) {
-                        NavigationLink(destination: SearchHomeView()) {
-                            Image(systemName: "magnifyingglass")
-                        }
-                        .disabled(vm.sources.isEmpty)
+                    NavigationLink(destination: SearchHomeView()) {
+                        Image(systemName: "magnifyingglass")
+                    }
+                    .disabled(vm.sources.isEmpty)
+                }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button{
+                        vm.openAddSourceSheet = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
                         
-                        Button(action: {
-                            vm.openAddSourceSheet = true
-                        }) {
-                            Image(systemName: "plus")
-                        }
-                        
-                        Button(action: {}) {
-                            Image(systemName: "gearshape.fill")
-                        }
+                    } label: {
+                        Image(systemName: "gearshape.fill")
                     }
                 }
             }

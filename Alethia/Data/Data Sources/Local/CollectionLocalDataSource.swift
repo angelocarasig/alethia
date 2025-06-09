@@ -23,16 +23,28 @@ extension CollectionLocalDataSource {
             throw CollectionError.badName(name)
         }
         
-        guard name.count < Constants.Collections.maximumCollectionNameLength else {
+        guard name.count <= Constants.Collections.maximumCollectionNameLength else {
             throw CollectionError.maximumLengthReached(name.count)
         }
         
-        guard name.count > Constants.Collections.minimumCollectionNameLength else {
+        guard name.count >= Constants.Collections.minimumCollectionNameLength else {
             throw CollectionError.minimumLengthNotReached(name.count)
         }
         
         try DatabaseProvider.shared.writer.write { db in
-            try Collection(name: name, color: color, icon: icon).insert(db)
+            // Get the highest ordering value
+            let ordering: Int = try Collection
+                .select(max(Collection.Columns.ordering))
+                .asRequest(of: Int.self)
+                .fetchOne(db) ?? 0
+            
+            // New collection gets the next ordering value
+            try Collection(
+                name: name,
+                color: color,
+                icon: icon,
+                ordering: ordering + 1
+            ).insert(db)
         }
     }
     
@@ -45,7 +57,7 @@ extension CollectionLocalDataSource {
                 FROM collection
                 LEFT JOIN mangaCollection mc ON mc.collectionId = collection.id
                 GROUP BY collection.id
-                ORDER BY collection.name ASC
+                ORDER BY collection.ordering ASC
             """
             
             return try CollectionExtended.fetchAll(db, sql: sql)
@@ -61,11 +73,11 @@ extension CollectionLocalDataSource {
             throw CollectionError.badName(newName)
         }
         
-        guard newName.count < Constants.Collections.maximumCollectionNameLength else {
+        guard newName.count <= Constants.Collections.maximumCollectionNameLength else {
             throw CollectionError.maximumLengthReached(newName.count)
         }
         
-        guard newName.count > Constants.Collections.minimumCollectionNameLength else {
+        guard newName.count >= Constants.Collections.minimumCollectionNameLength else {
             throw CollectionError.minimumLengthNotReached(newName.count)
         }
         
@@ -84,11 +96,67 @@ extension CollectionLocalDataSource {
     
     func deleteCollection(collectionId: Int64) throws -> Void {
         try DatabaseProvider.shared.writer.write { db in
-            guard var collection = try Collection.fetchOne(db, id: collectionId) else {
+            guard let collectionToDelete = try Collection.fetchOne(db, id: collectionId) else {
                 throw CollectionError.notFound(collectionId)
             }
             
-            try collection.delete(db)
+            let deletedOrdering = collectionToDelete.ordering
+            
+            // Delete the collection
+            try collectionToDelete.delete(db)
+            
+            // Reorder all collections with higher ordering values
+            try db.execute(
+                sql: """
+                    UPDATE collection 
+                    SET ordering = ordering - 1 
+                    WHERE ordering > ?
+                """,
+                arguments: [deletedOrdering]
+            )
+        }
+    }
+    
+    func updateCollectionOrder(collections: [Int64: Int]) throws {
+        try database.write { db in
+            // convert map to array of tuples sorted by the new ordering value
+            let newOrder = collections
+                .map { (collectionId: $0.key, ordering: $0.value) }
+                .sorted { $0.ordering < $1.ordering }
+            
+            // validate that ordering values are sequential starting from 0
+            let expectedOrderings = Array(0..<newOrder.count)
+            let actualOrderings = newOrder.map(\.ordering)
+            
+            guard actualOrderings == expectedOrderings else {
+                throw ApplicationError.internalError
+            }
+            
+            // verify all collections exist
+            let collectionIds = newOrder.map(\.collectionId)
+            let existingCollections = try Collection
+                .filter(collectionIds.contains(Collection.Columns.id))
+                .fetchAll(db)
+            
+            guard existingCollections.count == newOrder.count else {
+                throw CollectionError.notFound(nil)
+            }
+            
+            // temporary negative ordering to avoid conflicts
+            let baseOffset = -65535
+            for (index, (collectionId, _)) in newOrder.enumerated() {
+                let tempOrdering = baseOffset - index
+                try Collection
+                    .filter(Collection.Columns.id == collectionId)
+                    .updateAll(db, Collection.Columns.ordering.set(to: tempOrdering))
+            }
+            
+            // update to final ordering values (keeping 0-based)
+            for (collectionId, newOrdering) in newOrder {
+                try Collection
+                    .filter(Collection.Columns.id == collectionId)
+                    .updateAll(db, Collection.Columns.ordering.set(to: newOrdering))
+            }
         }
     }
 }

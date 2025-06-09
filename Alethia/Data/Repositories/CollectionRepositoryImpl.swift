@@ -36,4 +36,8 @@ extension CollectionRepositoryImpl: CollectionRepository {
     func deleteCollection(collectionId: Int64) throws {
         try local.deleteCollection(collectionId: collectionId)
     }
+    
+    func updateCollectionOrder(collections: [Int64 : Int]) throws {
+        try local.updateCollectionOrder(collections: collections)
+    }
 }

@@ -190,4 +190,8 @@ extension DependencyInjector {
     func makeDeleteCollectionUseCase() -> DeleteCollectionUseCase {
         return DeleteCollectionUseCaseImpl(repository: collectionRepository)
     }
+    
+    func makeUpdateCollectionOrderUseCase() -> UpdateCollectionOrderUseCase {
+        return UpdateCollectionOrderUseCaseImpl(repository: collectionRepository)
+    }
 }

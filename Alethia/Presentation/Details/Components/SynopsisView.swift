@@ -55,11 +55,11 @@ struct SynopsisView: View {
             if truncated {
                 HStack {
                     Spacer()
-                    Button(action: {
+                    Button {
                         withAnimation {
                             isExpanded.toggle()
                         }
-                    }) {
+                    } label: {
                         Text(Image(systemName: isExpanded ? "chevron.up" : "chevron.down"))
                         Text(isExpanded ? "Show Less" : "Show More")
                             .font(.subheadline)

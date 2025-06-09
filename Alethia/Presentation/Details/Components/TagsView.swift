@@ -38,11 +38,11 @@ struct TagsView: View {
             if tags.count > 10 {
                 HStack {
                     Spacer()
-                    Button(action: {
+                    Button {
                         withAnimation {
                             showAll.toggle()
                         }
-                    }) {
+                    } label: {
                         Text(Image(systemName: showAll ? "chevron.up" : "chevron.down"))
                         Text(showAll ? "Show Less" : "Show More")
                             .font(.subheadline)

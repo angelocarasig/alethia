@@ -59,10 +59,23 @@ private struct ChapterHeaderView: View {
                         EmptyView()
                     }
                 } label: {
-                    if targetChapter != nil, let index = targetChapterIndex {
-                        Text(index == (vm.details?.chapters.count ?? 0) - 1 ? "Start Reading" : "Continue Reading")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    if let chapter = targetChapter, let index = targetChapterIndex {
+                        HStack(spacing: 0) {
+                            Text(index == (vm.details?.chapters.count ?? 0) - 1 ? "Start Reading" : "Continue Reading")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                            
+                            Divider()
+                                .frame(height: 28)
+                                .overlay(Color.text)
+                                .padding(.horizontal, Constants.Spacing.regular)
+                            
+                            Text("Ch. \(chapter.chapter.number.toString())")
+                                .font(.headline)
+                                .frame(minWidth: 60)
+                                .padding(.trailing, Constants.Spacing.regular)
+                        }
+                        .frame(maxHeight: .infinity)
                     } else {
                         Text("All Chapters Read")
                             .font(.headline)
@@ -150,8 +163,12 @@ struct ChapterRow: View {
             VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
                 HStack {
                     Text("Chapter \(item.chapter.number.toString())")
-                    Text("•").foregroundColor(.secondary)
-                    Text(item.chapter.date.toRelativeString()).foregroundColor(.secondary)
+                    Text("•")
+                        .foregroundColor(.secondary)
+                    
+                    Text(item.chapter.date.toRelativeString())
+                        .lineLimit(1)
+                        .foregroundColor(.secondary)
                     
                     if item.chapter.date >= Calendar.current.date(byAdding: .day, value: -3, to: Date())! {
                         Text("NEW").badgeStyle(.appRed)

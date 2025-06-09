@@ -14,6 +14,8 @@ struct Collection: Codable, Identifiable, Equatable {
     var name: String
     var color: String // hex color string (e.g., "#FF0000")
     var icon: String  // sf symbol icon
+    
+    var ordering: Int = 0
 }
 
 extension Collection {
@@ -27,6 +29,7 @@ extension Collection: TableRecord {
         static let name = Column(CodingKeys.name)
         static let color = Column(CodingKeys.color)
         static let icon = Column(CodingKeys.icon)
+        static let ordering = Column(CodingKeys.ordering)
     }
 }
 
@@ -57,10 +60,52 @@ extension Collection: DatabaseModel {
             t.column(Columns.icon.name, .text)
                 .notNull()
                 .defaults(to: "square.inset.filled")
+            
+            t.column(Columns.ordering.name, .integer)
+                .notNull()
+                .unique()
+                .indexed()
+                .defaults(to: 0)
         })
+        
+        try db.create(index: "idx_collection_unique_priority",
+                      on: Collection.databaseTableName,
+                      columns: [Columns.ordering.name],
+                      unique: true)
     }
     
     static func migrate(with migrator: inout GRDB.DatabaseMigrator, from version: Version) throws {
-        // No migrations needed - current schema is baseline
+        if version <= Version(1, 0, 1) {
+            // add ordering
+            migrator.registerMigration("add_collection_ordering_v1.0.1") { db in
+                // Add the ordering column without unique constraint first
+                try db.alter(table: Collection.databaseTableName) { t in
+                    t.add(column: Columns.ordering.name, .integer)
+                        .notNull()
+                        .defaults(to: 0)
+                }
+                
+                // Fetch all collections ordered by name
+                let collections = try Collection
+                    .order(Columns.name.asc)
+                    .fetchAll(db)
+                
+                // Update each collection with incremental ordering
+                for (index, collection) in collections.enumerated() {
+                    try db.execute(
+                        sql: "UPDATE collection SET ordering = ? WHERE id = ?",
+                        arguments: [index, collection.id]
+                    )
+                }
+                
+                // Now add the unique index after all values are set
+                try db.create(
+                    index: "idx_collection_unique_ordering",
+                    on: Collection.databaseTableName,
+                    columns: [Columns.ordering.name],
+                    unique: true
+                )
+            }
+        }
     }
 }

@@ -46,20 +46,20 @@ struct ReaderScreen: View {
                     Text(error.localizedDescription)
                         .padding()
                 } actions: {
-                    Button(action: {
+                    Button {
                         Task {
                             await vm.loadChapter()
                         }
-                    }) {
+                    } label: {
                         Text("Retry")
                             .fontWeight(.semibold)
                             .padding(.horizontal, Constants.Padding.regular)
                             .padding(.vertical, Constants.Padding.minimal)
                     }
                     
-                    Button(action: {
+                    Button {
                         dismiss()
-                    }) {
+                    } label: {
                         Text("Exit")
                             .fontWeight(.semibold)
                             .padding(.horizontal, Constants.Padding.regular)

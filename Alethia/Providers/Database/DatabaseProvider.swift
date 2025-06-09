@@ -10,8 +10,7 @@ import GRDB
 import Combine
 
 final class DatabaseProvider {
-    // Set this as baseline version - no migrations needed
-    public let version: Version = Version(1, 0, 0)
+    public let version: Version = Version(1, 0, 1)
     
     public let models: [DatabaseMigratable.Type] = [
         // MARK: - Source Infrastructure (No dependencies)
