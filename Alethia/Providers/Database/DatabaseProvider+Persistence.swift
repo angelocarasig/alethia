@@ -22,7 +22,7 @@ extension DatabaseProvider {
             try db.execute(sql: "PRAGMA foreign_keys = ON")
             
             // for logs
-//             db.trace { print($0) }
+            // db.trace { print($0) }
         }
         
         return config

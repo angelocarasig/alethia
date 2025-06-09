@@ -89,9 +89,10 @@ struct ArtworkListView: View {
             
             Menu {
                 if let cover = currentCover {
-                    ShareLink(item: URL(string: cover.url)!) {
+                    ShareLink(item: URL(string: cover.url) ?? URL(string: "https://example.com")!) {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
+                    .disabled(URL(string: cover.url) == nil)
                     
                     Button {
                         // TODO: Save to photos
@@ -134,8 +135,10 @@ struct ArtworkListView: View {
                     .frame(maxWidth: geometry.size.width * 0.85)
                     .cornerRadius(Constants.Corner.Radius.panel)
                     .contextMenu {
-                        ShareLink(item: URL(string: cover.url)!) {
-                            Label("Share", systemImage: "square.and.arrow.up")
+                        if let url = URL(string: cover.url) {
+                            ShareLink(item: url) {
+                                Label("Share", systemImage: "square.and.arrow.up")
+                            }
                         }
                         
                         Button {
@@ -228,12 +231,14 @@ struct ArtworkListView: View {
                     }
                     .disabled(cover.active)
                     
-                    ShareLink(item: URL(string: cover.url)!) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.title3)
-                            .frame(width: 44, height: 44)
-                            .background(Color.tint)
-                            .clipShape(.circle)
+                    if let url = URL(string: cover.url) {
+                        ShareLink(item: url) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.title3)
+                                .frame(width: 44, height: 44)
+                                .background(Color.tint)
+                                .clipShape(.circle)
+                        }
                     }
                 }
             }

@@ -9,11 +9,9 @@ import Foundation
 import GRDB
 
 extension DatabaseProvider {
-    func makeViews() throws {
-        try writer.write { db in
-            try createBestChapterView(db) // Helper view for performance
-            try createMangaEntryView(db)
-        }
+    func makeViews(db: Database) throws {
+        try createBestChapterView(db) // Helper view for performance
+        try createMangaEntryView(db)
     }
     
     // Create a materialized helper view that pre-calculates the best chapter for each number
@@ -57,7 +55,8 @@ extension DatabaseProvider {
                 
                 -- Get the source ID from the best origin
                 best_origin.sourceId AS sourceId,
-                
+                best_origin.slug AS slug,
+        
                 -- Construct the full URL
                 (RTRIM(h.baseUrl, '/') || '/' || 
                  LTRIM(s.path, '/') || '/manga/' || 

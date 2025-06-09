@@ -200,7 +200,7 @@ private extension SourceLocalDataSource {
 
 extension SourceLocalDataSource {
     func match(for entry: Entry, db: Database) throws -> EntryMatch {
-        // 1. Match by mangaId
+        // 1. Match by mangaId (highest priority - always exact)
         if let mangaId = entry.mangaId,
            let _ = try Manga.fetchOne(db, key: mangaId) {
             return .exact
@@ -208,11 +208,42 @@ extension SourceLocalDataSource {
         
         let title = entry.title
         let sourceId = entry.sourceId
+        let slug = entry.slug
         
-        // 2. Check for a match by title + source (via origin)
+        // 2. Check for exact match by title + source + slug
         if let sourceId = sourceId {
-            // First check main title match with source
-            let mangaWithMatchingSource = try Manga
+            // First check main title match with source and slug
+            let mangaWithMatchingSourceAndSlug = try Manga
+                .filter(Manga.Columns.inLibrary == true)
+                .filter(Manga.Columns.title == title)
+                .joining(required: Manga.origins
+                    .filter(Origin.Columns.sourceId == sourceId)
+                    .filter(Origin.Columns.slug == slug)
+                )
+                .fetchOne(db)
+            
+            if mangaWithMatchingSourceAndSlug != nil {
+                return .exact
+            }
+            
+            // Then check alternative titles with source and slug
+            let mangaWithAltTitleSourceAndSlug = try Manga
+                .filter(Manga.Columns.inLibrary == true)
+                .joining(required: Manga.titles
+                    .filter(Title.Columns.title == title)
+                )
+                .joining(required: Manga.origins
+                    .filter(Origin.Columns.sourceId == sourceId)
+                    .filter(Origin.Columns.slug == slug)
+                )
+                .fetchOne(db)
+            
+            if mangaWithAltTitleSourceAndSlug != nil {
+                return .exact
+            }
+            
+            // Check for partial match: same title and source but different slug
+            let mangaWithMatchingSourceOnly = try Manga
                 .filter(Manga.Columns.inLibrary == true)
                 .filter(Manga.Columns.title == title)
                 .joining(required: Manga.origins
@@ -220,12 +251,12 @@ extension SourceLocalDataSource {
                 )
                 .fetchOne(db)
             
-            if mangaWithMatchingSource != nil {
-                return .exact
+            if mangaWithMatchingSourceOnly != nil {
+                return .partial
             }
             
-            // Then check alternative titles with source
-            let mangaWithAltTitleAndSource = try Manga
+            // Check alternative titles with source only (no slug match)
+            let mangaWithAltTitleAndSourceOnly = try Manga
                 .filter(Manga.Columns.inLibrary == true)
                 .joining(required: Manga.titles
                     .filter(Title.Columns.title == title)
@@ -235,8 +266,8 @@ extension SourceLocalDataSource {
                 )
                 .fetchOne(db)
             
-            if mangaWithAltTitleAndSource != nil {
-                return .exact
+            if mangaWithAltTitleAndSourceOnly != nil {
+                return .partial
             }
         }
         

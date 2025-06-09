@@ -224,6 +224,8 @@ extension DetailsViewModel {
             mangaId: mangaId,
             sourceId: sourceId,
             title: entry.title,
+            // TODO: Confirm
+            slug: entry.slug,
             cover: entry.cover,
             fetchUrl: entry.fetchUrl,
             unread: entry.unread

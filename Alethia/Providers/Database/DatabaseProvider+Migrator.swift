@@ -27,7 +27,9 @@ extension DatabaseProvider {
                 try model.migrate(with: &migrator, from: self.version)
             }
             
-            try makeViews()
+            migrator.registerMigration("create_views_v1") { db in
+                try self.makeViews(db: db)
+            }
             
             return migrator
         }

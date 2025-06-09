@@ -88,6 +88,7 @@ final class SourceRemoteDataSource {
                 mangaId: nil,
                 sourceId: source.id,
                 title: item.title,
+                slug: item.slug,
                 cover: item.cover,
                 fetchUrl: URL.appendingPaths(
                     host.baseUrl,
@@ -132,6 +133,7 @@ final class SourceRemoteDataSource {
                 mangaId: nil,
                 sourceId: sourceFetching.source.id,
                 title: item.title,
+                slug: item.slug,
                 cover: item.cover,
                 fetchUrl: sourceFetching.itemUrl(item.slug)
             )

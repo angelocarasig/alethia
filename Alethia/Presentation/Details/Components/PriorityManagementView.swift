@@ -76,25 +76,21 @@ struct PriorityManagementView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             ) {
-                VStack(spacing: Constants.Spacing.regular) {
-                    ForEach(Array(originGroups.enumerated()), id: \.element.id) { index, group in
-                        OriginPriorityRow(
-                            origin: group.origin,
-                            index: index,
-                            isEditing: editMode
-                        )
-                        .background(Color(UIColor.secondarySystemGroupedBackground))
-                        .cornerRadius(Constants.Corner.Radius.regular)
-                        .padding(.horizontal, Constants.Padding.screen)
-                    }
-                    .onMove(perform: editMode ? handleOriginMove : nil)
-                    .moveDisabled(!editMode)
+                ForEach(Array(originGroups.enumerated()), id: \.element.id) { index, group in
+                    OriginPriorityRow(
+                        origin: group.origin,
+                        index: index,
+                        isEditing: editMode
+                    )
+                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                    .cornerRadius(Constants.Corner.Radius.regular)
+                    .padding(.horizontal, Constants.Padding.screen)
+                    .padding(.vertical, Constants.Padding.minimal)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
                 }
-                .padding(.top, Constants.Padding.regular)
+                .onMove(perform: editMode ? handleOriginMove : nil)
             }
-            .listStyle(.plain)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets())
             
             Section(header: Text("Scanlator Priority")
                 .textCase(.uppercase)

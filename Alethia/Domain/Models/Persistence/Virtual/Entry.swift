@@ -16,6 +16,7 @@ struct Entry: Codable, Hashable, Identifiable {
     var mangaId: Int64?
     var sourceId: Int64?
     var title: String
+    var slug: String
     var cover: String?
     var fetchUrl: String?
     
@@ -35,6 +36,7 @@ struct Entry: Codable, Hashable, Identifiable {
         mangaId: Int64? = nil,
         sourceId: Int64? = nil,
         title: String,
+        slug: String,
         cover: String? = nil,
         fetchUrl: String? = nil,
         inLibrary: Bool = false,
@@ -44,6 +46,7 @@ struct Entry: Codable, Hashable, Identifiable {
         self.mangaId = mangaId
         self.sourceId = sourceId
         self.title = title
+        self.slug = slug
         self.cover = cover
         self.fetchUrl = fetchUrl
         self.inLibrary = inLibrary
@@ -90,7 +93,7 @@ extension Entry: QueueOperationIdentifiable {
 
 extension Entry {
     private enum CodingKeys: String, CodingKey {
-        case mangaId, sourceId, title, cover, fetchUrl, unread
+        case mangaId, sourceId, title, slug, cover, fetchUrl, unread
         case inLibrary, addedAt, updatedAt, lastReadAt
     }
 }
@@ -104,6 +107,7 @@ extension Entry: TableRecord {
         static let mangaId = Column(CodingKeys.mangaId)
         static let sourceId = Column(CodingKeys.sourceId)
         static let title = Column(CodingKeys.title)
+        static let slug = Column(CodingKeys.slug)
         static let cover = Column(CodingKeys.cover)
         static let fetchUrl = Column(CodingKeys.fetchUrl)
         
