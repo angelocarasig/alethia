@@ -526,11 +526,13 @@ private extension MangaLocalDataSource {
         to request: QueryInterfaceRequest<Entry>,
         search: String
     ) -> QueryInterfaceRequest<Entry> {
-        guard !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        let trimmed = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
             return request
         }
         
-        guard let pattern = FTS5Pattern(matchingAnyTokenIn: search + "*") else {
+        guard let pattern = FTS5Pattern(matchingAllPrefixesIn: trimmed) else {
+            // If pattern creation fails, fallback to no results
             return request.filter(sql: "0 = 1")
         }
         
