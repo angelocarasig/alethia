@@ -142,33 +142,36 @@ extension QueueProvider {
 
 // MARK: - Internal
 private extension QueueProvider {
-    private func updateQueue() {
-        /// Check if there is > 5 queue operations currently ongoing
-        
-        let ongoingCount = operations.values.filter {
-            if case .ongoing = $0.state { return true }
-            return false
-        }.count
-        
-        guard ongoingCount < Constants.Queue.ConcurrentOperationsCount else { return }
-        
-        /// get available pending operations
-        
-        let pendingOperations = operations.values.filter { $0.state == .pending }
-        let slotsAvailable = Constants.Queue.ConcurrentOperationsCount - ongoingCount
-        
-        /// for available pending operations start their action
-        
-        // ordered dictionary so using .prefix should retrieve in FIFO order
-        for operation in pendingOperations.prefix(slotsAvailable) {
-            switch operation.type {
+    func updateQueue() {
+        Task { @MainActor in
+            // Wait until no operations are running
+            let ongoingCount = operations.values.filter {
+                if case .ongoing = $0.state { true } else { false }
+            }.count
+            
+            
+            guard ongoingCount < Constants.Queue.ConcurrentOperationsCount else {
+                // If ongoing operation exists, do nothing now
+                return
+            }
+            
+            // Add 1 second delay before starting next operation
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            
+            let pendingOperations = operations.values.filter { $0.state == .pending }
+            
+            guard let nextOperation = pendingOperations.first else {
+                return
+            }
+            
+            switch nextOperation.type {
             case .chapterDownload(let chapter):
                 let stream = downloadChapterUseCase.execute(chapter: chapter)
-                operation.start(with: stream)
+                nextOperation.start(with: stream)
                 
             case .metadataRefresh(let entry):
                 let stream = metadataRefreshUseCase.execute(mangaId: entry.mangaId!)
-                operation.start(with: stream)
+                nextOperation.start(with: stream)
             }
         }
     }

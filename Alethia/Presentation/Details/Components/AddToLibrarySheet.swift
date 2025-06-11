@@ -161,6 +161,8 @@ struct AddToLibrarySheet: View {
             .padding(.top, Constants.Padding.regular)
             .animation(.spring(response: 0.5, dampingFraction: 0.8), value: filteredCollections.count)
         }
+        // padding at bottom for extra idk
+        .padding(.bottom, Constants.Padding.screen)
         .scrollBounceBehavior(.basedOnSize)
     }
     

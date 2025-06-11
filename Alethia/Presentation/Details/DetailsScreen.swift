@@ -299,19 +299,12 @@ extension DetailsScreen {
     @ViewBuilder
     private func RefreshingView(currentContent: Detail, progress: Double) -> some View {
         ContentUnavailableView {
-            LoadingView()
+            LoadingView(message: "Refreshing Content")
                 .frame(width: 750, height: 750)
         } description: {
-            VStack(spacing: Constants.Spacing.minimal) {
-                Text("Refreshing Content")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .padding(.top, Constants.Padding.screen)
-                
-                Text(progressText(for: progress))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            Text(progressText(for: progress))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
         }
         .toolbar(.hidden, for: .tabBar)
     }
