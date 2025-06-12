@@ -5,7 +5,6 @@
 //  Created by Angelo Carasig on 23/4/2025.
 //
 
-import Foundation
 import SwiftUI
 import Combine
 import GRDB
@@ -14,8 +13,6 @@ final class LibraryViewModel: ObservableObject {
     // MARK: - Published Properties
     @Published private(set) var state: ViewState = .loading
     @Published var filters: LibraryFilters = .init()
-    @Published var showFilters: Bool = false
-    @Published var showQueue: Bool = false
     @Published private(set) var collections: [CollectionExtended] = []
     @Published private(set) var activeCollection: Collection? = nil
     
@@ -156,21 +153,6 @@ extension LibraryViewModel {
     }
 }
 
-// MARK: - UI State Management
-extension LibraryViewModel {
-    func toggleFilters() {
-        withAnimation {
-            showFilters.toggle()
-        }
-    }
-    
-    func hideFilters() {
-        withAnimation {
-            showFilters = false
-        }
-    }
-}
-
 // MARK: - Private Methods - Binding
 private extension LibraryViewModel {
     func bind() {
@@ -240,6 +222,8 @@ private extension LibraryViewModel {
             .map { [unowned self] filters, activeCollection in
                 self.getLibraryUseCase
                     .execute(filters: filters, collection: activeCollection?.id)
+                    .subscribe(on: DispatchQueue.global(qos: .userInitiated)) // chuck in background but receive on main
+                    .receive(on: DispatchQueue.main)
                     .catch { error -> AnyPublisher<[Entry], Never> in
                         DispatchQueue.main.async { [weak self] in
                             print("Something Went Wrong: \(error)")

@@ -8,17 +8,20 @@
 import SwiftUI
 
 struct LibraryScreen: View {
+    @Namespace private var animation: Namespace.ID
+    
     @StateObject private var vm = LibraryViewModel()
-    @Namespace private var animation
+    @State private var showQueue: Bool = false
+    @State private var showFilters: Bool = false
     
     var body: some View {
         NavigationStack {
             LibraryContent(animation: animation)
-                .sheet(isPresented: $vm.showFilters) {
+                .sheet(isPresented: $showFilters) {
                     LibraryFilterView()
                         .presentationDetents([.medium, .large])
                 }
-                .sheet(isPresented: $vm.showQueue) {
+                .sheet(isPresented: $showQueue) {
                     QueueStatusView()
                         .presentationDetents([.medium, .large])
                 }
@@ -38,7 +41,7 @@ struct LibraryScreen: View {
     var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             Button {
-                vm.showQueue = true
+                showQueue = true
             } label: {
                 let operationCount = QueueProvider.shared.operations.count
                 
@@ -67,7 +70,7 @@ struct LibraryScreen: View {
         
         ToolbarItem(placement: .topBarTrailing) {
             Button {
-                vm.showFilters = true
+                showFilters = true
             } label: {
                 Image(systemName: "line.horizontal.3.decrease")
                     .overlay {
