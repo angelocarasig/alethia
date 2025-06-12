@@ -13,8 +13,11 @@ final class ChapterLocalDataSource {
     init() { }
     
     func updateChapterProgress(chapter: Chapter, newProgress: Double, override: Bool) throws -> Void {
-        // Don't update if chapter is already completed unless explicitly overriding
-        guard override || chapter.progress < 1.0 else {
+        // Don't update if:
+        // 1. Chapter is already completed (progress = 1.0), OR
+        // 2. New progress is less than current progress
+        // Unless explicitly overriding
+        guard override || (chapter.progress < 1.0 && newProgress >= chapter.progress) else {
             return
         }
         

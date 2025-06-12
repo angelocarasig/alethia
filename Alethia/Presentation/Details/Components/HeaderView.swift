@@ -66,25 +66,35 @@ struct HeaderView: View {
                     .foregroundColor(.secondary)
             }
             .contextMenu {
-                Button {
-                    UIPasteboard.general.string = title
+                Section {
+                    Button {
+                        UIPasteboard.general.string = title
+                        
+                        // Haptic feedback
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                        impactFeedback.impactOccurred()
+                    } label: {
+                        Label("Copy Title", systemImage: "doc.on.doc")
+                    }
                     
-                    // Haptic feedback
-                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                    impactFeedback.impactOccurred()
-                } label: {
-                    Label("Copy Title", systemImage: "doc.on.doc")
+                    Button {
+                        let authorsText = authors.map { $0.name }.joined(separator: ", ")
+                        UIPasteboard.general.string = authorsText
+                        
+                        // Haptic feedback
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                        impactFeedback.impactOccurred()
+                    } label: {
+                        Label("Copy ^[\(authors.count) Author](inflect: true)", systemImage: "doc.on.doc")
+                    }
                 }
                 
-                Button {
-                    let authorsText = authors.map { $0.name }.joined(separator: ", ")
-                    UIPasteboard.general.string = authorsText
-                    
-                    // Haptic feedback
-                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                    impactFeedback.impactOccurred()
-                } label: {
-                    Label("Copy ^[\(authors.count) Author](inflect: true)", systemImage: "doc.on.doc")
+                Section {
+                    NavigationLink {
+                        SearchHomeView(initialSearchValue: title)
+                    } label: {
+                        Label("Search Other Sources For This Title", systemImage: "magnifyingglass")
+                    }
                 }
             }
         }
