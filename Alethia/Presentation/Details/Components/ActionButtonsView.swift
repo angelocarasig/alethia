@@ -85,8 +85,11 @@ struct ActionButtonsView: View {
 private struct QuickButtonsView: View {
     @EnvironmentObject var vm: DetailsViewModel
     
-    @State private var showConfirmation = false
+    @State private var showConfirmation: Bool = false
     @State private var confirmationAction: ActionType? = nil
+    
+    // action-type specific
+    @State private var showEditDetails: Bool = false
     
     private enum ActionType: String, CaseIterable {
         case editDetails = "Edit Details"
@@ -173,6 +176,11 @@ private struct QuickButtonsView: View {
         } message: {
             Text(confirmationAction?.confirmationMessage ?? "")
         }
+        .sheet(isPresented: $showEditDetails) {
+            // TODO: 
+            EmptyView()
+                .environmentObject(vm)
+        }
     }
     
     private func handleAction(_ action: ActionType) {
@@ -191,8 +199,7 @@ private struct QuickButtonsView: View {
         
         switch actionToExecute {
         case .editDetails:
-            // Implement edit details action
-            break
+            showEditDetails = true
             
         case .refresh:
             vm.refreshMetadata()
@@ -202,11 +209,11 @@ private struct QuickButtonsView: View {
             break
             
         case .downloadAllChapters:
-            // Implement download all chapters action
+            vm.downloadAllChapters()
             break
             
         case .removeAllDownloads:
-            // Implement remove all downloads action
+            vm.deleteAllChapters()
             break
             
         case .markAllAsRead:

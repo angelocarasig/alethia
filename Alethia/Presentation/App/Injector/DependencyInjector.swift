@@ -170,6 +170,14 @@ extension DependencyInjector {
     func makeDownloadChapterUseCase() -> DownloadChapterUseCase {
         return DownloadChapterUseCaseImpl(repository: chapterRepository)
     }
+    
+    func makeRemoveChapterDownloadUseCase() -> RemoveChapterDownloadUseCase {
+        return RemoveChapterDownloadUseCaseImpl(repository: chapterRepository)
+    }
+    
+    func makeRemoveAllChapterDownloadsUseCase() -> RemoveAllChapterDownloadsUseCase {
+        return RemoveAllChapterDownloadsUseCaseImpl(repository: chapterRepository)
+    }
 }
 
 // MARK: Collections

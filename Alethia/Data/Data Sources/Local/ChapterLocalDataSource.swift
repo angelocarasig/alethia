@@ -58,7 +58,7 @@ final class ChapterLocalDataSource {
             }
         }
     }
-
+    
     func getChapterContentsWithFallback(
         chapter: Chapter,
         fallbackToRemote: () async throws -> [String]
@@ -89,7 +89,7 @@ final class ChapterLocalDataSource {
             return try await fallbackToRemote()
         }
     }
-
+    
     private func getChapterContents(chapter: Chapter) throws -> [String] {
         guard let localPath = chapter.localPath else {
             throw ChapterError.notDownloaded
@@ -181,6 +181,115 @@ extension ChapterLocalDataSource {
             updatedChapter.localPath = localPath
             
             try updatedChapter.update(db)
+        }
+    }
+    
+    func removeChapterDownload(chapter: Chapter) throws {
+        guard let localPath = chapter.localPath else {
+            throw ChapterError.notDownloaded
+        }
+        
+        let fileManager = FileManager.default
+        let cbzURL = URL(fileURLWithPath: localPath)
+        
+        if fileManager.fileExists(atPath: cbzURL.path) {
+            do {
+                try fileManager.removeItem(at: cbzURL)
+            } catch {
+                throw DownloadError.unknown(error)
+            }
+        }
+        
+        let parentDirectory = cbzURL.deletingLastPathComponent()
+        if fileManager.fileExists(atPath: parentDirectory.path) {
+            do {
+                try fileManager.removeItem(at: parentDirectory)
+            } catch {
+                print("Failed to remove chapter directory: \(error)")
+            }
+        }
+        
+        try DatabaseProvider.shared.writer.write { db in
+            guard var targetChapter = try Chapter.fetchOne(db, key: chapter.id) else {
+                throw ChapterError.notFound
+            }
+            
+            targetChapter.localPath = nil
+            try targetChapter.update(db)
+        }
+        
+        // NOTE: If it was recently downloaded it would be in queue - we need to remove it
+        QueueProvider.shared.operations.removeValue(forKey: chapter.queueOperationId)
+    }
+    
+    func removeAllChapterDownloads(for mangaId: Int64) throws {
+        let chapters = try DatabaseProvider.shared.reader.read { db in
+            try Chapter
+                .joining(required: Chapter.origin.filter(Origin.Columns.mangaId == mangaId))
+                .filter(Chapter.Columns.localPath != nil)
+                .fetchAll(db)
+        }
+        
+        guard !chapters.isEmpty else {
+            return
+        }
+        
+        let fileManager = FileManager.default
+        var successfullyDeletedChapterIds: [Int64] = []
+        var failedDeletions: [(chapter: Chapter, error: Error)] = []
+        
+        // First pass: Try to delete files and track successes/failures
+        for chapter in chapters {
+            guard let localPath = chapter.localPath,
+                  let chapterId = chapter.id else { continue }
+            
+            let cbzURL = URL(fileURLWithPath: localPath)
+            var deletionSuccessful = true
+            
+            // Try to delete the CBZ file
+            if fileManager.fileExists(atPath: cbzURL.path) {
+                do {
+                    try fileManager.removeItem(at: cbzURL)
+                } catch {
+                    deletionSuccessful = false
+                    failedDeletions.append((chapter: chapter, error: error))
+                }
+            }
+            
+            // Only try to delete parent directory if CBZ deletion was successful
+            if deletionSuccessful {
+                let parentDirectory = cbzURL.deletingLastPathComponent()
+                if fileManager.fileExists(atPath: parentDirectory.path) {
+                    // Don't care if this fails - it might contain other files
+                    try? fileManager.removeItem(at: parentDirectory)
+                }
+                
+                successfullyDeletedChapterIds.append(chapterId)
+                
+                QueueProvider.shared.operations.removeValue(forKey: chapter.queueOperationId)
+            }
+        }
+        
+        // Second pass: Update database only for successfully deleted files
+        if !successfullyDeletedChapterIds.isEmpty {
+            try DatabaseProvider.shared.writer.write { db in
+                for chapterId in successfullyDeletedChapterIds {
+                    guard var targetChapter = try Chapter.fetchOne(db, key: chapterId) else {
+                        continue
+                    }
+                    
+                    targetChapter.localPath = nil
+                    try targetChapter.update(db)
+                }
+            }
+        }
+        
+        // Report failures if any occurred
+        if !failedDeletions.isEmpty {
+            throw ApplicationError.batchDeletionError(
+                successCount: successfullyDeletedChapterIds.count,
+                failures: failedDeletions
+            )
         }
     }
 }

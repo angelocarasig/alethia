@@ -163,7 +163,7 @@ struct ChapterListView: View {
                         item: chapter,
                         operationId: chapter.chapter.queueOperationId
                     )
-                    .id("\(chapter.chapter.title)-\(chapter.chapter.progress)")
+                    .id("\(chapter.chapter.title)-\(chapter.chapter.progress)-\(chapter.chapter.downloaded)")
                 }
                 .buttonStyle(.plain)
             }
@@ -253,6 +253,8 @@ struct ChapterRow: View {
         }
     }
     
+    // MARK: - Context Menu Actions
+    
     @ViewBuilder
     private func ContextMenu() -> some View {
         ControlGroup {
@@ -303,7 +305,7 @@ struct ChapterRow: View {
             }.disabled(item.chapter.downloaded || operation != nil)
             
             Button(role: .destructive) {
-                // TODO: Implement remove download
+                vm.deleteChapter(item.chapter)
             } label: {
                 Label("Remove Chapter Download", systemImage: "trash.fill")
             }.disabled(!item.chapter.downloaded)
@@ -325,7 +327,7 @@ private struct ChapterDownloadButton: View {
     
     // Computed properties for state
     private var isChapterDownloaded: Bool {
-        chapter.downloaded || operation?.state == .completed
+        chapter.downloaded
     }
     
     private var isDownloading: Bool {

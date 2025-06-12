@@ -56,6 +56,8 @@ final class DetailsViewModel: ObservableObject {
     
     // Downloads
     private let downloadChapterUseCase: DownloadChapterUseCase
+    private let removeChapterDownloadUseCase: RemoveChapterDownloadUseCase
+    private let removeAllChapterDownloadsUseCase: RemoveAllChapterDownloadsUseCase
     
     init(entry: Entry, context: Source?) {
         self.entry = entry
@@ -85,6 +87,8 @@ final class DetailsViewModel: ObservableObject {
         
         // Download operations
         self.downloadChapterUseCase = injector.makeDownloadChapterUseCase()
+        self.removeChapterDownloadUseCase = injector.makeRemoveChapterDownloadUseCase()
+        self.removeAllChapterDownloadsUseCase = injector.makeRemoveAllChapterDownloadsUseCase()
         
         // Start observing metadata refresh state
         self.observeMetadataRefreshState()
@@ -376,6 +380,42 @@ extension DetailsViewModel {
     
     func downloadChapter(_ chapter: Chapter) {
         QueueProvider.shared.downloadChapter(chapter, mangaId: details?.manga.id)
+    }
+    
+    func downloadAllChapters() {
+        // reversed to queue from first chapter
+        for chapter in self.chapters.reversed() {
+            // only queue non-downloaded chapters
+            guard !chapter.chapter.downloaded else {
+                continue
+            }
+            
+            self.downloadChapter(chapter.chapter)
+        }
+    }
+    
+    func deleteChapter(_ chapter: Chapter) {
+        do {
+            try removeChapterDownloadUseCase.execute(chapter: chapter)
+        }
+        catch {
+            withAnimation {
+                state = .error(error)
+            }
+        }
+    }
+    
+    func deleteAllChapters() {
+        guard let mangaId = details?.manga.id else { return }
+        
+        do {
+            try removeAllChapterDownloadsUseCase.execute(mangaId: mangaId)
+        }
+        catch {
+            withAnimation {
+                state = .error(error)
+            }
+        }
     }
 }
 

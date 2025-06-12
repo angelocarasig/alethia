@@ -74,4 +74,12 @@ extension ChapterRepositoryImpl: ChapterRepository {
             }
         }
     }
+    
+    func removeChapterDownload(chapter: Chapter) throws {
+        try local.removeChapterDownload(chapter: chapter)
+    }
+    
+    func removeAllChapterDownloads(mangaId: Int64) throws {
+        try local.removeAllChapterDownloads(for: mangaId)
+    }
 }
