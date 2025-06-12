@@ -48,10 +48,16 @@ extension Constants {
     }
 }
 
+extension Constants {
+    struct App {
+        static let groupIdentifier: String = "group.alethia.app"
+    }
+}
+
 // MARK: Database Constants
 extension Constants {
     struct Database {
-        static let Label: String = "com.alethia.database"
+        static let Label: String = Constants.App.groupIdentifier
         static let FilePath: String = Constants.Paths.DatabaseFilePath
     }
 }
@@ -64,9 +70,9 @@ extension Constants {
             
             // Always use App Group container
             guard let containerURL = fileManager.containerURL(
-                forSecurityApplicationGroupIdentifier: "group.alethia.app"
+                forSecurityApplicationGroupIdentifier: Constants.App.groupIdentifier
             ) else {
-                fatalError("App Group 'group.alethia.app' not configured. Please add App Groups capability.")
+                fatalError("App Group '\(Constants.App.groupIdentifier)' not configured. Please add App Groups capability.")
             }
             
             do {
@@ -89,7 +95,7 @@ extension Constants {
             guard let containerURL = fileManager.containerURL(
                 forSecurityApplicationGroupIdentifier: "group.alethia.app"
             ) else {
-                fatalError("App Group 'group.alethia.app' not configured.")
+                fatalError("App Group '\(Constants.App.groupIdentifier)' not configured.")
             }
             
             do {

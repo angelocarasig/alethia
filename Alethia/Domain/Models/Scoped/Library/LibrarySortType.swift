@@ -12,7 +12,7 @@ enum LibrarySortType: String, CaseIterable, Equatable, Identifiable {
     
     case title = "Title"
     case updated = "Last Updated"
-    case added = "Date Added"
     case read = "Last Read"
+    case added = "Date Added"
 }
 
