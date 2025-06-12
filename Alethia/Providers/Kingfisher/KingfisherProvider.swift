@@ -23,4 +23,10 @@ final class KingfisherProvider {
         .downloadPriority(0.3),
         .retryStrategy(DelayRetryStrategy(maxRetryCount: 3, retryInterval: .seconds(2)))
     ]
+    
+    static let downloadOptions: KingfisherOptionsInfo = [
+        .downloadPriority(URLSessionTask.highPriority),
+        .retryStrategy(DelayRetryStrategy(maxRetryCount: 3, retryInterval: .seconds(1))),
+        .callbackQueue(.dispatch(.global(qos: .userInitiated)))
+    ]
 }

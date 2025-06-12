@@ -29,7 +29,7 @@ struct DetailsScreen: View {
                 }
             }
             .environmentObject(vm)
-            .confirmationDialog(with: $vm.confirmationRequest)
+            .confirmationDialog(with: $vm.confirmationRequest, viewModel: vm)
             .animation(.easeInOut, value: vm.stateIdentifier)
     }
     
@@ -125,7 +125,7 @@ extension DetailsScreen {
     }
 }
 
-// MARK: - Option Row
+// MARK: - Option Row	
 extension DetailsScreen {
     @ViewBuilder
     private func OptionRow(option: Detail) -> some View {
@@ -268,8 +268,8 @@ extension DetailsScreen {
 }
 
 // MARK: - Confirmation Dialog Extension
-extension View {
-    func confirmationDialog(with request: Binding<DetailsViewModel.ConfirmationRequest?>) -> some View {
+private extension View {
+    func confirmationDialog(with request: Binding<DetailsViewModel.ConfirmationRequest?>, viewModel: DetailsViewModel) -> some View {
         self.alert(
             request.wrappedValue?.title ?? "Confirm",
             isPresented: .init(
@@ -278,13 +278,9 @@ extension View {
             )
         ) {
             Button("Cancel", role: .cancel) {
-                request.wrappedValue = nil
+                viewModel.cancelConfirmation()
             }
             Button("Confirm") {
-                guard let viewModel = (self as? EnvironmentObject<DetailsViewModel>)?.wrappedValue else {
-                    request.wrappedValue = nil
-                    return
-                }
                 viewModel.confirmSelection()
             }
         } message: {

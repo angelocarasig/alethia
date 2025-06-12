@@ -23,14 +23,24 @@ private struct ChapterHeaderView: View {
     @EnvironmentObject private var vm: DetailsViewModel
     
     var targetChapter: ChapterExtended? {
-        vm.details?.chapters
+        vm.chapters
             .sorted { $0.chapter.number < $1.chapter.number }
             .first(where: { !$0.chapter.read })
     }
     
     var targetChapterIndex: Int? {
         guard let targetChapter = targetChapter else { return nil }
-        return vm.details?.chapters.firstIndex(of: targetChapter)
+        return vm.chapters.firstIndex(of: targetChapter)
+    }
+    
+    var chapterListSourcesCount: Int {
+        Set(vm.chapters.map { $0.origin.id }).count
+    }
+    
+    var chapterSourceText: String {
+        let chapterText = vm.chapters.count == 1 ? "chapter" : "chapters"
+        let sourceText = chapterListSourcesCount == 1 ? "source" : "sources"
+        return "\(vm.chapters.count) \(chapterText) from \(chapterListSourcesCount) \(sourceText)"
     }
     
     var body: some View {
@@ -40,12 +50,17 @@ private struct ChapterHeaderView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 
-                Text("^[\(vm.chapters.count) chapter](inflect: true)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: Constants.Spacing.minimal) {
+                    Text("^[\(vm.chapters.count) Chapter](inflect: true)")
+                    Text("•")
+                    Text("^[\(chapterListSourcesCount) Source](inflect: true)")
+                }
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
             }
             
-            HStack {
+            HStack(spacing: Constants.Spacing.regular) {
                 NavigationLink {
                     if let chapter = targetChapter {
                         ReaderScreen(
@@ -60,44 +75,65 @@ private struct ChapterHeaderView: View {
                     }
                 } label: {
                     if let chapter = targetChapter, let index = targetChapterIndex {
-                        HStack(spacing: 0) {
-                            Text(index == (vm.details?.chapters.count ?? 0) - 1 ? "Start Reading" : "Continue Reading")
-                                .font(.headline)
-                                .frame(maxWidth: .infinity)
+                        HStack(spacing: Constants.Spacing.regular) {
+                            Image(systemName: index == (vm.details?.chapters.count ?? 0) - 1 ? "play.fill" : "book.fill")
+                                .fontWeight(.semibold)
                             
-                            Divider()
-                                .frame(height: 28)
-                                .overlay(Color.text)
-                                .padding(.horizontal, Constants.Spacing.regular)
+                            VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
+                                Text(index == (vm.details?.chapters.count ?? 0) - 1 ? "Start Reading" : "Continue")
+                                    .font(.footnote)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.secondary)
+                                
+                                Text("Chapter \(chapter.chapter.number.toString())")
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+                            }
                             
-                            Text("Ch. \(chapter.chapter.number.toString())")
-                                .font(.headline)
-                                .frame(minWidth: 60)
-                                .padding(.trailing, Constants.Spacing.regular)
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.secondary)
                         }
-                        .frame(maxHeight: .infinity)
+                        .padding(.horizontal, Constants.Padding.regular)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
-                        Text("All Chapters Read")
-                            .font(.headline)
+                        Label("All Caught Up", systemImage: "checkmark.circle.fill")
+                            .font(.system(.subheadline, weight: .medium))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
                 .disabled(targetChapter == nil)
                 .buttonStyle(.borderedProminent)
                 
+                Button {
+                    vm.refreshMetadata()
+                } label: {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.text)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.tint)
+                        .clipShape(.rect(cornerRadius: Constants.Corner.Radius.regular))
+                }
+                .buttonStyle(.plain)
+                .aspectRatio(1, contentMode: .fit)
+                
                 NavigationLink {
                     PriorityManagementView()
                         .environmentObject(vm)
                 } label: {
                     Image(systemName: "gearshape.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .fontWeight(.semibold)
                         .foregroundStyle(.text)
-                        .frame(width: 44, height: 44)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(Color.tint)
                         .clipShape(.rect(cornerRadius: Constants.Corner.Radius.regular))
                 }
+                .aspectRatio(1, contentMode: .fit)
             }
-            .frame(height: 44)
+            .frame(height: 52) // cringe value
         }
     }
 }
@@ -293,10 +329,14 @@ private struct ChapterDownloadButton: View {
     }
     
     private var isDownloading: Bool {
-        if let op = operation, case .ongoing = op.state {
+        guard let op = operation else { return false }
+        
+        switch op.state {
+        case .ongoing, .pending:
             return true
+        default:
+            return false
         }
-        return false
     }
     
     private var downloadProgress: Double {

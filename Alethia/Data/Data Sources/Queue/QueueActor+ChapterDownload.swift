@@ -6,8 +6,8 @@
 //
 
 import Foundation
+import Kingfisher
 import ZIPFoundation
-
 
 // MARK: - Download Chapter
 extension QueueActor {
@@ -92,16 +92,30 @@ extension QueueActor {
         var completedCount = 0
         
         try await withThrowingTaskGroup(of: (Int, Data).self) { group in
-            // Add download tasks for each page
             for (index, pageUrl) in pageUrls.enumerated() {
                 group.addTask {
-                    // Download the page
                     guard let url = URL(string: pageUrl) else {
                         throw DownloadError.invalidUrl(pageUrl)
                     }
                     
-                    let (data, _) = try await URLSession.shared.data(from: url)
-                    return (index, data)
+                    return try await withCheckedThrowingContinuation { continuation in
+                        KingfisherManager.shared.retrieveImage(
+                            with: url,
+                            options: KingfisherProvider.downloadOptions,
+                            progressBlock: nil
+                        ) { result in
+                            switch result {
+                            case .success(let imageResult):
+                                if let data = imageResult.image.jpegData(compressionQuality: 1.0) {
+                                    continuation.resume(returning: (index, data))
+                                } else {
+                                    continuation.resume(throwing: DownloadError.downloadFailed)
+                                }
+                            case .failure(let error):
+                                continuation.resume(throwing: DownloadError.unknown(error))
+                            }
+                        }
+                    }
                 }
             }
             

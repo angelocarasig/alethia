@@ -93,9 +93,6 @@ extension Origin: DatabaseModel {
             
             // Ensure no duplicate priority values for the same manga
             t.uniqueKey([Columns.priority.name, Columns.mangaId.name], onConflict: .fail)
-            
-            // Ensure no duplicate sources for the same manga
-            t.uniqueKey([Columns.sourceId.name, Columns.mangaId.name], onConflict: .fail)
         })
         
         try db.create(index: "idx_origin_manga_priority",
@@ -104,6 +101,49 @@ extension Origin: DatabaseModel {
     }
     
     static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
-        // No migrations needed - current schema is baseline
+        if version < Version(1, 0, 2) {
+            migrator.registerMigration("remove_origin_source_manga_unique_v1.0.2") { db in
+                try db.rename(table: "origin", to: "origin_old")
+                
+                try db.create(table: "origin", body: { t in
+                    t.autoIncrementedPrimaryKey("id")
+                    
+                    t.column("slug", .text).notNull()
+                    t.column("url", .text).notNull()
+                    t.column("referer", .text).notNull()
+                    t.column("classification", .text).notNull()
+                    t.column("status", .text).notNull()
+                    t.column("createdAt", .date).notNull()
+                    t.column("priority", .integer).notNull()
+                    
+                    t.column("mangaId", .integer)
+                        .notNull()
+                        .references("manga", onDelete: .cascade)
+                    
+                    t.column("sourceId", .integer)
+                        .references("source", onDelete: .setNull)
+                    
+                    t.uniqueKey(["priority", "mangaId"], onConflict: .fail)
+                })
+                
+                try db.create(index: "origin_mangaId_idx",
+                              on: "origin",
+                              columns: ["mangaId"])
+                
+                try db.create(index: "origin_sourceId_idx",
+                              on: "origin",
+                              columns: ["sourceId"])
+                
+                try db.execute(sql: """
+                INSERT INTO origin (id, mangaId, sourceId, slug, url, referer, 
+                                  classification, status, createdAt, priority)
+                SELECT id, mangaId, sourceId, slug, url, referer, 
+                       classification, status, createdAt, priority
+                FROM origin_old
+            """)
+                
+                try db.drop(table: "origin_old")
+            }
+        }
     }
 }

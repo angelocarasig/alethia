@@ -2,13 +2,13 @@
 
 ## Overview
 
-Alethia uses SQLite with GRDB as the database layer. The schema is designed to support a flexible manga reading application with multiple content sources, tracking capabilities, and user library management but this file will only document at specific versions how the schema changes.
+Alethia uses SQLite with GRDB as the database layer. The schema is designed to support a flexible manga reading application with multiple content sources, tracking capabilities, and user library management.
 
-**Current Version**: 1.0.3
+**Current Version**: 1.0.4
 
 ## Entity Relationship Diagram
 
-### Version 1.0.3
+### Version 1.0.4
 
 ```mermaid
 erDiagram
@@ -43,6 +43,7 @@ erDiagram
     
     OriginScanlator }|--|| Origin : "joins"
     OriginScanlator }|--|| Scanlator : "joins"
+
     Host {
         int64 id PK
         string name
@@ -110,8 +111,9 @@ erDiagram
     Collection {
         int64 id PK
         string name UK
-        String color
-        String icon
+        string color
+        string icon
+        int ordering
     }
     
     Origin {
@@ -165,30 +167,3 @@ erDiagram
         int64 collectionId FK
     }
 ```
-
-## Version History
-
-### Changes from 1.0.3 to 1.0.4
-- Scanlator table restructured to be globally unique:
-- Removed originId foreign key
-- Removed priority column
-- Added unique constraint on name column
-
-<details>
-<summary><b><u>OriginScanlator join table added</u></b></summary>
-
-- Links Origins to Scanlators with many-to-many relationship
-- Includes priority column for per-origin scanlator ordering
-- Composite primary key on (originId, scanlatorId)
-- Unique constraint on (originId, priority) to ensure unique priorities per origin
-
-</details>
-
-### Changes from 1.0.2 to 1.0.3
-- Added `lastReadAt` column to `Manga` table to track reading history
-
-### Changes from 1.0.1 to 1.0.2
-- Added `color` and `icon` columns to `Collection` table for personalization
-
-### Changes from 1.0.0 to 1.0.1
-- Added migration to update manga `updatedAt` timestamps based on most recent chapter dates

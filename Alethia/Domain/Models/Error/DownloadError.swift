@@ -11,6 +11,7 @@ enum DownloadError: LocalizedError {
     case noWritePermission
     case insufficientStorage
     case invalidUrl(String)
+    case downloadFailed
     case archiveCreationFailed
     case backgroundTimeExpired
     case unknown(Error)
@@ -23,6 +24,8 @@ enum DownloadError: LocalizedError {
             return "Not enough storage space to download this chapter."
         case .invalidUrl(let url):
             return "Invalid URL for download: \(url)"
+        case .downloadFailed:
+            return "Download failed."
         case .archiveCreationFailed:
             return "Failed to create archive for chapter."
         case .backgroundTimeExpired:
