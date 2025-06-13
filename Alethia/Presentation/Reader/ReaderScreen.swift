@@ -68,13 +68,7 @@ struct ReaderScreen: View {
                 }
             }
         }
-        .gesture(
-            TapGesture()
-                .onEnded { _ in
-                    vm.toggleControls()
-                }
-                .exclusively(before: TapGesture(count: 2)) // some cooking
-        )
+        .onTapGesture { vm.toggleControls() }
         .overlay(ReaderOverlay())
         .toolbar(.hidden, for: .tabBar)     // tab bar
         .navigationBarBackButtonHidden()    // navigation bar (i.e. back dismiss())

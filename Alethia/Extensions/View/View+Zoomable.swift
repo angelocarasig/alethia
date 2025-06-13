@@ -61,7 +61,7 @@ private struct ZoomableModifier: ViewModifier {
             .animatableTransformEffect(transform)
             .gesture(dragGesture, including: transform == .identity ? .none : .all)
             .simultaneousGesture(magnificationGesture)
-            .simultaneousGesture(doubleTapGesture)
+            .gesture(doubleTapGesture)
             .onChange(of: isZoomable) {
                 withAnimation {
                     lastTransform = .identity
