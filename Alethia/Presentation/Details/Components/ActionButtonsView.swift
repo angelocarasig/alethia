@@ -5,17 +5,18 @@
 //  Created by Angelo Carasig on 12/4/2025.
 //
 
+import Core
 import SwiftUI
 
 private extension Button {
     func actionButton(_ isActive: Bool) -> some View {
-        self.padding(.horizontal, Constants.Padding.minimal)
+        self.padding(.horizontal, .Padding.minimal)
             .lineLimit(1)
             .fontWeight(.medium)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .foregroundColor(isActive ? .background : .text)
-            .background(isActive ? .text : .tint, in: .rect(cornerRadius: 12, style: .continuous))
-            .cornerRadius(Constants.Corner.Radius.button)
+            .background(isActive ? .text : .tint, in: .rect(cornerRadius: .Corner.button, style: .continuous))
+            .cornerRadius(.Corner.button)
     }
 }
 
@@ -25,7 +26,7 @@ struct ActionButtonsView: View {
     @State private var addingToLibrary: Bool = false
     
     var body: some View {
-        HStack(spacing: Constants.Spacing.regular) {
+        HStack(spacing: .Spacing.regular) {
             Button {
                 if vm.inLibrary {
                     vm.removeFromLibrary()
@@ -146,7 +147,7 @@ private struct QuickButtonsView: View {
             }
         } label: {
             Image(systemName: "ellipsis")
-                .padding(.horizontal, Constants.Padding.minimal)
+                .padding(.horizontal, .Padding.minimal)
                 .lineLimit(1)
                 .fontWeight(.medium)
                 .frame(width: 50, height: 50)

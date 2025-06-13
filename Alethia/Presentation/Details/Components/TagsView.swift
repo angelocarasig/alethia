@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 12/4/2025.
 //
 
+import Core
 import SwiftUI
 import Flow
 
@@ -28,10 +29,10 @@ struct TagsView: View {
                     Text(tag)
                         .font(.caption)
                         .foregroundStyle(.text.opacity(0.75))
-                        .padding(.horizontal, Constants.Padding.regular)
-                        .padding(.vertical, Constants.Padding.minimal)
+                        .padding(.horizontal, .Padding.regular)
+                        .padding(.vertical, .Padding.minimal)
                         .background(Color.tint)
-                        .cornerRadius(Constants.Corner.Radius.button)
+                        .cornerRadius(.Corner.button)
                 }
             }
             

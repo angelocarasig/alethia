@@ -33,13 +33,13 @@ enum CollectionError: LocalizedError {
                 return "The collection name provided is invalid."
             }
         case .minimumLengthNotReached(let length):
-            let minLength = Constants.Collections.minimumCollectionNameLength
-            let characterWord = minLength == 1 ? "character" : "characters"
-            return "The collection name must be at least \(minLength) \(characterWord) long but got \(length)."
+            // TODO:
+            let minLength = 3
+            return "The collection name must be at least \(minLength) characters long but got \(length)."
         case .maximumLengthReached(let length):
-            let maxLength = Constants.Collections.maximumCollectionNameLength
-            let characterWord = maxLength == 1 ? "character" : "characters"
-            return "The collection name cannot exceed \(maxLength) \(characterWord) but got \(length)."
+            // TODO:
+            let maxLength = 20
+            return "The collection name cannot exceed \(maxLength) characters but got \(length)."
         }
     }
 }

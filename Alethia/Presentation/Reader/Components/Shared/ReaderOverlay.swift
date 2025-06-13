@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 23/5/2025.
 //
 
+import Core
 import SwiftUI
 import Kingfisher
 
@@ -30,16 +31,16 @@ struct ReaderOverlay: View {
 extension ReaderOverlay {
     @ViewBuilder
     private func TopSection() -> some View {
-        HStack(spacing: Constants.Spacing.regular) {
+        HStack(spacing: .Spacing.regular) {
             KFImage(URL(filePath: vm.currentChapter.source?.icon ?? ""))
                 .placeholder { Color.tint.shimmer() }
                 .resizable()
                 .scaledToFit()
                 .frame(
-                    width: Constants.Icon.Size.regular,
-                    height: Constants.Icon.Size.regular
+                    width: .Icon.regular.width,
+                    height: .Icon.regular.height
                 )
-                .padding(.leading, Constants.Padding.minimal)
+                .padding(.leading, .Padding.minimal)
             
             Menu {
                 ChapterListMenu()
@@ -74,11 +75,11 @@ extension ReaderOverlay {
                 Image(systemName: "xmark")
                     .font(.title2)
             }
-            .padding(.trailing, Constants.Padding.regular)
+            .padding(.trailing, .Padding.regular)
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, Constants.Padding.minimal)
-        .padding(.bottom, Constants.Padding.regular)
+        .padding(.horizontal, .Padding.minimal)
+        .padding(.bottom, .Padding.regular)
         .frame(maxWidth: .infinity)
         .padding(.top, 60) // Top offset
         .background(.bar)
@@ -109,7 +110,7 @@ extension ReaderOverlay {
                     .clipShape(.circle)
             }
         }
-        .padding(.horizontal, Constants.Padding.screen)
+        .padding(.horizontal, .Padding.screen)
     }
     
     @ViewBuilder
@@ -152,7 +153,7 @@ extension ReaderOverlay {
                         .foregroundColor(vm.canGoBackward ? Color.white : Color.secondary)
                 }
                 .buttonStyle(.plain)
-                .padding(.horizontal, Constants.Padding.screen)
+                .padding(.horizontal, .Padding.screen)
                 .disabled(!vm.canGoBackward)
                 
                 if vm.totalPages > 1 {
@@ -190,7 +191,7 @@ extension ReaderOverlay {
                         .foregroundColor(vm.canGoForward ? Color.white : Color.secondary)
                 }
                 .buttonStyle(.plain)
-                .padding(.horizontal, Constants.Padding.screen)
+                .padding(.horizontal, .Padding.screen)
                 .disabled(!vm.canGoForward)
             }
             
@@ -198,11 +199,11 @@ extension ReaderOverlay {
                 .font(.headline)
                 .fontWeight(.medium)
         }
-        .padding(Constants.Padding.screen)
+        .padding(.Padding.screen)
         .frame(maxWidth: .infinity)
         .background(.bar)
-        .cornerRadius(Constants.Corner.Radius.panel)
+        .cornerRadius(.Corner.panel)
         .padding()
-        .padding(.bottom, Constants.Padding.regular)
+        .padding(.bottom, .Padding.regular)
     }
 }

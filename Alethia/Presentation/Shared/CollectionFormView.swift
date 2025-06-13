@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 4/6/2025.
 //
 
+import Core
 import SwiftUI
 
 struct CollectionFormView: View {
@@ -100,10 +101,10 @@ struct CollectionFormView: View {
                                 .foregroundStyle(.red)
                                 .font(.callout)
                         }
-                        .padding(.vertical, Constants.Padding.minimal)
+                        .padding(.vertical, .Padding.minimal)
                     }
                     .listRowBackground(
-                        RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
+                        RoundedRectangle(cornerRadius: .Corner.regular)
                             .fill(.red.opacity(0.1))
                     )
                 }
@@ -214,7 +215,7 @@ struct CollectionFormView: View {
     // MARK: - Form Rows
     
     private func ColorPickerRow() -> some View {
-        HStack(spacing: Constants.Spacing.toolbar) {
+        HStack(spacing: .Spacing.toolbar) {
             // Color preview circle
             Circle()
                 .fill(selectedColor)
@@ -233,16 +234,16 @@ struct CollectionFormView: View {
                 .labelsHidden()
                 .scaleEffect(1.2)
         }
-        .padding(Constants.Padding.minimal)
+        .padding(.Padding.minimal)
     }
     
     private func IconPickerGrid() -> some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Constants.Spacing.large), count: 4), spacing: Constants.Spacing.large) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: .Spacing.large), count: 4), spacing: .Spacing.large) {
             ForEach(popularIcons, id: \.self) { icon in
                 IconOption(icon: icon)
             }
         }
-        .padding(.vertical, Constants.Padding.regular)
+        .padding(.vertical, .Padding.regular)
     }
     
     private func IconOption(icon: String) -> some View {
@@ -254,7 +255,7 @@ struct CollectionFormView: View {
             }
         } label: {
             ZStack {
-                RoundedRectangle(cornerRadius: Constants.Corner.Radius.button)
+                RoundedRectangle(cornerRadius: .Corner.button)
                     .fill(isSelected ? selectedColor.opacity(0.15) : Color(.systemGray5))
                     .stroke(
                         isSelected ? selectedColor.opacity(0.5) : Color.clear,
@@ -306,7 +307,7 @@ private struct IconPickerSheet: View {
                 
                 // Icons grid
                 ScrollView {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Constants.Spacing.large), count: 4), spacing: Constants.Spacing.large) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: .Spacing.large), count: 4), spacing: .Spacing.large) {
                         ForEach(filteredIcons, id: \.self) { icon in
                             IconOptionLarge(icon: icon)
                         }
@@ -342,13 +343,13 @@ private struct IconPickerSheet: View {
             }
         } label: {
             ZStack {
-                RoundedRectangle(cornerRadius: Constants.Corner.Radius.button)
+                RoundedRectangle(cornerRadius: .Corner.button)
                     .fill(isSelected ? selectedColor.opacity(0.15) : Color(.systemGray5))
                     .stroke(
                         isSelected ? selectedColor.opacity(0.5) : Color.clear,
                         lineWidth: 2
                     )
-                    .frame(width: Constants.Icon.Size.large, height: Constants.Icon.Size.large)
+                    .frame(width: .Icon.large.width, height: .Icon.large.height)
                 
                 Image(systemName: icon)
                     .font(.system(size: 28, weight: .medium))

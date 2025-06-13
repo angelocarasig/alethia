@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 30/5/2025.
 //
 
+import Core
 import SwiftUI
 import Kingfisher
 
@@ -112,8 +113,8 @@ struct ArtworkListView: View {
                     .foregroundStyle(.text.opacity(0.7), .text.opacity(0.1))
             }
         }
-        .padding(.horizontal, Constants.Padding.screen)
-        .padding(.vertical, Constants.Padding.regular)
+        .padding(.horizontal, .Padding.screen)
+        .padding(.vertical, .Padding.regular)
     }
     
     // MARK: - Carousel Card
@@ -133,7 +134,7 @@ struct ArtworkListView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: geometry.size.width * 0.85)
-                    .cornerRadius(Constants.Corner.Radius.panel)
+                    .cornerRadius(.Corner.panel)
                     .contextMenu {
                         if let url = URL(string: cover.url) {
                             ShareLink(item: url) {
@@ -160,7 +161,7 @@ struct ArtworkListView: View {
                     Text(String(format: "%d × %d", Int(info.width), Int(info.height)))
                         .font(.subheadline)
                         .fontWeight(.medium)
-                        .padding(.top, Constants.Padding.regular)
+                        .padding(.top, .Padding.regular)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -177,16 +178,16 @@ struct ArtworkListView: View {
     // MARK: - Bottom Controls
     @ViewBuilder
     private func BottomControls() -> some View {
-        VStack(spacing: Constants.Spacing.large) {
+        VStack(spacing: .Spacing.large) {
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: Constants.Spacing.regular) {
+                LazyHStack(spacing: .Spacing.regular) {
                     ForEach(Array(covers.enumerated()), id: \.element.id) { index, cover in
                         ThumbnailView(
                             cover: cover,
                             isSelected: selectedIndex == index,
                             index: index
                         )
-                        .padding(.horizontal, selectedIndex == index ? Constants.Padding.minimal : 0)
+                        .padding(.horizontal, selectedIndex == index ? .Padding.minimal : 0)
                         .pressable()
                         .onTapGesture {
                             withAnimation {
@@ -196,11 +197,11 @@ struct ArtworkListView: View {
                         .scrollTargetLayout()
                     }
                 }
-                .padding(.horizontal, Constants.Padding.screen)
-                .padding(.vertical, Constants.Padding.screen)
+                .padding(.horizontal, .Padding.screen)
+                .padding(.vertical, .Padding.screen)
             }
             .frame(height: 125) // Increased height for scaling
-            .padding(.vertical, Constants.Padding.screen)
+            .padding(.vertical, .Padding.screen)
             .scrollPosition(id: $scrollPosition, anchor: .center)
             .scrollClipDisabled() // Allow content to be visible outside scroll bounds
             .onChange(of: selectedIndex) { _, newValue in
@@ -211,7 +212,7 @@ struct ArtworkListView: View {
             
             // Action Buttons
             if let cover = currentCover {
-                HStack(spacing: Constants.Spacing.large) {
+                HStack(spacing: .Spacing.large) {
                     Button {
                         if !cover.active {
                             coverToUpdate = cover
@@ -243,7 +244,7 @@ struct ArtworkListView: View {
                 }
             }
         }
-        .padding(.bottom, Constants.Padding.screen)
+        .padding(.bottom, .Padding.screen)
     }
     
     // MARK: - Thumbnail View
@@ -255,18 +256,18 @@ struct ArtworkListView: View {
             .resizable()
             .scaledToFill()
             .frame(width: 125 * (11/16), height: 125)
-            .cornerRadius(Constants.Corner.Radius.card)
+            .cornerRadius(.Corner.card)
             .overlay(
                 ZStack {
                     if cover == vm.activeCover {
                         Color.black.opacity(0.5)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .cornerRadius(Constants.Corner.Radius.card)
+                            .cornerRadius(.Corner.card)
                         
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 18))
                             .foregroundColor(.green)
-                            .padding(Constants.Padding.regular)
+                            .padding(.Padding.regular)
                     }
                     
                     // Number Badge

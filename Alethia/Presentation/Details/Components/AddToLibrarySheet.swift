@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 4/6/2025.
 //
 
+import Core
 import SwiftUI
 
 struct AddToLibrarySheet: View {
@@ -62,9 +63,9 @@ struct AddToLibrarySheet: View {
     // MARK: - Info Banner
     @ViewBuilder
     private func InfoBanner() -> some View {
-        HStack(spacing: Constants.Spacing.regular) {
+        HStack(spacing: .Spacing.regular) {
             // Left side - Info icon and text
-            HStack(spacing: Constants.Spacing.regular) {
+            HStack(spacing: .Spacing.regular) {
                 Image(systemName: "info.circle.fill")
                     .font(.system(size: 16))
                     .foregroundStyle(.blue)
@@ -79,7 +80,7 @@ struct AddToLibrarySheet: View {
             
             // Right side - Selection count
             if !selectedCollections.isEmpty {
-                HStack(spacing: Constants.Spacing.minimal) {
+                HStack(spacing: .Spacing.minimal) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 14))
                         .foregroundStyle(.green)
@@ -89,7 +90,7 @@ struct AddToLibrarySheet: View {
                         .fontWeight(.semibold)
                         .foregroundStyle(.primary)
                 }
-                .padding(.horizontal, Constants.Padding.regular)
+                .padding(.horizontal, .Padding.regular)
                 .padding(.vertical, 4)
                 .background(
                     Capsule()
@@ -98,8 +99,8 @@ struct AddToLibrarySheet: View {
                 .transition(.scale.combined(with: .opacity))
             }
         }
-        .padding(.horizontal, Constants.Padding.screen)
-        .padding(.vertical, Constants.Padding.regular)
+        .padding(.horizontal, .Padding.screen)
+        .padding(.vertical, .Padding.regular)
         .background(Color.tint.opacity(0.25))
         .animation(.spring(response: 0.3), value: selectedCollections.count)
     }
@@ -107,23 +108,23 @@ struct AddToLibrarySheet: View {
     // MARK: - Search Section
     @ViewBuilder
     private func SearchSection() -> some View {
-        VStack(spacing: Constants.Spacing.regular) {
+        VStack(spacing: .Spacing.regular) {
             SearchBar(
                 searchText: $searchText,
                 placeholder: "Search collections..."
             )
-            .padding(.horizontal, Constants.Padding.screen)
+            .padding(.horizontal, .Padding.screen)
             
             if !searchText.isEmpty && filteredCollections.isEmpty {
                 SearchEmptyState()
             }
         }
-        .padding(.top, Constants.Padding.regular)
+        .padding(.top, .Padding.regular)
     }
     
     @ViewBuilder
     private func SearchEmptyState() -> some View {
-        VStack(spacing: Constants.Spacing.regular) {
+        VStack(spacing: .Spacing.regular) {
             Image(systemName: "magnifyingglass.circle")
                 .font(.system(size: 40))
                 .foregroundStyle(.secondary)
@@ -137,14 +138,14 @@ struct AddToLibrarySheet: View {
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
         }
-        .padding(.vertical, Constants.Padding.screen)
+        .padding(.vertical, .Padding.screen)
     }
     
     // MARK: - Collections Section
     @ViewBuilder
     private func CollectionsSection() -> some View {
         ScrollView {
-            LazyVStack(spacing: Constants.Spacing.large) {
+            LazyVStack(spacing: .Spacing.large) {
                 if filteredCollections.isEmpty && searchText.isEmpty {
                     EmptyCollectionsState()
                 } else {
@@ -157,24 +158,24 @@ struct AddToLibrarySheet: View {
                     }
                 }
             }
-            .padding(.horizontal, Constants.Padding.screen)
-            .padding(.top, Constants.Padding.regular)
+            .padding(.horizontal, .Padding.screen)
+            .padding(.top, .Padding.regular)
             .animation(.spring(response: 0.5, dampingFraction: 0.8), value: filteredCollections.count)
         }
         // padding at bottom for extra idk
-        .padding(.bottom, Constants.Padding.screen)
+        .padding(.bottom, .Padding.screen)
         .scrollBounceBehavior(.basedOnSize)
     }
     
     @ViewBuilder
     private func EmptyCollectionsState() -> some View {
-        VStack(spacing: Constants.Spacing.large) {
+        VStack(spacing: .Spacing.large) {
             Image(systemName: "folder.badge.plus")
                 .font(.system(size: 60))
                 .foregroundStyle(.secondary)
                 .symbolEffect(.bounce, options: .repeating.speed(0.5))
             
-            VStack(spacing: Constants.Spacing.regular) {
+            VStack(spacing: .Spacing.regular) {
                 Text("No Collections Yet")
                     .font(.title2)
                     .fontWeight(.semibold)
@@ -185,7 +186,7 @@ struct AddToLibrarySheet: View {
                     .multilineTextAlignment(.center)
             }
         }
-        .padding(.vertical, Constants.Padding.screen * 2)
+        .padding(.vertical, .Padding.screen * 2)
     }
     
     private func CollectionCard(collection: CollectionExtended) -> some View {
@@ -254,7 +255,7 @@ struct AddToLibrarySheet: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
             
-            HStack(spacing: Constants.Spacing.minimal) {
+            HStack(spacing: .Spacing.minimal) {
                 Image(systemName: "book.closed")
                     .font(.caption2) // Smaller icon
                     .foregroundStyle(.secondary)
@@ -270,7 +271,7 @@ struct AddToLibrarySheet: View {
     
     @ViewBuilder
     private func CardBackground(isSelected: Bool, color: Color) -> some View {
-        RoundedRectangle(cornerRadius: Constants.Corner.Radius.panel)
+        RoundedRectangle(cornerRadius: .Corner.panel)
             .fill(
                 isSelected ?
                 LinearGradient(
@@ -285,7 +286,7 @@ struct AddToLibrarySheet: View {
                     )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: Constants.Corner.Radius.panel)
+                RoundedRectangle(cornerRadius: .Corner.panel)
                     .stroke(
                         isSelected ? color.opacity(0.4) : Color.secondary.opacity(0.1),
                         lineWidth: isSelected ? 2 : 1
@@ -296,7 +297,7 @@ struct AddToLibrarySheet: View {
     // MARK: - Action Footer
     @ViewBuilder
     private func ActionFooter() -> some View {
-        VStack(spacing: Constants.Spacing.large) {
+        VStack(spacing: .Spacing.large) {
             // Create New Collection Button
             NavigationLink {
                 CollectionFormView(mode: .create) { name, color, icon in
@@ -315,12 +316,12 @@ struct AddToLibrarySheet: View {
                     .frame(height: 50)
                     .background(Color.accentColor.opacity(0.1))
                     .foregroundStyle(Color.accentColor)
-                    .clipShape(RoundedRectangle(cornerRadius: Constants.Corner.Radius.button))
+                    .clipShape(RoundedRectangle(cornerRadius: .Corner.button))
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, Constants.Padding.screen)
-        .padding(.bottom, Constants.Padding.screen)
+        .padding(.horizontal, .Padding.screen)
+        .padding(.bottom, .Padding.screen)
     }
     
     @ViewBuilder

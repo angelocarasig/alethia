@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 9/6/2025.
 //
 
+import Core
 import SwiftUI
 import Combine
 
@@ -71,7 +72,7 @@ private struct CollectionRow: View {
     let itemCount: Int
     
     var body: some View {
-        HStack(spacing: Constants.Spacing.large) {
+        HStack(spacing: .Spacing.large) {
             Image(systemName: collection.icon)
                 .font(.title3)
                 .foregroundColor(Color(hex: collection.color))
@@ -88,7 +89,7 @@ private struct CollectionRow: View {
             
             Spacer()
         }
-        .padding(.vertical, Constants.Padding.minimal)
+        .padding(.vertical, .Padding.minimal)
     }
 }
 

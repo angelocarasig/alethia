@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 17/4/2025.
 //
 
+import Core
 import SwiftUI
 import Kingfisher
 
@@ -12,10 +13,10 @@ private extension View {
     func badgeStyle(_ color: Color) -> some View {
         self.font(.caption)
             .foregroundStyle(.white)
-            .padding(.vertical, Constants.Padding.minimal)
-            .padding(.horizontal, Constants.Padding.regular)
+            .padding(.vertical, .Padding.minimal)
+            .padding(.horizontal, .Padding.regular)
             .background(color)
-            .cornerRadius(Constants.Corner.Radius.regular)
+            .cornerRadius(.Corner.regular)
     }
 }
 
@@ -44,13 +45,13 @@ private struct ChapterHeaderView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
-            VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
+        VStack(alignment: .leading, spacing: .Spacing.large) {
+            VStack(alignment: .leading, spacing: .Spacing.minimal) {
                 Text("Chapters")
                     .font(.title2)
                     .fontWeight(.bold)
                 
-                HStack(spacing: Constants.Spacing.minimal) {
+                HStack(spacing: .Spacing.minimal) {
                     Text("^[\(vm.chapters.count) Chapter](inflect: true)")
                     Text("•")
                     Text("^[\(chapterListSourcesCount) Source](inflect: true)")
@@ -60,7 +61,7 @@ private struct ChapterHeaderView: View {
                 .foregroundStyle(.secondary)
             }
             
-            HStack(spacing: Constants.Spacing.regular) {
+            HStack(spacing: .Spacing.regular) {
                 NavigationLink {
                     if let chapter = targetChapter {
                         ReaderScreen(
@@ -75,11 +76,11 @@ private struct ChapterHeaderView: View {
                     }
                 } label: {
                     if let chapter = targetChapter, let index = targetChapterIndex {
-                        HStack(spacing: Constants.Spacing.regular) {
+                        HStack(spacing: .Spacing.regular) {
                             Image(systemName: index == (vm.details?.chapters.count ?? 0) - 1 ? "play.fill" : "book.fill")
                                 .fontWeight(.semibold)
                             
-                            VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
+                            VStack(alignment: .leading, spacing: .Spacing.minimal) {
                                 Text(index == (vm.details?.chapters.count ?? 0) - 1 ? "Start Reading" : "Continue")
                                     .font(.footnote)
                                     .fontWeight(.semibold)
@@ -96,7 +97,7 @@ private struct ChapterHeaderView: View {
                                 .fontWeight(.semibold)
                                 .foregroundStyle(.secondary)
                         }
-                        .padding(.horizontal, Constants.Padding.regular)
+                        .padding(.horizontal, .Padding.regular)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         Label("All Caught Up", systemImage: "checkmark.circle.fill")
@@ -115,7 +116,7 @@ private struct ChapterHeaderView: View {
                         .foregroundStyle(.text)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(Color.tint)
-                        .clipShape(.rect(cornerRadius: Constants.Corner.Radius.regular))
+                        .clipShape(.rect(cornerRadius: .Corner.regular))
                 }
                 .buttonStyle(.plain)
                 .aspectRatio(1, contentMode: .fit)
@@ -129,7 +130,7 @@ private struct ChapterHeaderView: View {
                         .foregroundStyle(.text)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(Color.tint)
-                        .clipShape(.rect(cornerRadius: Constants.Corner.Radius.regular))
+                        .clipShape(.rect(cornerRadius: .Corner.regular))
                 }
                 .aspectRatio(1, contentMode: .fit)
             }
@@ -145,7 +146,7 @@ struct ChapterListView: View {
     var body: some View {
         LazyVStack {
             ChapterHeaderView()
-                .padding(.bottom, Constants.Padding.minimal)
+                .padding(.bottom, .Padding.minimal)
             
             ForEach(Array(vm.chapters.enumerated()), id: \.element.chapter.id) { index, chapter in
                 Divider()
@@ -168,7 +169,7 @@ struct ChapterListView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.bottom, Constants.Padding.screen)
+        .padding(.bottom, .Padding.screen)
     }
 }
 
@@ -187,16 +188,16 @@ struct ChapterRow: View {
     }
     
     var body: some View {
-        HStack(spacing: Constants.Spacing.minimal) {
+        HStack(spacing: .Spacing.minimal) {
             KFImage(URL(fileURLWithPath: item.source?.icon ?? ""))
                 .placeholder { Color.tint.shimmer() }
                 .resizable()
                 .scaledToFit()
                 .frame(width: 50, height: 50)
-                .cornerRadius(Constants.Corner.Radius.regular)
-                .padding(.trailing, Constants.Padding.regular)
+                .cornerRadius(.Corner.regular)
+                .padding(.trailing, .Padding.regular)
             
-            VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
+            VStack(alignment: .leading, spacing: .Spacing.minimal) {
                 HStack {
                     Text("Chapter \(item.chapter.number.toString())")
                     Text("•")
@@ -240,7 +241,7 @@ struct ChapterRow: View {
                 operationId: operationId
             )
         }
-        .padding(.vertical, Constants.Padding.minimal)
+        .padding(.vertical, .Padding.minimal)
         .overlay {
             if read {
                 Color.background.opacity(0.3)

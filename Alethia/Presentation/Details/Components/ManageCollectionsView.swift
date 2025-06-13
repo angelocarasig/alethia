@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 4/6/2025.
 //
 
+import Core
 import SwiftUI
 
 struct ManageCollectionsView: View {
@@ -83,7 +84,7 @@ private extension ManageCollectionsView {
             }
             .padding(.top, 24)
             .padding(.bottom, hasChanges ? 100 : 24)
-            .padding(.horizontal, Constants.Padding.screen)
+            .padding(.horizontal, .Padding.screen)
         }
     }
     
@@ -122,7 +123,7 @@ private extension ManageCollectionsView {
                 }
             }
         }
-        .cornerRadius(Constants.Corner.Radius.panel)
+        .cornerRadius(.Corner.panel)
     }
 }
 
@@ -158,7 +159,7 @@ private extension ManageCollectionsView {
             VStack(spacing: 0) {
                 Divider()
                 
-                HStack(spacing: Constants.Spacing.toolbar) {
+                HStack(spacing: .Spacing.toolbar) {
                     ChangeIndicator(count: changeCount)
                     
                     Spacer()
@@ -166,8 +167,8 @@ private extension ManageCollectionsView {
                     discardButton
                     saveButton
                 }
-                .padding(.horizontal, Constants.Padding.screen + Constants.Padding.minimal)
-                .padding(.vertical, Constants.Padding.regular)
+                .padding(.horizontal, .Padding.screen + .Padding.minimal)
+                .padding(.vertical, .Padding.regular)
                 .background(.regularMaterial)
             }
             .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -342,15 +343,15 @@ private struct CollectionRow: View {
     // MARK: - Body
     var body: some View {
         Button(action: onToggle) {
-            HStack(spacing: Constants.Spacing.toolbar) {
+            HStack(spacing: .Spacing.toolbar) {
                 selectionIndicator
                 collectionIcon
                 collectionContent
                 Spacer()
                 menuButton
             }
-            .padding(.horizontal, Constants.Padding.screen + Constants.Padding.minimal)
-            .padding(.vertical, Constants.Padding.regular)
+            .padding(.horizontal, .Padding.screen + .Padding.minimal)
+            .padding(.vertical, .Padding.regular)
             .background(Color.tint.opacity(0.50))
             .contentShape(.rect)
         }
@@ -376,8 +377,8 @@ private struct CollectionRow: View {
     
     @ViewBuilder
     private var collectionContent: some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
-            HStack(spacing: Constants.Spacing.regular / 2) {
+        VStack(alignment: .leading, spacing: .Spacing.minimal) {
+            HStack(spacing: .Spacing.regular / 2) {
                 Text(collection.collection.name)
                     .lineLimit(1)
                     .font(.body)
@@ -444,7 +445,7 @@ private struct CollectionIcon: View {
     
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: Constants.Corner.Radius.button)
+            RoundedRectangle(cornerRadius: .Corner.button)
                 .fill(color.opacity(0.2))
                 .frame(width: 56, height: 56)
             
@@ -500,12 +501,12 @@ private struct ChangeIndicator: View {
     let count: Int
     
     var body: some View {
-        HStack(spacing: Constants.Spacing.regular) {
+        HStack(spacing: .Spacing.regular) {
             pulsingBadge
             changeText
         }
-        .padding(.horizontal, Constants.Padding.regular + Constants.Padding.minimal)
-        .padding(.vertical, Constants.Padding.regular / 2)
+        .padding(.horizontal, .Padding.regular + .Padding.minimal)
+        .padding(.vertical, .Padding.regular / 2)
         .background(indicatorBackground)
         .onAppear { startPulsing() }
     }
@@ -525,7 +526,7 @@ private struct ChangeIndicator: View {
                 .background(
                     Circle()
                         .fill(.orange)
-                        .shadow(color: .orange.opacity(0.3), radius: Constants.Spacing.minimal, x: 0, y: 2)
+                        .shadow(color: .orange.opacity(0.3), radius: .Spacing.minimal, x: 0, y: 2)
                 )
         }
     }
@@ -548,10 +549,10 @@ private struct ChangeIndicator: View {
     
     @ViewBuilder
     private var indicatorBackground: some View {
-        RoundedRectangle(cornerRadius: Constants.Corner.Radius.panel)
+        RoundedRectangle(cornerRadius: .Corner.panel)
             .fill(.orange.opacity(0.1))
             .overlay(
-                RoundedRectangle(cornerRadius: Constants.Corner.Radius.panel)
+                RoundedRectangle(cornerRadius: .Corner.panel)
                     .stroke(.orange.opacity(0.2), lineWidth: 1)
             )
     }

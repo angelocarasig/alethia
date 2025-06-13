@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 18/4/2025.
 //
 
+import Core
 import SwiftUI
 import Combine
 import Kingfisher
@@ -144,7 +145,7 @@ private struct RowView: View {
             EmptyContent()
         } else {
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: Constants.Spacing.minimal) {
+                LazyHStack(spacing: .Spacing.minimal) {
                     ForEach(content, id: \.id) { entry in
                         SourceCardView(namespace: namespace, source: source, entry: entry)
                             .frame(width: 150)
@@ -173,7 +174,7 @@ private struct RowView: View {
                         
                         Spacer()
                     }
-                    .padding(.horizontal, Constants.Padding.minimal)
+                    .padding(.horizontal, .Padding.minimal)
                     .cornerRadius(6)
                     .frame(width: 150)
                 }

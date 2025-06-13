@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 5/6/2025.
 //
 
+import Core
 import SwiftUI
 
 struct QueueStatusView: View {
@@ -99,7 +100,7 @@ private struct ActiveOperationsTab: View {
                     )
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: Constants.Spacing.large) {
+                        LazyVStack(spacing: .Spacing.large) {
                             ForEach(activeOperations, id: \.id) { operation in
                                 ActiveOperationCard(operation: operation)
                                     .transition(.asymmetric(
@@ -108,7 +109,7 @@ private struct ActiveOperationsTab: View {
                                     ))
                             }
                         }
-                        .padding(Constants.Padding.screen)
+                        .padding(.Padding.screen)
                     }
                 }
             }
@@ -138,7 +139,7 @@ private struct PendingOperationsTab: View {
                     )
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: Constants.Spacing.large) {
+                        LazyVStack(spacing: .Spacing.large) {
                             ForEach(pendingOperations, id: \.id) { operation in
                                 PendingOperationCard(operation: operation)
                                     .transition(.asymmetric(
@@ -147,7 +148,7 @@ private struct PendingOperationsTab: View {
                                     ))
                             }
                         }
-                        .padding(Constants.Padding.screen)
+                        .padding(.Padding.screen)
                     }
                 }
             }
@@ -178,7 +179,7 @@ private struct CompletedOperationsTab: View {
                     )
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: Constants.Spacing.large) {
+                        LazyVStack(spacing: .Spacing.large) {
                             ForEach(completedOperations, id: \.id) { operation in
                                 CompletedOperationCard(operation: operation)
                                     .transition(.asymmetric(
@@ -187,7 +188,7 @@ private struct CompletedOperationsTab: View {
                                     ))
                             }
                         }
-                        .padding(Constants.Padding.screen)
+                        .padding(.Padding.screen)
                     }
                 }
             }
@@ -250,7 +251,7 @@ private struct FailedOperationsTab: View {
                     )
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: Constants.Spacing.large) {
+                        LazyVStack(spacing: .Spacing.large) {
                             ForEach(failedOperations, id: \.id) { operation in
                                 FailedOperationCard(operation: operation)
                                     .transition(.asymmetric(
@@ -259,7 +260,7 @@ private struct FailedOperationsTab: View {
                                     ))
                             }
                         }
-                        .padding(Constants.Padding.screen)
+                        .padding(.Padding.screen)
                     }
                 }
             }
@@ -309,13 +310,13 @@ private struct EmptyStateView: View {
     let color: Color
     
     var body: some View {
-        VStack(spacing: Constants.Spacing.toolbar * 1.25) {
+        VStack(spacing: .Spacing.toolbar * 1.25) {
             Image(systemName: icon)
                 .font(.system(size: 64))
                 .foregroundStyle(color.gradient)
                 .symbolEffect(.bounce, options: .repeating.speed(0.5))
             
-            VStack(spacing: Constants.Spacing.regular) {
+            VStack(spacing: .Spacing.regular) {
                 Text(title)
                     .font(.title2)
                     .fontWeight(.semibold)
@@ -326,7 +327,7 @@ private struct EmptyStateView: View {
                     .multilineTextAlignment(.center)
             }
         }
-        .padding(Constants.Icon.Size.regular)
+        .padding(.Padding.regular)
     }
 }
 
@@ -335,7 +336,7 @@ private struct ActiveOperationCard: View {
     @State private var isPressed = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+        VStack(alignment: .leading, spacing: .Spacing.large) {
             HStack(alignment: .top) {
                 ZStack {
                     Circle()
@@ -349,7 +350,7 @@ private struct ActiveOperationCard: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: Constants.Spacing.regular) {
+                    HStack(spacing: .Spacing.regular) {
                         Text(operationTitle)
                             .font(.headline)
                             .lineLimit(1)
@@ -372,7 +373,7 @@ private struct ActiveOperationCard: View {
                     Text("Cancel")
                         .font(.caption)
                         .fontWeight(.medium)
-                        .padding(.horizontal, Constants.Spacing.large)
+                        .padding(.horizontal, .Spacing.large)
                         .padding(.vertical, 6)
                         .background(Color.red.opacity(0.1))
                         .foregroundColor(.red)
@@ -385,17 +386,17 @@ private struct ActiveOperationCard: View {
                 VStack(alignment: .leading, spacing: 6) {
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: Constants.Corner.Radius.checkbox)
+                            RoundedRectangle(cornerRadius: .Corner.checkbox)
                                 .fill(Color(.systemGray5))
-                                .frame(height: Constants.Spacing.regular)
+                                .frame(height: .Spacing.regular)
                             
-                            RoundedRectangle(cornerRadius: Constants.Corner.Radius.checkbox)
+                            RoundedRectangle(cornerRadius: .Corner.checkbox)
                                 .fill(operationColor.gradient)
-                                .frame(width: geometry.size.width * progress, height: Constants.Spacing.regular)
+                                .frame(width: geometry.size.width * progress, height: .Spacing.regular)
                                 .animation(.spring(response: 0.5, dampingFraction: 0.8), value: progress)
                         }
                     }
-                    .frame(height: Constants.Spacing.regular)
+                    .frame(height: .Spacing.regular)
                     
                     HStack {
                         Text("\(Int(progress * 100))% complete")
@@ -411,11 +412,11 @@ private struct ActiveOperationCard: View {
                 }
             }
         }
-        .padding(Constants.Padding.screen)
+        .padding(.Padding.screen)
         .background(
-            RoundedRectangle(cornerRadius: Constants.Padding.screen)
+            RoundedRectangle(cornerRadius: .Padding.screen)
                 .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.05), radius: Constants.Spacing.regular, x: 0, y: Constants.Spacing.minimal)
+                .shadow(color: .black.opacity(0.05), radius: .Spacing.regular, x: 0, y: .Spacing.minimal)
         )
         .scaleEffect(isPressed ? 0.98 : 1.0)
         .onTapGesture {
@@ -504,7 +505,7 @@ private struct PendingOperationCard: View {
             }
             
             VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: Constants.Spacing.regular) {
+                HStack(spacing: .Spacing.regular) {
                     Text(operationTitle)
                         .font(.headline)
                         .lineLimit(1)
@@ -527,16 +528,16 @@ private struct PendingOperationCard: View {
                 Image(systemName: "xmark")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .padding(Constants.Spacing.regular)
+                    .padding(.Spacing.regular)
                     .background(Circle().fill(Color(.systemGray5)))
             }
             .buttonStyle(.plain)
         }
-        .padding(Constants.Padding.screen)
+        .padding(.Padding.screen)
         .background(
-            RoundedRectangle(cornerRadius: Constants.Padding.screen)
+            RoundedRectangle(cornerRadius: .Padding.screen)
                 .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.05), radius: Constants.Spacing.regular, x: 0, y: Constants.Spacing.minimal)
+                .shadow(color: .black.opacity(0.05), radius: .Spacing.regular, x: 0, y: .Spacing.minimal)
         )
     }
     
@@ -573,7 +574,7 @@ private struct CompletedOperationCard: View {
             }
             
             VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: Constants.Spacing.regular) {
+                HStack(spacing: .Spacing.regular) {
                     Text(operationTitle)
                         .font(.headline)
                         .lineLimit(1)
@@ -592,11 +593,11 @@ private struct CompletedOperationCard: View {
                 .font(.caption)
                 .foregroundColor(Color.primary)
         }
-        .padding(Constants.Padding.screen)
+        .padding(.Padding.screen)
         .background(
-            RoundedRectangle(cornerRadius: Constants.Padding.screen)
+            RoundedRectangle(cornerRadius: .Padding.screen)
                 .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.05), radius: Constants.Spacing.regular, x: 0, y: Constants.Spacing.minimal)
+                .shadow(color: .black.opacity(0.05), radius: .Spacing.regular, x: 0, y: .Spacing.minimal)
         )
     }
     
@@ -616,7 +617,7 @@ private struct FailedOperationCard: View {
     @State private var isExpanded = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+        VStack(alignment: .leading, spacing: .Spacing.large) {
             HStack(alignment: .top) {
                 ZStack {
                     Circle()
@@ -634,7 +635,7 @@ private struct FailedOperationCard: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: Constants.Spacing.regular) {
+                    HStack(spacing: .Spacing.regular) {
                         Text(operationTitle)
                             .font(.headline)
                             .lineLimit(1)
@@ -661,7 +662,7 @@ private struct FailedOperationCard: View {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .padding(Constants.Spacing.regular)
+                        .padding(.Spacing.regular)
                         .background(Circle().fill(Color(.systemGray5)))
                 }
                 .buttonStyle(.plain)
@@ -673,15 +674,15 @@ private struct FailedOperationCard: View {
             }
             
             if isExpanded {
-                HStack(spacing: Constants.Spacing.large) {
+                HStack(spacing: .Spacing.large) {
                     Button {
                         // Retry action
                     } label: {
                         Label("Retry", systemImage: "arrow.clockwise")
                             .font(.caption)
                             .fontWeight(.medium)
-                            .padding(.horizontal, Constants.Padding.screen)
-                            .padding(.vertical, Constants.Spacing.regular)
+                            .padding(.horizontal, .Padding.screen)
+                            .padding(.vertical, .Spacing.regular)
                             .background(Color.blue.opacity(0.1))
                             .foregroundColor(.blue)
                             .clipShape(.capsule)
@@ -694,8 +695,8 @@ private struct FailedOperationCard: View {
                         Label("Details", systemImage: "info.circle")
                             .font(.caption)
                             .fontWeight(.medium)
-                            .padding(.horizontal, Constants.Padding.screen)
-                            .padding(.vertical, Constants.Spacing.regular)
+                            .padding(.horizontal, .Padding.screen)
+                            .padding(.vertical, .Spacing.regular)
                             .background(Color(.systemGray5))
                             .foregroundColor(.primary)
                             .clipShape(.capsule)
@@ -708,11 +709,11 @@ private struct FailedOperationCard: View {
                 ))
             }
         }
-        .padding(Constants.Padding.screen)
+        .padding(.Padding.screen)
         .background(
-            RoundedRectangle(cornerRadius: Constants.Padding.screen)
+            RoundedRectangle(cornerRadius: .Padding.screen)
                 .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.05), radius: Constants.Spacing.regular, x: 0, y: Constants.Spacing.minimal)
+                .shadow(color: .black.opacity(0.05), radius: .Spacing.regular, x: 0, y: .Spacing.minimal)
         )
     }
     
@@ -730,14 +731,14 @@ private struct OperationTypePill: View {
     let type: QueueOperationType
     
     var body: some View {
-        HStack(spacing: Constants.Spacing.minimal) {
+        HStack(spacing: .Spacing.minimal) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .semibold))
             
             Text(label)
                 .font(.system(size: 10, weight: .semibold))
         }
-        .padding(.horizontal, Constants.Spacing.regular)
+        .padding(.horizontal, .Spacing.regular)
         .padding(.vertical, 3)
         .background(color.opacity(0.15))
         .foregroundColor(color)
@@ -770,8 +771,4 @@ private struct OperationTypePill: View {
             return .blue
         }
     }
-}
-
-#Preview("Queue Status View") {
-    QueueStatusView()
 }

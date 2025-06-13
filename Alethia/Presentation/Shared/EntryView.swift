@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 24/11/2024.
 //
 
+import Core
 import SwiftUI
 import Kingfisher
 import Combine
@@ -57,7 +58,7 @@ struct EntryView: View {
                     .fade(duration: 0.25)
                     .scaledToFill()
                     .frame(width: cellWidth, height: cellHeight)
-                    .cornerRadius(Constants.Corner.Radius.card)
+                    .cornerRadius(.Corner.card)
                     .clipped()
                     .overlay(OverlayStack())
             }
@@ -73,7 +74,7 @@ struct EntryView: View {
             
             Spacer()
         }
-        .padding(.horizontal, Constants.Padding.minimal)
+        .padding(.horizontal, .Padding.minimal)
         .onReceive(queueProvider.entryStatePublisher(entry: item).removeDuplicates()) { newState in
             withAnimation {
                 queueState = newState
@@ -92,7 +93,7 @@ extension EntryView {
             if shouldShowOverlay {
                 Color.black.opacity(0.5)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .cornerRadius(Constants.Corner.Radius.card)
+                    .cornerRadius(.Corner.card)
             }
             
             // Individual overlays
@@ -117,7 +118,7 @@ extension EntryView {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-            .padding(Constants.Padding.regular)
+            .padding(.Padding.regular)
         }
     }
     
@@ -139,7 +140,7 @@ extension EntryView {
             }
             .font(.system(size: 24))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-            .padding(Constants.Padding.regular)
+            .padding(.Padding.regular)
         }
     }
 }

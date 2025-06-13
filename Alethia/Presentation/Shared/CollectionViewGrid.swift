@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 11/5/2025.
 //
 
+import Core
 import SwiftUI
 
 struct CollectionViewGrid<Data, ID, Content, Footer>: View
@@ -21,7 +22,7 @@ where Data: RandomAccessCollection,
     
     // Layout
     var columns: Int = 3
-    var spacing: CGFloat = Constants.Spacing.minimal
+    var spacing: CGFloat = .Spacing.minimal
     
     // UI
     var showsScrollIndicator: Bool = true
@@ -61,7 +62,7 @@ where Data: RandomAccessCollection,
                 }
             }
         }
-        .contentMargins(.trailing, Constants.Padding.regular, for: .scrollContent)
+        .contentMargins(.trailing, .Padding.regular, for: .scrollContent)
         .onScrollGeometryChange(for: Bool.self) { geometry in
             let bottomEdge = geometry.contentOffset.y + geometry.containerSize.height
             let contentHeight = geometry.contentSize.height
@@ -91,7 +92,7 @@ where Data: RandomAccessCollection,
 extension CollectionViewGrid where ID == Data.Element.ID {
     init(data: Data,
          columns: Int = 3,
-         spacing: CGFloat = Constants.Spacing.minimal,
+         spacing: CGFloat = .Spacing.minimal,
          showsScrollIndicator: Bool = true,
          footer: Footer?,
          onReachedBottom: (() -> Void)? = nil,
@@ -114,7 +115,7 @@ extension CollectionViewGrid {
     init(data: Data,
          id: KeyPath<Data.Element, ID>,
          columns: Int = 3,
-         spacing: CGFloat = Constants.Spacing.minimal,
+         spacing: CGFloat = .Spacing.minimal,
          showsScrollIndicator: Bool = true,
          footer: Footer?,
          onReachedBottom: (() -> Void)? = nil,
@@ -136,7 +137,7 @@ extension CollectionViewGrid {
 extension CollectionViewGrid where Footer == EmptyView {
     init(data: Data,
          columns: Int = 3,
-         spacing: CGFloat = Constants.Spacing.minimal,
+         spacing: CGFloat = .Spacing.minimal,
          showsScrollIndicator: Bool = true,
          onReachedBottom: (() -> Void)? = nil,
          @ViewBuilder content: @escaping (Data.Element) -> Content) where ID == Data.Element.ID {
@@ -155,7 +156,7 @@ extension CollectionViewGrid where Footer == EmptyView {
     init(data: Data,
          id: KeyPath<Data.Element, ID>,
          columns: Int = 3,
-         spacing: CGFloat = Constants.Spacing.minimal,
+         spacing: CGFloat = .Spacing.minimal,
          showsScrollIndicator: Bool = true,
          onReachedBottom: (() -> Void)? = nil,
          @ViewBuilder content: @escaping (Data.Element) -> Content) {
@@ -176,7 +177,7 @@ extension CollectionViewGrid where Footer == EmptyView {
 extension CollectionViewGrid where ID == Data.Element.ID {
     init(data: Data,
          columns: Int = 3,
-         spacing: CGFloat = Constants.Spacing.minimal,
+         spacing: CGFloat = .Spacing.minimal,
          showsScrollIndicator: Bool = true,
          onReachedBottom: (() -> Void)? = nil,
          @ViewBuilder content: @escaping (Data.Element) -> Content,
@@ -198,7 +199,7 @@ extension CollectionViewGrid {
     init(data: Data,
          id: KeyPath<Data.Element, ID>,
          columns: Int = 3,
-         spacing: CGFloat = Constants.Spacing.minimal,
+         spacing: CGFloat = .Spacing.minimal,
          showsScrollIndicator: Bool = true,
          onReachedBottom: (() -> Void)? = nil,
          @ViewBuilder content: @escaping (Data.Element) -> Content,

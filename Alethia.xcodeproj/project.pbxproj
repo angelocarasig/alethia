@@ -11,6 +11,7 @@
 		171660382DEF214200915ACC /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 171660372DEF214200915ACC /* CHANGELOG.md */; };
 		1716603A2DEF22E600915ACC /* DATABASE.md in Resources */ = {isa = PBXBuildFile; fileRef = 171660392DEF22E600915ACC /* DATABASE.md */; };
 		171661D02DF041A600915ACC /* Drops in Frameworks */ = {isa = PBXBuildFile; productRef = 171661CF2DF041A600915ACC /* Drops */; };
+		173D95812DFC3B4A00480B67 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 173D95802DFC3B4A00480B67 /* Core */; };
 		174FAAAC2DD237D600AD7BE3 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 174FAAAB2DD237D300AD7BE3 /* README.md */; };
 		176C40592DCB380A00B521AD /* Flow in Frameworks */ = {isa = PBXBuildFile; productRef = 176C40582DCB380A00B521AD /* Flow */; };
 		179E8D752DA6A3DE00F43EBC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 179E8D742DA6A3DE00F43EBC /* GRDB */; };
@@ -37,6 +38,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		173D957E2DFC3AD500480B67 /* Exceptions for "Packages" folder in "Alethia" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Core,
+			);
+			target = 17D458CD2DA6A34700CF3BA4 /* Alethia */;
+		};
 		176741682DE2EEA300F21B72 /* Exceptions for "Alethia" folder in "Alethia" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -47,6 +55,14 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		173D957C2DFC3AB200480B67 /* Packages */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				173D957E2DFC3AD500480B67 /* Exceptions for "Packages" folder in "Alethia" target */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
 		179E90802DA7DC6E00F43EBC /* AlethiaTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = AlethiaTests;
@@ -79,6 +95,7 @@
 				17EAA3E02DB3281F00CB9EE5 /* Kingfisher in Frameworks */,
 				171661D02DF041A600915ACC /* Drops in Frameworks */,
 				179E8D752DA6A3DE00F43EBC /* GRDB in Frameworks */,
+				173D95812DFC3B4A00480B67 /* Core in Frameworks */,
 				17B0AC7B2DE43C1500B11B76 /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -86,14 +103,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		173D957F2DFC3B4A00480B67 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		17D458C52DA6A34700CF3BA4 = {
 			isa = PBXGroup;
 			children = (
+				173D957C2DFC3AB200480B67 /* Packages */,
 				174FAAAB2DD237D300AD7BE3 /* README.md */,
 				171660392DEF22E600915ACC /* DATABASE.md */,
 				171660372DEF214200915ACC /* CHANGELOG.md */,
 				17D458D02DA6A34700CF3BA4 /* Alethia */,
 				179E90802DA7DC6E00F43EBC /* AlethiaTests */,
+				173D957F2DFC3B4A00480B67 /* Frameworks */,
 				17D458CF2DA6A34700CF3BA4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -146,6 +172,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				173D957C2DFC3AB200480B67 /* Packages */,
 				17D458D02DA6A34700CF3BA4 /* Alethia */,
 			);
 			name = Alethia;
@@ -156,6 +183,7 @@
 				17B0AC7A2DE43C1500B11B76 /* ZIPFoundation */,
 				17165EB02DED698300915ACC /* Collections */,
 				171661CF2DF041A600915ACC /* Drops */,
+				173D95802DFC3B4A00480B67 /* Core */,
 			);
 			productName = Alethia;
 			productReference = 17D458CE2DA6A34700CF3BA4 /* Alethia.app */;
@@ -578,6 +606,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 171661CE2DF041A600915ACC /* XCRemoteSwiftPackageReference "Drops" */;
 			productName = Drops;
+		};
+		173D95802DFC3B4A00480B67 /* Core */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Core;
 		};
 		176C40582DCB380A00B521AD /* Flow */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 7/5/2025.
 //
 
+import Core
 import SwiftUI
 import Flow
 
@@ -25,65 +26,65 @@ struct LibraryFilterView: View {
                         .disabled(vm.filters.isEmpty)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, Constants.Padding.regular)
+                .padding(.bottom, .Padding.regular)
 
-                HStack(spacing: Constants.Spacing.regular) {
+                HStack(spacing: .Spacing.regular) {
                     Text("Sorting By")
                         .foregroundColor(.secondary)
                     Text(vm.filters.sortType.rawValue)
                         .fontWeight(.medium)
-                        .padding(.horizontal, Constants.Padding.regular)
-                        .padding(.vertical, Constants.Padding.minimal)
+                        .padding(.horizontal, .Padding.regular)
+                        .padding(.vertical, .Padding.minimal)
                         .background(Color.appBlue)
                         .foregroundColor(.text)
-                        .cornerRadius(Constants.Corner.Radius.button)
+                        .cornerRadius(.Corner.button)
                     Text("•")
                         .fontWeight(.medium)
                         .foregroundColor(.secondary)
                     Text(vm.filters.sortDirection.rawValue)
                         .fontWeight(.medium)
-                        .padding(.horizontal, Constants.Padding.regular)
-                        .padding(.vertical, Constants.Padding.minimal)
+                        .padding(.horizontal, .Padding.regular)
+                        .padding(.vertical, .Padding.minimal)
                         .background(Color.appBlue)
                         .foregroundColor(.text)
-                        .cornerRadius(Constants.Corner.Radius.button)
+                        .cornerRadius(.Corner.button)
                 }
                 .font(.subheadline)
-                .padding(.bottom, Constants.Padding.regular)
+                .padding(.bottom, .Padding.regular)
 
-                HStack(spacing: Constants.Spacing.regular) {
+                HStack(spacing: .Spacing.regular) {
                     Text("Active Filters")
                         .foregroundColor(.secondary)
                     if vm.filters.isEmpty {
                         Text("None")
                             .fontWeight(.medium)
-                            .padding(.horizontal, Constants.Padding.regular)
-                            .padding(.vertical, Constants.Padding.minimal)
+                            .padding(.horizontal, .Padding.regular)
+                            .padding(.vertical, .Padding.minimal)
                             .background(Color.tint)
                             .foregroundColor(.text)
-                            .cornerRadius(Constants.Corner.Radius.button)
+                            .cornerRadius(.Corner.button)
                     }
                     HFlow {
                         ForEach(vm.filters.activeFilters, id: \.id) { filter in
                             Text(filter.name)
                                 .fontWeight(.medium)
-                                .padding(.horizontal, Constants.Padding.regular)
-                                .padding(.vertical, Constants.Padding.minimal)
+                                .padding(.horizontal, .Padding.regular)
+                                .padding(.vertical, .Padding.minimal)
                                 .background(filter.color)
                                 .foregroundColor(.text)
-                                .cornerRadius(Constants.Corner.Radius.button)
+                                .cornerRadius(.Corner.button)
                         }
                     }
                 }
                 .font(.subheadline)
             }
 
-            Divider().padding(.vertical, Constants.Padding.regular)
+            Divider().padding(.vertical, .Padding.regular)
             
-            VStack(spacing: Constants.Spacing.large) {
+            VStack(spacing: .Spacing.large) {
                 SortOptions()
                 
-                Divider().padding(.vertical, Constants.Padding.regular)
+                Divider().padding(.vertical, .Padding.regular)
                 
                 FilterOptions()
             }
@@ -117,7 +118,7 @@ struct LibraryFilterView: View {
                 .padding()
                 .foregroundColor(.text)
                 .background(isActive ? Color.appBlue : Color.tint)
-                .cornerRadius(Constants.Corner.Radius.button)
+                .cornerRadius(.Corner.button)
                 .contentShape(.rect)
                 .tappable {
                     withAnimation {
@@ -163,7 +164,7 @@ struct LibraryFilterView: View {
 
     @ViewBuilder
     private func DateFilter(title: String, canClear: Bool, onClear: @escaping () -> Void, date: Binding<LibraryDate>) -> some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+        VStack(alignment: .leading, spacing: .Spacing.large) {
             HStack {
                 Text(title)
                     .font(.title3)
@@ -206,7 +207,7 @@ struct LibraryFilterView: View {
                         displayedComponents: [.date]
                     )
                 case .between(let start, let end):
-                    VStack(spacing: Constants.Spacing.regular) {
+                    VStack(spacing: .Spacing.regular) {
                         DatePicker(
                             "Start Date",
                             selection: Binding(
@@ -228,7 +229,7 @@ struct LibraryFilterView: View {
             }
             .font(.subheadline)
             .fontWeight(.semibold)
-            .padding(.top, Constants.Padding.regular)
+            .padding(.top, .Padding.regular)
         }
     }
 
@@ -256,18 +257,18 @@ struct LibraryFilterView: View {
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            LazyVGrid(columns: columns, spacing: Constants.Spacing.large) {
+            LazyVGrid(columns: columns, spacing: .Spacing.large) {
                 ForEach(PublishStatus.allCases, id: \.rawValue) { status in
-                    HStack(spacing: Constants.Spacing.regular) {
+                    HStack(spacing: .Spacing.regular) {
                         Image(systemName: status.icon)
                         Text(status.rawValue)
                             .font(.headline)
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(Constants.Padding.screen)
+                    .padding(.Padding.screen)
                     .background(vm.filters.publishStatus.contains(status) ? status.color : .tint.opacity(0.5))
-                    .cornerRadius(Constants.Corner.Radius.regular)
+                    .cornerRadius(.Corner.regular)
                     .contentShape(.rect)
                     .tappable { vm.togglePublishStatus(status: status) }
                 }
@@ -281,18 +282,18 @@ struct LibraryFilterView: View {
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            LazyVGrid(columns: columns, spacing: Constants.Spacing.large) {
+            LazyVGrid(columns: columns, spacing: .Spacing.large) {
                 ForEach(Classification.allCases, id: \.rawValue) { classification in
-                    HStack(spacing: Constants.Spacing.regular) {
+                    HStack(spacing: .Spacing.regular) {
                         Image(systemName: classification.icon)
                         Text(classification.rawValue)
                             .font(.headline)
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(Constants.Padding.screen)
+                    .padding(.Padding.screen)
                     .background(vm.filters.classification.contains(classification) ? classification.color : .tint.opacity(0.5))
-                    .cornerRadius(Constants.Corner.Radius.regular)
+                    .cornerRadius(.Corner.regular)
                     .contentShape(.rect)
                     .tappable { vm.toggleClassification(classification: classification) }
                 }

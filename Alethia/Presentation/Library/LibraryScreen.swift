@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 18/4/2025.
 //
 
+import Core
 import SwiftUI
 
 struct LibraryScreen: View {
@@ -78,7 +79,7 @@ struct LibraryScreen: View {
                             Text("\(vm.filters.activeFilters.count)")
                                 .font(.caption)
                                 .foregroundColor(.white)
-                                .padding(Constants.Padding.regular)
+                                .padding(.Padding.regular)
                                 .background(Circle().fill(Color.red))
                                 .offset(x: 10, y: -10)
                         }
@@ -142,7 +143,7 @@ private struct LibraryHeader: View {
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
-                    .padding(Constants.Padding.screen)
+                    .padding(.Padding.screen)
                     .background(.quaternary.opacity(0.5))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
@@ -154,7 +155,7 @@ private struct LibraryHeader: View {
             
             CollectionSelectorView()
         }
-        .padding(.horizontal, Constants.Padding.screen)
+        .padding(.horizontal, .Padding.screen)
         .animation(.easeInOut(duration: 0.3), value: vm.filters.searchText.isEmpty)
         .background(.bar)
     }
@@ -163,7 +164,7 @@ private struct LibraryHeader: View {
 // MARK: - Content States
 private struct LoadingState: View {
     var body: some View {
-        VStack(spacing: Constants.Spacing.regular) {
+        VStack(spacing: .Spacing.regular) {
             LoadingView(message: "Loading library \(SymbolsProvider.randomKaomoji)")
         }
     }
@@ -222,7 +223,7 @@ private struct SuccessState: View {
     @EnvironmentObject private var vm: LibraryViewModel
     let animation: Namespace.ID
     
-    private let spacing: CGFloat = Constants.Spacing.minimal
+    private let spacing: CGFloat = .Spacing.minimal
     private let topSpacing: CGFloat = 12
     private let columns: Int = 3
     
@@ -243,7 +244,7 @@ private struct SuccessState: View {
                             lineLimit: 2,
                             showUnread: true
                         )
-                        .padding(.bottom, Constants.Padding.regular)
+                        .padding(.bottom, .Padding.regular)
                         .matchedTransitionSource(id: entry.transitionId, in: animation)
                     }
                     .contentShape(.rect)
@@ -254,8 +255,8 @@ private struct SuccessState: View {
             }
             .padding(.top, topSpacing) // to account for unread badges
         }
-        .contentMargins(.trailing, Constants.Padding.regular, for: .scrollContent)
-        .padding(.vertical, Constants.Padding.screen)
+        .contentMargins(.trailing, .Padding.regular, for: .scrollContent)
+        .padding(.vertical, .Padding.screen)
         .refreshable {
             vm.onRefresh()
         }

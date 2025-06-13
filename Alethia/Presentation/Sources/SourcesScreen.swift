@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 18/4/2025.
 //
 
+import Core
 import SwiftUI
 import Kingfisher
 import Combine
@@ -179,8 +180,8 @@ private struct AddSourceSheet: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: iconSize, height: iconSize)
-                .cornerRadius(Constants.Corner.Radius.regular)
-                .padding(.trailing, Constants.Padding.regular)
+                .cornerRadius(.Corner.regular)
+                .padding(.trailing, .Padding.regular)
             
             Text(source.name)
                 .font(.headline)
@@ -235,11 +236,11 @@ private struct SourceRow: View {
                     .resizable()
                     .scaledToFit()
                     .frame(
-                        width: Constants.Icon.Size.regular,
-                        height: Constants.Icon.Size.regular
+                        width: .Icon.regular.width,
+                        height: .Icon.regular.height
                     )
-                    .cornerRadius(Constants.Corner.Radius.regular)
-                    .padding(.trailing, Constants.Padding.regular)
+                    .cornerRadius(.Corner.regular)
+                    .padding(.trailing, .Padding.regular)
                 
                 VStack(alignment: .leading) {
                     Text(source.source.name)

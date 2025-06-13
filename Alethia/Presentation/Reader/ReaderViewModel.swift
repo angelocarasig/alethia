@@ -5,7 +5,6 @@
 //  Created by Angelo Carasig on 22/5/2025.
 //
 
-import Foundation
 import SwiftUI
 import Combine
 import Kingfisher
@@ -336,7 +335,8 @@ private extension ReaderViewModel {
     private func validateInfiniteScrollRequirements() {
         guard orientation == .Infinite,
               case .loaded(let pages) = state,
-              pages.count <= Constants.Reader.minimumPageCountForInfinite else {
+              // TODO:
+              pages.count <= 3 else {
             return
         }
         
@@ -348,7 +348,7 @@ private extension ReaderViewModel {
     private func showInfiniteScrollSkippedAlert(pageCount: Int) {
         Drops.show(Drop(
             title: "Infinite Scrolling Was Skipped",
-            subtitle: "Current orientation has fewer than \(Constants.Reader.minimumPageCountForInfinite) pages.",
+            subtitle: "Current orientation has fewer than \(3) pages.",
             icon: UIImage(systemName: "xmark")?.withTintColor(.red, renderingMode: .alwaysOriginal),
             position: .top
         ))

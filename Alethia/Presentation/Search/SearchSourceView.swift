@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 10/5/2025.
 //
 
+import Core
 import SwiftUI
 import Combine
 
@@ -24,7 +25,7 @@ struct SearchSourceView: View {
     var body: some View {
         VStack {
             SearchBar(searchText: $vm.search)
-                .padding(.horizontal, Constants.Padding.regular)
+                .padding(.horizontal, .Padding.regular)
                 .onSubmit { vm.startNewSearch() }
                 .onChange(of: vm.search) { vm.searchTextChanged() }
             
@@ -58,7 +59,7 @@ struct SearchSourceView: View {
                 data: vm.items,
                 id: \.sourceViewId,
                 columns: 3,
-                spacing: Constants.Spacing.minimal,
+                spacing: .Spacing.minimal,
                 onReachedBottom: {
                     guard !vm.loading, !vm.items.isEmpty, !vm.noMoreContent else { return }
                     vm.page += 1

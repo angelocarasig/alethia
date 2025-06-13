@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 18/4/2025.
 //
 
+import Core
 import SwiftUI
 import Combine
 
@@ -49,7 +50,7 @@ struct SourceRouteScreen: View {
             data: vm.items,
             id: \.sourceViewId,
             columns: 3,
-            spacing: Constants.Spacing.minimal,
+            spacing: .Spacing.minimal,
             onReachedBottom: {
                 Task { await vm.loadNextPage() }
             },

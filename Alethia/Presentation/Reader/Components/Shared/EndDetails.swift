@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 19/5/2025.
 //
 
+import Core
 import SwiftUI
 
 struct EndDetails: View {
@@ -13,7 +14,7 @@ struct EndDetails: View {
     
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: Constants.Spacing.large) {
+            VStack(spacing: .Spacing.large) {
                 // Top padding
                 Spacer().frame(height: 60)
                 
@@ -44,9 +45,9 @@ extension EndDetails {
         let chapterTitle = vm.currentChapter.chapter.title
         let buttonSectionHeight: CGFloat = 65
         
-        VStack(spacing: Constants.Spacing.large) {
+        VStack(spacing: .Spacing.large) {
             // Success indicator
-            VStack(spacing: Constants.Spacing.regular) {
+            VStack(spacing: .Spacing.regular) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 56))
                     .foregroundStyle(.green)
@@ -60,7 +61,7 @@ extension EndDetails {
             }
             
             // Chapter info
-            VStack(spacing: Constants.Padding.regular) {
+            VStack(spacing: .Padding.regular) {
                 Text(chapterNumber)
                     .font(.title2)
                     .foregroundStyle(.secondary)
@@ -84,7 +85,7 @@ extension EndDetails {
                         dismiss()
                     }
                 } label: {
-                    VStack(spacing: Constants.Spacing.minimal) {
+                    VStack(spacing: .Spacing.minimal) {
                         Image(systemName: "house.fill")
                         Text("Exit")
                     }
@@ -97,7 +98,7 @@ extension EndDetails {
                 .frame(width: 150, height: buttonSectionHeight)
                 .background(Color.secondary.opacity(0.2))
                 .foregroundStyle(Color.primary)
-                .cornerRadius(Constants.Corner.Radius.button)
+                .cornerRadius(.Corner.button)
                 
                 // TODO: Add banner if next chapter skips a value:
                 // - If next chapter is non-decimal and not a by-1 increment
@@ -127,12 +128,12 @@ extension EndDetails {
                     .frame(height: buttonSectionHeight)
                     .foregroundStyle(vm.canGoForward ? Color.text : Color.secondary)
                     .background(vm.canGoForward ? Color.accentColor : Color.tint.opacity(0.65))
-                    .cornerRadius(Constants.Corner.Radius.button)
+                    .cornerRadius(.Corner.button)
                     .disabled(!vm.canGoForward)
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.bottom, Constants.Padding.regular)
+            .padding(.bottom, .Padding.regular)
         }
         .padding(.vertical)
     }
@@ -142,23 +143,23 @@ extension EndDetails {
 extension EndDetails {
     @ViewBuilder
     private func TrackerSection() -> some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+        VStack(alignment: .leading, spacing: .Spacing.large) {
             Text("Tracking")
                 .font(.title3)
                 .fontWeight(.semibold)
                 .foregroundStyle(.primary)
             
             GroupBox {
-                HStack(spacing: Constants.Spacing.regular) {
+                HStack(spacing: .Spacing.regular) {
                     // Tracker icon
                     Image("AniList")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 44, height: 44)
-                        .clipShape(RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: .Corner.regular, style: .continuous))
                     
                     // Tracker info
-                    VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
+                    VStack(alignment: .leading, spacing: .Spacing.minimal) {
                         Text(vm.mangaTitle)
                             .font(.subheadline)
                             .fontWeight(.medium)
@@ -172,7 +173,7 @@ extension EndDetails {
                     Spacer()
                     
                     // Sync status
-                    VStack(alignment: .trailing, spacing: Constants.Spacing.minimal) {
+                    VStack(alignment: .trailing, spacing: .Spacing.minimal) {
                         SyncStatusBadge()
                         
                         Text("1/999")
@@ -180,7 +181,7 @@ extension EndDetails {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .padding(.vertical, Constants.Padding.minimal)
+                .padding(.vertical, .Padding.minimal)
             }
             .groupBoxStyle(CompactGroupBoxStyle())
         }
@@ -190,14 +191,14 @@ extension EndDetails {
     private func SyncStatusBadge() -> some View {
         let badgeColor: Color = Color.accentColor
         
-        HStack(spacing: Constants.Spacing.minimal) {
+        HStack(spacing: .Spacing.minimal) {
             ProgressView()
                 .scaleEffect(0.7)
             Text("Syncing")
                 .font(.caption)
         }
-        .padding(.horizontal, Constants.Padding.regular)
-        .padding(.vertical, Constants.Padding.minimal)
+        .padding(.horizontal, .Padding.regular)
+        .padding(.vertical, .Padding.minimal)
         .foregroundStyle(.white)
         .background(badgeColor.opacity(0.75))
         .clipShape(.capsule)
@@ -212,7 +213,7 @@ extension EndDetails {
 extension EndDetails {
     @ViewBuilder
     private func Recommendations(recommendations: RecommendedEntries) -> some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+        VStack(alignment: .leading, spacing: .Spacing.large) {
             if !recommendations.withSimilarTags.isEmpty {
                 RecommendationSection(
                     title: "You Might Like",
@@ -249,7 +250,7 @@ extension EndDetails {
     
     @ViewBuilder
     private func RecommendationSection(title: String, systemImage: String, items: [Entry]) -> some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+        VStack(alignment: .leading, spacing: .Spacing.regular) {
             // Section header
             Label(title, systemImage: systemImage)
                 .font(.title3)
@@ -258,7 +259,7 @@ extension EndDetails {
             
             // Horizontal scroll
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: Constants.Spacing.regular) {
+                LazyHStack(spacing: .Spacing.regular) {
                     ForEach(items, id: \.id) { entry in
                         NavigationLink {
                             DetailsScreen(entry: entry, source: nil)
@@ -287,8 +288,8 @@ extension EndDetails {
         
         Label("Synced", systemImage: "checkmark.circle.fill")
             .font(.caption)
-            .padding(.horizontal, Constants.Padding.regular)
-            .padding(.vertical, Constants.Padding.minimal)
+            .padding(.horizontal, .Padding.regular)
+            .padding(.vertical, .Padding.minimal)
             .foregroundStyle(.white)
             .background(badgeColor.opacity(0.75))
             .clipShape(.capsule)
@@ -304,8 +305,8 @@ extension EndDetails {
         
         Label("Error", systemImage: "exclamationmark.triangle.fill")
             .font(.caption)
-            .padding(.horizontal, Constants.Padding.regular)
-            .padding(.vertical, Constants.Padding.minimal)
+            .padding(.horizontal, .Padding.regular)
+            .padding(.vertical, .Padding.minimal)
             .foregroundStyle(.white)
             .background(badgeColor.opacity(0.75))
             .clipShape(.capsule)
@@ -320,7 +321,7 @@ extension EndDetails {
 extension EndDetails {
     @ViewBuilder
     private func ChapterSelectionSection() -> some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+        VStack(alignment: .leading, spacing: .Spacing.large) {
             Label("Chapters", systemImage: "list.bullet")
                 .font(.headline)
             
@@ -387,9 +388,9 @@ private struct CompactGroupBoxStyle: GroupBoxStyle {
     func makeBody(configuration: Configuration) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             configuration.content
-                .padding(Constants.Padding.screen)
+                .padding(.Padding.screen)
         }
         .background(Color.secondary.opacity(0.2))
-        .clipShape(RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: .Corner.regular, style: .continuous))
     }
 }

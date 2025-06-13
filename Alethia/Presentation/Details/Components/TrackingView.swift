@@ -5,13 +5,14 @@
 //  Created by Angelo Carasig on 12/4/2025.
 //
 
+import Core
 import SwiftUI
 
 struct TrackingView: View {
     @EnvironmentObject var vm: DetailsViewModel
     
     var body: some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+        VStack(alignment: .leading, spacing: .Spacing.regular) {
             HStack {
                 Text("Tracking")
                     .font(.title2)
@@ -26,8 +27,11 @@ struct TrackingView: View {
                 Image("AniList")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 40, height: 40)
-                    .cornerRadius(Constants.Corner.Radius.regular)
+                    .frame(
+                        width: .Icon.regular.width,
+                        height: .Icon.regular.height
+                    )
+                    .cornerRadius(.Corner.regular)
                 
                 VStack(alignment: .leading) {
                     Text(vm.details?.manga.title ?? "Unknown Title")
@@ -49,11 +53,11 @@ struct TrackingView: View {
                         .font(.caption)
                     Text("Reading")
                         .font(.caption)
-                        .padding(.horizontal, Constants.Padding.regular)
-                        .padding(.vertical, Constants.Padding.minimal)
+                        .padding(.horizontal, .Padding.regular)
+                        .padding(.vertical, .Padding.minimal)
                         .background(Color.orange)
                         .foregroundColor(.white)
-                        .cornerRadius(Constants.Corner.Radius.regular)
+                        .cornerRadius(.Corner.regular)
                 }
             }
         }

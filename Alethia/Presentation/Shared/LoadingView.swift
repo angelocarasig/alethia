@@ -4,6 +4,8 @@
 //
 //  Created by Angelo Carasig on 11/5/2025.
 //
+
+import Core
 import SwiftUI
 
 struct LoadingView: View {
@@ -17,13 +19,13 @@ struct LoadingView: View {
         ContentUnavailableView {
             ModernSpinner()
                 .frame(
-                    width: Constants.Icon.Size.large,
-                    height: Constants.Icon.Size.large
+                    width: .Icon.large.width,
+                    height: .Icon.large.height
                 )
         } description: {
             Text(message ?? "Please Wait")
                 .font(.title3)
-                .padding(.top, Constants.Padding.screen)
+                .padding(.top, .Padding.screen)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .toolbar(.hidden, for: .tabBar)

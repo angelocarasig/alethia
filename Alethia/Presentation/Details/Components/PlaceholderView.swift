@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 17/4/2025.
 //
 
+import Core
 import SwiftUI
 
 struct PlaceholderView: View {
@@ -64,9 +65,9 @@ struct PlaceholderView: View {
                             .shimmer()
                     }
                 }
-                .padding(.top, Constants.Padding.regular)
+                .padding(.top, .Padding.regular)
             }
-            .cornerRadius(Constants.Corner.Radius.regular)
+            .cornerRadius(.Corner.regular)
             .frame(maxWidth: .infinity)
             
             Spacer().frame(height: 1000)

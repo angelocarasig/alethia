@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 12/4/2025.
 //
 
+import Core
 import SwiftUI
 import Kingfisher
 
@@ -63,7 +64,7 @@ extension DetailsScreen {
                 Text("Multiple entries were found when matching by name. Please select the one you'd like to use.")
             }
             
-            LazyVStack(spacing: Constants.Spacing.large) {
+            LazyVStack(spacing: .Spacing.large) {
                 ForEach(options, id: \.manga.id) { option in
                     Button {
                         vm.requestConfirmation(for: option)
@@ -78,7 +79,7 @@ extension DetailsScreen {
                 }
             }
         }
-        .padding(.horizontal, Constants.Padding.screen)
+        .padding(.horizontal, .Padding.screen)
     }
 }
 
@@ -105,7 +106,7 @@ extension DetailsScreen {
         ContentUnavailableView {
             Label("An Error Occurred", systemImage: "exclamationmark.triangle.fill")
         } description: {
-            VStack(spacing: Constants.Spacing.large) {
+            VStack(spacing: .Spacing.large) {
                 Text("Something went wrong loading details of \(vm.entry.title)...")
                     .font(.headline)
                     .fontWeight(.regular)
@@ -116,7 +117,7 @@ extension DetailsScreen {
                     .fontWeight(.regular)
                     .foregroundStyle(.secondary)
             }
-            .padding(.top, Constants.Padding.regular)
+            .padding(.top, .Padding.regular)
         } actions: {
             Button("Retry", action: { vm.loadDetails() })
                 .buttonStyle(.automatic)
@@ -140,7 +141,7 @@ extension DetailsScreen {
                     .fade(duration: 0.25)
                     .scaledToFill()
                     .frame(width: cellWidth, height: cellHeight)
-                    .cornerRadius(Constants.Corner.Radius.regular)
+                    .cornerRadius(.Corner.regular)
                     .clipped()
             }
             .aspectRatio(11/16, contentMode: .fit)
@@ -158,11 +159,11 @@ extension DetailsScreen {
                     if (option.manga.inLibrary) {
                         Text("In Library")
                             .font(.caption)
-                            .padding(.horizontal, Constants.Padding.regular)
-                            .padding(.vertical, Constants.Padding.minimal)
+                            .padding(.horizontal, .Padding.regular)
+                            .padding(.vertical, .Padding.minimal)
                             .background(Color.appBlue.opacity(0.85))
                             .foregroundColor(.text.opacity(0.75))
-                            .cornerRadius(Constants.Corner.Radius.button)
+                            .cornerRadius(.Corner.button)
                     }
                 }
                 
@@ -176,15 +177,15 @@ extension DetailsScreen {
                     .foregroundStyle(.secondary)
                 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Constants.Spacing.minimal) {
+                    HStack(spacing: .Spacing.minimal) {
                         ForEach(option.tags) { tag in
                             Text(tag.name)
                                 .font(.caption)
-                                .padding(.horizontal, Constants.Padding.regular)
-                                .padding(.vertical, Constants.Padding.minimal)
+                                .padding(.horizontal, .Padding.regular)
+                                .padding(.vertical, .Padding.minimal)
                                 .background(Color.tint)
                                 .foregroundColor(.text.opacity(0.75))
-                                .cornerRadius(Constants.Corner.Radius.button)
+                                .cornerRadius(.Corner.button)
                         }
                     }
                 }
@@ -218,7 +219,7 @@ extension DetailsScreen {
                         }
                         .animation(.easeInOut, value: vm.details != nil)
                         .frame(maxHeight: .infinity)
-                        .padding(.horizontal, Constants.Padding.screen)
+                        .padding(.horizontal, .Padding.screen)
                         .background(BackgroundGradientView())
                     }
                     .refreshable {
@@ -230,7 +231,7 @@ extension DetailsScreen {
         
         @ViewBuilder
         private func LoadedDetails(details: Detail) -> some View {
-            VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+            VStack(alignment: .leading, spacing: .Spacing.large) {
                 HeaderView()
                 
                 ActionButtonsView()

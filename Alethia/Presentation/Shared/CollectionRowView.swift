@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 4/6/2025.
 //
 
+import Core
 import SwiftUI
 
 struct CollectionRowView: View {
@@ -45,7 +46,7 @@ struct CollectionRowView: View {
     }
     
     var body: some View {
-        HStack(spacing: Constants.Spacing.large) {
+        HStack(spacing: .Spacing.large) {
             // Collection Icon
             CollectionIcon(icon: icon, color: color, isSelected: isSelected)
             
@@ -58,7 +59,7 @@ struct CollectionRowView: View {
                 SelectionIndicator(isSelected: isSelected, color: color)
             }
         }
-        .padding(.horizontal, Constants.Padding.screen)
+        .padding(.horizontal, .Padding.screen)
         .padding(.vertical, 12)
         .background(
             CollectionBackground(isSelected: isSelected, showSelected: showSelected, color: color)
@@ -121,7 +122,7 @@ private struct CollectionInfo: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
             
-            HStack(spacing: Constants.Spacing.minimal) {
+            HStack(spacing: .Spacing.minimal) {
                 Image(systemName: "book.closed")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -145,7 +146,7 @@ private struct CollectionBackground: View {
         showSelected && isSelected
     }
     
-    let cornerRadius = Constants.Corner.Radius.button
+    let cornerRadius: CGFloat = .Corner.button
     
     var body: some View {
         RoundedRectangle(cornerRadius: cornerRadius)

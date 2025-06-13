@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 12/6/2025.
 //
 
+import Core
 import Foundation
 import Combine
 
@@ -34,7 +35,7 @@ final class DefaultsProvider: ObservableObject {
     
     // MARK: - Initialization
     private init() {
-        self.userDefaults = UserDefaults(suiteName: Constants.App.groupIdentifier) ?? .standard
+        self.userDefaults = UserDefaults(suiteName: Core.Constants.App.identifier) ?? .standard
         
         let savedSortType = userDefaults.string(forKey: Keys.librarySortType.rawValue)
         self.librarySortType = LibrarySortType(rawValue: savedSortType ?? "") ?? .title

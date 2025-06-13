@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 4/2/2025.
 //
 
+import Core
 import SwiftUI
 
 struct AlternativeTitlesView: View {
@@ -29,12 +30,12 @@ struct AlternativeTitlesView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+        VStack(alignment: .leading, spacing: .Spacing.regular) {
             Text("Alternative Titles")
                 .font(.title2)
                 .fontWeight(.bold)
             
-            VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+            VStack(alignment: .leading, spacing: .Spacing.regular) {
                 ForEach(isExpanded ? titles : Array(titles.prefix(5)), id: \.self.id) { title in
                     Text(title.title)
                         .font(.subheadline)

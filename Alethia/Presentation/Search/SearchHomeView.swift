@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 10/5/2025.
 //
 
+import Core
 import SwiftUI
 import Combine
 import Kingfisher
@@ -42,7 +43,7 @@ struct SearchHomeView: View {
             
             Spacer()
         }
-        .padding(.horizontal, Constants.Padding.regular)
+        .padding(.horizontal, .Padding.regular)
         .navigationTitle("Search")
     }
 }
@@ -78,7 +79,7 @@ private extension SearchHomeView {
                                     
                                     Spacer()
                                 }
-                                .padding(.horizontal, Constants.Padding.minimal)
+                                .padding(.horizontal, .Padding.minimal)
                                 .frame(width: 150)
                             }
                         }
@@ -123,7 +124,7 @@ private extension SearchHomeView {
                     .resizable()
                     .scaledToFit()
                     .frame(width: iconSize, height: iconSize)
-                    .padding(.trailing, Constants.Padding.regular)
+                    .padding(.trailing, .Padding.regular)
                 
                 Text(source.name)
                     .font(.title)
@@ -132,7 +133,7 @@ private extension SearchHomeView {
                 Image(systemName: "arrow.right")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, Constants.Padding.regular)
+            .padding(.vertical, .Padding.regular)
         }
         .buttonStyle(.plain)
     }
@@ -160,7 +161,7 @@ private extension SearchHomeView {
         }
         else {
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: Constants.Spacing.minimal) {
+                LazyHStack(spacing: .Spacing.minimal) {
                     ForEach(entries, id: \.id) { entry in
                         SourceCardView(namespace: namespace, source: source, entry: entry)
                             .frame(width: 150)

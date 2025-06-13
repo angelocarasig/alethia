@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 13/2/2025.
 //
 
+import Core
 import SwiftUI
 
 struct CollectionSelectorView: View {
@@ -13,7 +14,7 @@ struct CollectionSelectorView: View {
     
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Constants.Spacing.large) {
+            HStack(spacing: .Spacing.large) {
                 DefaultCollectionPill()
                 
                 ForEach(vm.collections) { collection in
@@ -22,7 +23,7 @@ struct CollectionSelectorView: View {
                 
                 NewCollectionPill()
             }
-            .padding(.bottom, Constants.Padding.regular)
+            .padding(.bottom, .Padding.regular)
         }
         .scrollDismissesKeyboard(.immediately)
         .scrollBounceBehavior(.basedOnSize)
@@ -32,7 +33,7 @@ struct CollectionSelectorView: View {
     private func DefaultCollectionPill() -> some View {
         let isSelected = vm.activeCollection == nil
         
-        HStack(spacing: Constants.Spacing.regular) {
+        HStack(spacing: .Spacing.regular) {
             Image(systemName: "square.grid.2x2")
                 .font(.system(size: 16, weight: .medium))
                 .frame(width: 20, height: 20)
@@ -44,10 +45,10 @@ struct CollectionSelectorView: View {
             }
         }
         .foregroundColor(isSelected ? .background : .text)
-        .padding(.horizontal, isSelected ? Constants.Padding.screen : Constants.Spacing.large)
-        .padding(.vertical, Constants.Spacing.large)
+        .padding(.horizontal, isSelected ? .Padding.screen : .Spacing.large)
+        .padding(.vertical, .Spacing.large)
         .background(
-            RoundedRectangle(cornerRadius: Constants.Corner.Radius.button, style: .continuous)
+            RoundedRectangle(cornerRadius: .Corner.button, style: .continuous)
                 .fill(isSelected ? Color.text : Color.tint)
         )
         .tappable {
@@ -61,13 +62,13 @@ struct CollectionSelectorView: View {
     private func CollectionPill(_ collection: CollectionExtended) -> some View {
         let isSelected = vm.activeCollection == collection.collection
         
-        HStack(spacing: Constants.Spacing.regular) {
+        HStack(spacing: .Spacing.regular) {
             Image(systemName: collection.collection.icon)
                 .font(.system(size: 16, weight: .medium))
                 .frame(width: 20, height: 20)
             
             if isSelected {
-                HStack(spacing: Constants.Spacing.minimal) {
+                HStack(spacing: .Spacing.minimal) {
                     Text(collection.collection.name)
                         .font(.system(size: 15, weight: .medium))
                         .lineLimit(1)
@@ -80,10 +81,10 @@ struct CollectionSelectorView: View {
             }
         }
         .foregroundColor(isSelected ? .white : .primary)
-        .padding(.horizontal, isSelected ? Constants.Padding.screen : Constants.Spacing.large)
-        .padding(.vertical, Constants.Spacing.large)
+        .padding(.horizontal, isSelected ? .Padding.screen : .Spacing.large)
+        .padding(.vertical, .Spacing.large)
         .background(
-            RoundedRectangle(cornerRadius: Constants.Corner.Radius.button, style: .continuous)
+            RoundedRectangle(cornerRadius: .Corner.button, style: .continuous)
                 .fill(isSelected ? Color(hex: collection.collection.color) : Color.tint)
         )
         .tappable {
@@ -99,7 +100,7 @@ struct CollectionSelectorView: View {
     
     @ViewBuilder
     private func NewCollectionPill() -> some View {
-        HStack(spacing: Constants.Spacing.regular) {
+        HStack(spacing: .Spacing.regular) {
             Image(systemName: "plus.circle.fill")
                 .font(.system(size: 16, weight: .medium))
             
@@ -107,10 +108,10 @@ struct CollectionSelectorView: View {
                 .font(.system(size: 15, weight: .medium))
         }
         .foregroundColor(.secondary)
-        .padding(.horizontal, Constants.Padding.screen)
-        .padding(.vertical, Constants.Spacing.large)
+        .padding(.horizontal, .Padding.screen)
+        .padding(.vertical, .Spacing.large)
         .background(
-            RoundedRectangle(cornerRadius: Constants.Corner.Radius.button, style: .continuous)
+            RoundedRectangle(cornerRadius: .Corner.button, style: .continuous)
                 .strokeBorder(Color(.separator), style: StrokeStyle(lineWidth: 1, dash: [5, 3]))
         )
         .tappable {

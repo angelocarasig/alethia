@@ -18,16 +18,24 @@ final class CollectionLocalDataSource {
 }
 
 extension CollectionLocalDataSource {
+    private static let bannedCollectionNames = [
+        "default",
+        "new"
+    ]
+    
+    private static let maximumCollectionNameLength = 20
+    private static let minimumCollectionNameLength = 3
+    
     func addCollection(name: String, color: String, icon: String) throws -> Void {
-        guard !Constants.Collections.bannedCollectionNames.contains(where: { $0.lowercased() == name.lowercased() }) else {
+        guard CollectionLocalDataSource.bannedCollectionNames.contains(where: { $0.lowercased() == name.lowercased() }) else {
             throw CollectionError.badName(name)
         }
         
-        guard name.count <= Constants.Collections.maximumCollectionNameLength else {
+        guard name.count <= CollectionLocalDataSource.maximumCollectionNameLength else {
             throw CollectionError.maximumLengthReached(name.count)
         }
         
-        guard name.count >= Constants.Collections.minimumCollectionNameLength else {
+        guard name.count >= CollectionLocalDataSource.minimumCollectionNameLength else {
             throw CollectionError.minimumLengthNotReached(name.count)
         }
         
@@ -69,15 +77,15 @@ extension CollectionLocalDataSource {
     
     func updateCollection(collectionId: Int64, newName: String, newIcon: String, newColor: String) throws -> Void {
         // sanity checks
-        guard !Constants.Collections.bannedCollectionNames.contains(where: { $0.lowercased() == newName.lowercased() }) else {
+        guard CollectionLocalDataSource.bannedCollectionNames.contains(where: { $0.lowercased() == newName.lowercased() }) else {
             throw CollectionError.badName(newName)
         }
         
-        guard newName.count <= Constants.Collections.maximumCollectionNameLength else {
+        guard newName.count <= CollectionLocalDataSource.maximumCollectionNameLength else {
             throw CollectionError.maximumLengthReached(newName.count)
         }
         
-        guard newName.count >= Constants.Collections.minimumCollectionNameLength else {
+        guard newName.count >= CollectionLocalDataSource.minimumCollectionNameLength else {
             throw CollectionError.minimumLengthNotReached(newName.count)
         }
         

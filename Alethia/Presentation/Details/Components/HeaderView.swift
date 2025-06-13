@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 4/2/2025.
 //
 
+import Core
 import SwiftUI
 import Kingfisher
 
@@ -53,7 +54,7 @@ struct HeaderView: View {
                 .placeholder { Color.tint.shimmer() }
                 .resizable()
                 .frame(width: displaySize.width, height: displaySize.height)
-                .clipShape(.rect(cornerRadius: Constants.Corner.Radius.regular, style: .continuous))
+                .clipShape(.rect(cornerRadius: .Corner.regular, style: .continuous))
                 .onTapGesture { showArtwork = true }
             
             VStack(alignment: .leading) {

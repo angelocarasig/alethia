@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 26/11/2024.
 //
 
+import Core
 import SwiftUI
 
 struct SearchBar: View {
@@ -52,7 +53,7 @@ struct SearchBar: View {
         .padding()
         .frame(height: 44)
         .background(Color.tint)
-        .cornerRadius(Constants.Corner.Radius.regular)
+        .cornerRadius(.Corner.regular)
     }
 }
 

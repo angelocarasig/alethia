@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 11/5/2025.
 //
 
+import Core
 import SwiftUI
 
 extension View {
@@ -27,11 +28,11 @@ private struct UnreadBadgeModifier: ViewModifier {
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundColor(.white)
-                    .padding(.horizontal, Constants.Padding.regular)
-                    .padding(.vertical, Constants.Padding.minimal)
+                    .padding(.horizontal, .Padding.regular)
+                    .padding(.vertical, .Padding.minimal)
                     .background(Color.red)
                     .clipShape(.capsule)
-                    .offset(Constants.Offset.badge)
+                    .offset(.Offset.badge)
             }
         }
     }

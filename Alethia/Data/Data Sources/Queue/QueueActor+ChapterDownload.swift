@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 5/6/2025.
 //
 
+import Core
 import Foundation
 import Kingfisher
 import ZIPFoundation
@@ -62,7 +63,7 @@ extension QueueActor {
             throw ChapterError.notFound
         }
         
-        let chapterFolder = Constants.Paths.DownloadsPath
+        let chapterFolder = Core.Constants.Paths.downloadsPath
             .appendingPathComponent("chapter-\(chapterId)", isDirectory: true)
         
         let fileManager = FileManager.default

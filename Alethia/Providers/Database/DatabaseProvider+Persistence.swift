@@ -5,7 +5,7 @@
 //  Created by Angelo Carasig on 10/4/2025.
 //
 
-import Foundation
+import Core
 import GRDB
 
 extension DatabaseProvider {
@@ -17,7 +17,7 @@ extension DatabaseProvider {
         config.maximumReaderCount = 10
         config.allowsUnsafeTransactions = false
         config.busyMode = .timeout(5)
-        config.label = Constants.Database.Label
+        config.label = Core.Constants.Database.label
         config.prepareDatabase { db in
             try db.execute(sql: "PRAGMA foreign_keys = ON")
             
@@ -30,7 +30,7 @@ extension DatabaseProvider {
     
     private static func makeShared() -> DatabaseProvider {
         do {
-            let path = Constants.Database.FilePath
+            let path = Core.Constants.Database.filePath
             let writer = try DatabasePool(path: path, configuration: configuration)
             let database = try DatabaseProvider(writer)
             

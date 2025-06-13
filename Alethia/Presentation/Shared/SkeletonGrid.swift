@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 5/6/2025.
 //
 
+import Core
 import SwiftUI
 
 private struct SkeletonItem: Identifiable {
@@ -13,14 +14,14 @@ private struct SkeletonItem: Identifiable {
 
 struct SkeletonGrid: View {
     private let items = (0..<12).map { SkeletonItem(id: $0) }
-    private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: Constants.Spacing.minimal), count: 3)
+    private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: .Spacing.minimal), count: 3)
     
     var body: some View {
         CollectionViewGrid(
             data: items,
             id: \.id,
             columns: 3,
-            spacing: Constants.Spacing.regular,
+            spacing: .Spacing.regular,
             showsScrollIndicator: false,
             content: { _ in
                 SkeletonCard()

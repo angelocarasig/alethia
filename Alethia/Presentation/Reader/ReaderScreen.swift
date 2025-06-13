@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 22/5/2025.
 //
 
+import Core
 import SwiftUI
 import Kingfisher
 
@@ -53,8 +54,8 @@ struct ReaderScreen: View {
                     } label: {
                         Text("Retry")
                             .fontWeight(.semibold)
-                            .padding(.horizontal, Constants.Padding.regular)
-                            .padding(.vertical, Constants.Padding.minimal)
+                            .padding(.horizontal, .Padding.regular)
+                            .padding(.vertical, .Padding.minimal)
                     }
                     
                     Button {
@@ -62,8 +63,8 @@ struct ReaderScreen: View {
                     } label: {
                         Text("Exit")
                             .fontWeight(.semibold)
-                            .padding(.horizontal, Constants.Padding.regular)
-                            .padding(.vertical, Constants.Padding.minimal)
+                            .padding(.horizontal, .Padding.regular)
+                            .padding(.vertical, .Padding.minimal)
                     }
                 }
             }

@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 4/2/2025.
 //
 
+import Core
 import SwiftUI
 
 struct MetadataView: View {
@@ -28,8 +29,8 @@ struct MetadataView: View {
             .fontWeight(.bold)
         
         HStack {
-            VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
-                VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+            VStack(alignment: .leading, spacing: .Spacing.regular) {
+                VStack(alignment: .leading, spacing: .Spacing.regular) {
                     Text("Content Rating")
                         .font(.headline)
                     
@@ -37,15 +38,15 @@ struct MetadataView: View {
                     
                     Text(classification.rawValue)
                         .font(.subheadline)
-                        .padding(.horizontal, Constants.Padding.regular)
-                        .padding(.vertical, Constants.Padding.minimal)
+                        .padding(.horizontal, .Padding.regular)
+                        .padding(.vertical, .Padding.minimal)
                         .background(classification.color)
-                        .cornerRadius(Constants.Corner.Radius.regular)
+                        .cornerRadius(.Corner.regular)
                 }
                 
                 Spacer()
                 
-                VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+                VStack(alignment: .leading, spacing: .Spacing.regular) {
                     Text("Series Start Date")
                         .font(.headline)
                     
@@ -54,17 +55,17 @@ struct MetadataView: View {
                         Text(createdAt.toRelativeString())
                             .font(.subheadline)
                     }
-                    .padding(.horizontal, Constants.Padding.regular)
-                    .padding(.vertical, Constants.Padding.minimal)
+                    .padding(.horizontal, .Padding.regular)
+                    .padding(.vertical, .Padding.minimal)
                     .background(.tint.opacity(0.5))
-                    .cornerRadius(Constants.Corner.Radius.regular)
+                    .cornerRadius(.Corner.regular)
                 }
             }
             
             Spacer()
             
-            VStack(alignment: .trailing, spacing: Constants.Spacing.regular) {
-                VStack(alignment: .trailing, spacing: Constants.Spacing.regular) {
+            VStack(alignment: .trailing, spacing: .Spacing.regular) {
+                VStack(alignment: .trailing, spacing: .Spacing.regular) {
                     Text("Publish Status")
                         .font(.headline)
                     
@@ -72,15 +73,15 @@ struct MetadataView: View {
                     
                     Text(status.rawValue)
                         .font(.subheadline)
-                        .padding(.horizontal, Constants.Padding.regular)
-                        .padding(.vertical, Constants.Padding.minimal)
+                        .padding(.horizontal, .Padding.regular)
+                        .padding(.vertical, .Padding.minimal)
                         .background(status.color)
-                        .cornerRadius(Constants.Corner.Radius.regular)
+                        .cornerRadius(.Corner.regular)
                 }
                 
                 Spacer()
                 
-                VStack(alignment: .trailing, spacing: Constants.Spacing.regular) {
+                VStack(alignment: .trailing, spacing: .Spacing.regular) {
                     Text("Last Updated")
                         .font(.headline)
                     
@@ -89,10 +90,10 @@ struct MetadataView: View {
                         Text(updatedAt.toRelativeString())
                             .font(.subheadline)
                     }
-                    .padding(.horizontal, Constants.Padding.regular)
-                    .padding(.vertical, Constants.Padding.minimal)
+                    .padding(.horizontal, .Padding.regular)
+                    .padding(.vertical, .Padding.minimal)
                     .background(.tint.opacity(0.5))
-                    .cornerRadius(Constants.Corner.Radius.regular)
+                    .cornerRadius(.Corner.regular)
                 }
             }
         }

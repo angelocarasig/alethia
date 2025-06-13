@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 18/4/2025.
 //
 
+import Core
 import SwiftUI
 import Kingfisher
 import Combine
@@ -61,12 +62,12 @@ private extension SourceHeaderView {
         VStack(spacing: 0) {
             Spacer()
             
-            VStack(spacing: Constants.Spacing.regular) {
+            VStack(spacing: .Spacing.regular) {
                 sourceIcon
                 titleSection
                 statsRow
             }
-            .padding(.bottom, Constants.Padding.screen)
+            .padding(.bottom, .Padding.screen)
         }
     }
     
@@ -84,7 +85,7 @@ private extension SourceHeaderView {
     }
     
     var titleSection: some View {
-        VStack(spacing: Constants.Spacing.minimal) {
+        VStack(spacing: .Spacing.minimal) {
             Text(source.name)
                 .font(.title)
                 .fontWeight(.bold)
@@ -95,7 +96,7 @@ private extension SourceHeaderView {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
-                .padding(.horizontal, Constants.Padding.screen)
+                .padding(.horizontal, .Padding.screen)
         }
     }
     
@@ -107,8 +108,8 @@ private extension SourceHeaderView {
             Divider().frame(height: 32)
             websiteLink
         }
-        .padding(.vertical, Constants.Padding.regular)
-        .padding(.horizontal, Constants.Padding.regular)
+        .padding(.vertical, .Padding.regular)
+        .padding(.horizontal, .Padding.regular)
         .background(
             RoundedRectangle(cornerRadius: 20)
                 .fill(.ultraThinMaterial)

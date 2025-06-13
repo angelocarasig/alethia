@@ -150,7 +150,7 @@ private extension QueueProvider {
             }.count
             
             
-            guard ongoingCount < Constants.Queue.ConcurrentOperationsCount else {
+            guard ongoingCount < 3 else {
                 // If ongoing operation exists, do nothing now
                 return
             }

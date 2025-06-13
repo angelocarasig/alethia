@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 8/6/2025.
 //
 
+import Core
 import SwiftUI
 import Kingfisher
 
@@ -83,9 +84,9 @@ struct PriorityManagementView: View {
                         isEditing: editMode
                     )
                     .background(Color(UIColor.secondarySystemGroupedBackground))
-                    .cornerRadius(Constants.Corner.Radius.regular)
-                    .padding(.horizontal, Constants.Padding.screen)
-                    .padding(.vertical, Constants.Padding.minimal)
+                    .cornerRadius(.Corner.regular)
+                    .padding(.horizontal, .Padding.screen)
+                    .padding(.vertical, .Padding.minimal)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
                 }
@@ -97,7 +98,7 @@ struct PriorityManagementView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             ) {
-                VStack(alignment: .leading, spacing: Constants.Spacing.regular) {
+                VStack(alignment: .leading, spacing: .Spacing.regular) {
                     ForEach(Array(originGroups.enumerated()), id: \.element.id) { groupIndex, group in
                         ScanlatorGroupSection(
                             group: group,
@@ -107,7 +108,7 @@ struct PriorityManagementView: View {
                         )
                     }
                 }
-                .padding(.top, Constants.Padding.regular)
+                .padding(.top, .Padding.regular)
             }
             .listStyle(.plain)
             .listRowSeparator(.hidden)
@@ -150,13 +151,13 @@ private struct ScanlatorGroupSection: View {
                 }
             } label: {
                 VStack {
-                    HStack(spacing: Constants.Spacing.regular) {
+                    HStack(spacing: .Spacing.regular) {
                         KFImage(URL(fileURLWithPath: group.origin.sourceIcon))
                             .placeholder { Color.tint.shimmer() }
                             .resizable()
                             .scaledToFit()
                             .frame(width: 32, height: 32)
-                            .cornerRadius(Constants.Corner.Radius.regular)
+                            .cornerRadius(.Corner.regular)
                         
                         VStack(alignment: .leading, spacing: 2) {
                             Text(group.origin.sourceName)
@@ -181,15 +182,15 @@ private struct ScanlatorGroupSection: View {
                         Divider()
                     }
                 }
-                .padding(.horizontal, Constants.Padding.screen)
-                .padding(.top, Constants.Padding.regular)
-                .padding(.bottom, Constants.Padding.minimal)
+                .padding(.horizontal, .Padding.screen)
+                .padding(.top, .Padding.regular)
+                .padding(.bottom, .Padding.minimal)
                 .background(Color(UIColor.secondarySystemGroupedBackground))
-                .cornerRadius(Constants.Corner.Radius.button)
+                .cornerRadius(.Corner.button)
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, Constants.Padding.screen)
-            .padding(.bottom, isExpanded ? Constants.Spacing.regular : 0)
+            .padding(.horizontal, .Padding.screen)
+            .padding(.bottom, isExpanded ? .Spacing.regular : 0)
             
             if isExpanded {
                 List {
@@ -215,12 +216,12 @@ private struct ScanlatorGroupSection: View {
                 }
                 .listStyle(.plain)
                 .frame(height: CGFloat(group.scanlators.count) * 56)
-                .padding(.horizontal, Constants.Padding.screen)
+                .padding(.horizontal, .Padding.screen)
                 .scrollDisabled(true)
                 .animation(.spring(response: 0.3, dampingFraction: 0.8), value: group.scanlators)
             }
         }
-        .padding(.bottom, Constants.Padding.regular)
+        .padding(.bottom, .Padding.regular)
     }
 }
 
@@ -236,10 +237,10 @@ private struct OriginPriorityRow: View {
                 .placeholder { Color.tint.shimmer() }
                 .resizable()
                 .scaledToFit()
-                .frame(width: Constants.Icon.Size.regular, height: Constants.Icon.Size.regular)
-                .cornerRadius(Constants.Corner.Radius.regular)
+                .frame(width: .Icon.regular.width, height: .Icon.regular.height)
+                .cornerRadius(.Corner.regular)
             
-            VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
+            VStack(alignment: .leading, spacing: .Spacing.minimal) {
                 Text(origin.sourceName)
                     .lineLimit(1)
                     .font(.body)
@@ -260,12 +261,12 @@ private struct OriginPriorityRow: View {
             if isEditing {
                 Image(systemName: "line.3.horizontal")
                     .foregroundStyle(.secondary)
-                    .padding(.leading, Constants.Padding.regular)
+                    .padding(.leading, .Padding.regular)
             }
         }
-        .padding(.vertical, Constants.Padding.regular)
-        .padding(.horizontal, Constants.Padding.minimal)
-        .padding(.bottom, Constants.Padding.minimal)
+        .padding(.vertical, .Padding.regular)
+        .padding(.horizontal, .Padding.minimal)
+        .padding(.bottom, .Padding.minimal)
         .opacity(origin.source?.disabled ?? false ? 0.6 : 1.0)
     }
 }
@@ -287,7 +288,7 @@ private struct ScanlatorPriorityRow: View {
     }
     
     var body: some View {
-        HStack(spacing: Constants.Spacing.regular) {
+        HStack(spacing: .Spacing.regular) {
             Circle()
                 .fill(priorityColor.opacity(0.2))
                 .frame(width: 28, height: 28)
@@ -313,10 +314,10 @@ private struct ScanlatorPriorityRow: View {
                     .contentShape(.rect)
             }
         }
-        .padding(.horizontal, Constants.Padding.screen)
-        .padding(.vertical, Constants.Padding.regular + Constants.Padding.minimal)
+        .padding(.horizontal, .Padding.screen)
+        .padding(.vertical, .Padding.regular + .Padding.minimal)
         .background(
-            RoundedRectangle(cornerRadius: Constants.Corner.Radius.regular)
+            RoundedRectangle(cornerRadius: .Corner.regular)
                 .fill(Color(UIColor.tertiarySystemGroupedBackground))
         )
     }

@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 9/5/2025.
 //
 
+import Core
 import SwiftUI
 import Combine
 
@@ -35,7 +36,7 @@ struct SettingsSourcesView: View {
                 Text(host.name)
                 Spacer()
             }
-            .padding(.vertical, Constants.Padding.minimal)
+            .padding(.vertical, .Padding.minimal)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
                     vm.delete(host)
@@ -55,7 +56,7 @@ struct SettingsSourcesView: View {
                 Text(host.name)
                 Spacer()
             }
-            .padding(.vertical, Constants.Padding.minimal)
+            .padding(.vertical, .Padding.minimal)
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button(role: .destructive) {
                     vm.delete(host)

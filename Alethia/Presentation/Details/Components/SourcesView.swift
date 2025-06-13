@@ -5,6 +5,7 @@
 //  Created by Angelo Carasig on 13/4/2025.
 //
 
+import Core
 import SwiftUI
 import Kingfisher
 
@@ -16,7 +17,7 @@ struct SourcesView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
+        VStack(alignment: .leading, spacing: .Spacing.large) {
             NavigationLink(destination: SourceDetailView()) {
                 HStack {
                     Text("Sources")
@@ -30,7 +31,7 @@ struct SourcesView: View {
             }
             .buttonStyle(.plain)
             
-            VStack(spacing: Constants.Spacing.large) {
+            VStack(spacing: .Spacing.large) {
                 ForEach(origins) { origin in
                     SourceRow(origin)
                         .disabled(origin.source == nil)
@@ -45,7 +46,7 @@ struct SourcesView: View {
     private func SourceRow(_ origin: OriginExtended) -> some View {
         let sourceDisabled = origin.source == nil
         
-        HStack(spacing: Constants.Spacing.large) {
+        HStack(spacing: .Spacing.large) {
             KFImage(URL(fileURLWithPath: origin.sourceIcon))
                 .placeholder {
                     Color.gray.opacity(0.3)
@@ -53,13 +54,13 @@ struct SourcesView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .frame(
-                    width: Constants.Icon.Size.regular,
-                    height: Constants.Icon.Size.regular
+                    width: .Icon.regular.width,
+                    height: .Icon.regular.height
                 )
-                .cornerRadius(Constants.Corner.Radius.button)
+                .cornerRadius(.Corner.button)
                 .grayscale(sourceDisabled ? 1 : 0)
             
-            VStack(alignment: .leading, spacing: Constants.Spacing.minimal) {
+            VStack(alignment: .leading, spacing: .Spacing.minimal) {
                 Text("\(origin.sourceName) • \(origin.sourceHost)")
                     .lineLimit(1)
                 
@@ -71,7 +72,7 @@ struct SourcesView: View {
             Spacer()
             
             if let originURL = URL(string: origin.origin.url) {
-                HStack(spacing: Constants.Spacing.large) {
+                HStack(spacing: .Spacing.large) {
                     Button {
                         UIPasteboard.general.string = originURL.absoluteString
                     } label: {
@@ -86,11 +87,11 @@ struct SourcesView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.leading, Constants.Padding.regular)
+                .padding(.leading, .Padding.regular)
             }
         }
-        .padding(.horizontal, Constants.Padding.minimal)
-        .padding(.vertical, Constants.Padding.regular)
+        .padding(.horizontal, .Padding.minimal)
+        .padding(.vertical, .Padding.regular)
         .disabled(sourceDisabled)
         .opacity(sourceDisabled ? 0.5 : 1.0)
         .foregroundStyle(sourceDisabled ? .gray : .text)

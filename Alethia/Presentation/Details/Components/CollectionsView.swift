@@ -4,6 +4,8 @@
 //
 //  Created by Angelo Carasig on 13/4/2025.
 //
+
+import Core
 import SwiftUI
 
 struct CollectionsView: View {
@@ -14,8 +16,7 @@ struct CollectionsView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: Constants.Spacing.large) {
-            // Enhanced Header
+        VStack(alignment: .leading, spacing: .Spacing.large) {
             NavigationLink {
                 ManageCollectionsView()
                     .environmentObject(vm)
@@ -32,7 +33,6 @@ struct CollectionsView: View {
             }
             .buttonStyle(.plain)
             
-            // Content Area
             if collections.isEmpty {
                 EmptyStateView()
             } else {
@@ -63,7 +63,7 @@ struct CollectionsView: View {
     private func CollectionsList() -> some View {
         let gridCols: Int = 2
         
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Constants.Spacing.regular), count: gridCols)) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: .Spacing.regular), count: gridCols)) {
             ForEach(Array(collections.enumerated()), id: \.element.id) { index, collection in
                 CollectionRow(collection: collection)
                     .transition(.asymmetric(
