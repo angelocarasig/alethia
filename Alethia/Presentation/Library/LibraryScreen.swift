@@ -135,6 +135,8 @@ private struct LibraryHeader: View {
                             .font(.subheadline)
                         Text("Search everywhere for '\(vm.filters.searchText)'")
                             .font(.subheadline)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption)
