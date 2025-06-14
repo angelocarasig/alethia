@@ -63,8 +63,8 @@ extension SourceRoute {
 }
 
 // MARK: - Database Table Definition + Migrations
-extension SourceRoute: DatabaseMigratable {
-    static func createTable(db: Database) throws {
+extension SourceRoute: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             // ids
             t.autoIncrementedPrimaryKey(Columns.id.name)
@@ -78,7 +78,7 @@ extension SourceRoute: DatabaseMigratable {
         })
     }
     
-    static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
         // No migrations needed - current schema is baseline
     }
 }

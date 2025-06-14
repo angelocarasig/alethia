@@ -42,8 +42,8 @@ extension Author: TableRecord {
     }
 }
 
-extension Author: DatabaseUnique {
-    static func uniqueFilter(for instance: Domain.Models.Persistence.Author) -> QueryInterfaceRequest<Domain.Models.Persistence.Author> {
+extension Author: Domain.Models.Database.DatabaseUnique {
+    public static func uniqueFilter(for instance: Domain.Models.Persistence.Author) -> QueryInterfaceRequest<Domain.Models.Persistence.Author> {
         filter(Columns.name == instance.name)
     }
 }
@@ -56,8 +56,8 @@ extension Author {
 }
 
 // MARK: - Database Table Definition + Migrations
-extension Author: DatabaseMigratable {
-    static func createTable(db: Database) throws {
+extension Author: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             // ids
             t.autoIncrementedPrimaryKey(Columns.id.name)
@@ -70,7 +70,7 @@ extension Author: DatabaseMigratable {
         })
     }
     
-    static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
         // nothing for now
     }
 }

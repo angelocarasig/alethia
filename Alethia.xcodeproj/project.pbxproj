@@ -41,7 +41,9 @@
 		173D957E2DFC3AD500480B67 /* Exceptions for "Packages" folder in "Alethia" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Composition,
 				Core,
+				Data,
 				Domain,
 			);
 			target = 17D458CD2DA6A34700CF3BA4 /* Alethia */;

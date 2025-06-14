@@ -70,9 +70,9 @@ extension Collection: TableRecord {
     }
 }
 
-extension Collection: DatabaseUnique {
+extension Collection: Domain.Models.Database.DatabaseUnique {
     /// when performing a findOrCreate, uses this to determine whether to find/create the collection
-    static func uniqueFilter(for instance: Domain.Models.Persistence.Collection) -> QueryInterfaceRequest<Domain.Models.Persistence.Collection> {
+    public static func uniqueFilter(for instance: Domain.Models.Persistence.Collection) -> QueryInterfaceRequest<Domain.Models.Persistence.Collection> {
         filter(Columns.name == instance.name)
     }
 }
@@ -85,8 +85,8 @@ extension Collection {
 }
 
 // MARK: - Database Table Definition + Migrations
-extension Collection: DatabaseMigratable {
-    static func createTable(db: Database) throws {
+extension Collection: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             // ids
             t.autoIncrementedPrimaryKey(Columns.id.name)
@@ -116,7 +116,7 @@ extension Collection: DatabaseMigratable {
         })
     }
     
-    static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
         // nothing for now
     }
 }

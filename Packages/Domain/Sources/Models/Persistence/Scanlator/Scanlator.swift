@@ -37,8 +37,8 @@ public extension Domain.Models.Persistence {
 // MARK: - Database Conformance
 extension Scanlator: FetchableRecord, PersistableRecord {}
 
-extension Scanlator: DatabaseUnique {
-    static func uniqueFilter(for instance: Domain.Models.Persistence.Scanlator) -> QueryInterfaceRequest<Domain.Models.Persistence.Scanlator> {
+extension Scanlator: Domain.Models.Database.DatabaseUnique {
+    public static func uniqueFilter(for instance: Domain.Models.Persistence.Scanlator) -> QueryInterfaceRequest<Domain.Models.Persistence.Scanlator> {
         filter(Columns.name == instance.name)
     }
 }
@@ -63,8 +63,8 @@ extension Scanlator {
 }
 
 // MARK: - Database Table Definition + Migrations
-extension Scanlator: DatabaseMigratable {
-    static func createTable(db: Database) throws {
+extension Scanlator: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             // ids
             t.autoIncrementedPrimaryKey(Columns.id.name)
@@ -77,7 +77,7 @@ extension Scanlator: DatabaseMigratable {
         })
     }
     
-    static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
         // No migrations needed - current schema is baseline
     }
 }

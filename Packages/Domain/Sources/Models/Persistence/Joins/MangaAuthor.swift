@@ -50,8 +50,8 @@ extension MangaAuthor {
 }
 
 // MARK: - Database Table Definition + Migrations
-extension MangaAuthor: DatabaseMigratable {
-    static func createTable(db: Database) throws {
+extension MangaAuthor: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             // id - composite primary based on manga/author ids
             t.primaryKey([Columns.mangaId.name, Columns.authorId.name])
@@ -66,7 +66,7 @@ extension MangaAuthor: DatabaseMigratable {
         })
     }
     
-    static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
         // nothing for now
     }
 }

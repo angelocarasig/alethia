@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  Entry.swift
 //  Domain
 //
 //  Created by Angelo Carasig on 14/6/2025.
@@ -8,8 +8,10 @@
 import Foundation
 import GRDB
 
+internal typealias Entry = Domain.Models.Virtual.Entry
+
 public extension Domain.Models.Virtual {
-    struct Entry: Identifiable, Hashable, Codable {
+    struct Entry: Identifiable, Hashable, Decodable {
         // MARK: - Properties
         
         /// underlying manga id if it exists
@@ -43,8 +45,11 @@ public extension Domain.Models.Virtual {
         /// coming from a detached source
         public var fetchUrl: String?
         
-        public var match: Domain.Models.Enums.EntryMatch = .none
+        /// unread count for the entry's underlying manga chapter list count
         public var unread: Int = 0
+        
+        /// match type
+        public var match: Domain.Models.Enums.EntryMatch = .none
         
         // MARK: - Internal
         /// these properties are required for in-library filtering and are mirrors of default
@@ -75,6 +80,8 @@ public extension Domain.Models.Virtual {
             self.slug = slug
             self.cover = cover
             self.fetchUrl = fetchUrl
+            self.unread = unread
+            self.match = match
             self.inLibrary = inLibrary
             self.addedAt = addedAt
             self.updatedAt = updatedAt
@@ -84,7 +91,7 @@ public extension Domain.Models.Virtual {
 }
 
 // MARK: - Computed
-public extension Domain.Models.Virtual.Entry {
+public extension Entry {
     var id: String {
         // coming from a source - use the fetch url
         if let fetchUrl = fetchUrl {
@@ -105,5 +112,133 @@ public extension Domain.Models.Virtual.Entry {
         else {
             return "unknown-\(title)-\(slug)"
         }
+    }
+}
+
+// MARK: - Database Conformance
+extension Entry: TableRecord {
+    public enum Columns {
+        // grouping by how they are selected
+        
+        // base - manga props
+        public static let mangaId     = Column(CodingKeys.mangaId)
+        public static let title       = Column(CodingKeys.title)
+        public static let inLibrary   = Column(CodingKeys.inLibrary)
+        public static let addedAt     = Column(CodingKeys.addedAt)
+        public static let updatedAt   = Column(CodingKeys.updatedAt)
+        public static let lastReadAt  = Column(CodingKeys.lastReadAt)
+        
+        // from manga 1-M relations
+        // cover with property `active`
+        public static let cover       = Column(CodingKeys.cover)
+        
+        // from best origin's source
+        public static let sourceId    = Column(CodingKeys.sourceId)
+        public static let slug        = Column(CodingKeys.slug)
+        
+        // from calculated
+        // via joining host baseUrl + source.slug + "manga" + origin.slug
+        public static let fetchUrl    = Column(CodingKeys.fetchUrl)
+        
+        // via best chapter fetchCount()
+        public static let unread      = Column(CodingKeys.unread)
+        
+        // should default to .none as will be filled from different use-case or remain .none (in case of library screen)
+        public static let match       = Column(CodingKeys.match)
+    }
+}
+
+internal extension Entry {
+    static var asRequest: SQLRequest<Entry> {
+        // all query props in base
+        let base = """
+            SELECT
+                m.id AS mangaId,
+                m.title AS title,
+                m.inLibrary AS inLibrary,
+                m.addedAt AS addedAt,
+                m.updatedAt AS updatedAt,
+                m.lastReadAt AS lastReadAt,
+                
+                best_origin.sourceId AS sourceId,
+                best_origin.slug AS slug,
+        
+                (RTRIM(h.baseUrl, '/') || '/' || 
+                 LTRIM(s.path, '/') || '/manga/' || 
+                 best_origin.slug) AS fetchUrl,
+                
+                active_cover.url AS cover,
+                
+                CAST(IFNULL(unread_stats.unread_count, 0) AS INTEGER) AS unread
+        """
+        
+        // start from manga m
+        let from = """
+            FROM manga m
+        """
+        
+        // aliased subquery as best origin
+        let origin = """
+            LEFT JOIN (
+                SELECT o.mangaId, o.sourceId, o.slug
+                FROM origin o
+                WHERE o.priority = (
+                    SELECT MIN(priority) 
+                    FROM origin o2 
+                    WHERE o2.mangaId = o.mangaId
+                )
+            ) best_origin ON best_origin.mangaId = m.id
+        """
+        
+        // relevant best origin's source and host
+        let sourcehost = """
+            LEFT JOIN source s ON s.id = best_origin.sourceId
+            LEFT JOIN host h ON h.id = s.hostId
+        """
+        
+        // active cover
+        let cover = """
+            LEFT JOIN (
+                SELECT c.mangaId, c.url
+                FROM cover c
+                WHERE c.active = 1
+            ) active_cover ON active_cover.mangaId = m.id
+        """
+        
+        // unread
+        let unread = """
+            LEFT JOIN (
+                SELECT 
+                    bc.mangaId,
+                    COUNT(*) as unread_count
+                FROM best_chapter bc
+                WHERE bc.rank = 1
+                AND (bc.showHalfChapters = 1 OR CAST(bc.number AS INTEGER) = bc.number)
+                AND (bc.progress IS NULL OR bc.progress < 1.0)
+                GROUP BY bc.mangaId
+            ) unread_stats ON unread_stats.mangaId = m.id
+        """
+        
+        let sql = [
+            base,
+            from,
+            origin,
+            sourcehost,
+            cover,
+            unread
+        ].joined(separator: "\n\n")
+        
+        return SQLRequest<Entry>(sql: sql)
+    }
+}
+
+// MARK: - Database View Definition + Migrations
+extension Entry: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: Database) throws {
+        try db.create(view: databaseTableName, options: [ViewOptions.ifNotExists], as: asRequest)
+    }
+    
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
+        // nothing for now
     }
 }

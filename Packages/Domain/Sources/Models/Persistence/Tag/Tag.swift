@@ -39,8 +39,8 @@ extension Tag: TableRecord {
     }
 }
 
-extension Tag: DatabaseUnique {
-    static func uniqueFilter(for instance: Tag) -> QueryInterfaceRequest<Domain.Models.Persistence.Tag> {
+extension Tag: Domain.Models.Database.DatabaseUnique {
+    public static func uniqueFilter(for instance: Domain.Models.Persistence.Tag) -> QueryInterfaceRequest<Domain.Models.Persistence.Tag> {
         filter(Columns.name == instance.name)
     }
 }
@@ -53,8 +53,8 @@ extension Tag {
 }
 
 // MARK: - Database Table Definition + Migrations
-extension Tag: DatabaseMigratable {
-    static func createTable(db: Database) throws {
+extension Tag: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             // ids
             t.autoIncrementedPrimaryKey(Columns.id.name)
@@ -67,7 +67,7 @@ extension Tag: DatabaseMigratable {
         })
     }
     
-    static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
         // nothing for now
     }
 }

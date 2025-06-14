@@ -82,7 +82,7 @@ public extension Domain.Repositories {
         /// - Parameter entry: The entry to fetch details for
         /// - Returns: Publisher emitting manga details array, typically contains one item
         /// - Note: Includes all related data: titles, authors, covers, origins, chapters
-        func getMangaDetail(entry: Domain.Models.Virtual.Entry) -> AnyPublisher<[Domain.Models.Virtual.Details], Error>
+        func getMangaDetails(entry: Domain.Models.Virtual.Entry) -> AnyPublisher<[Domain.Models.Virtual.Details], Error>
         
         /// Gets personalized manga recommendations.
         ///

@@ -67,8 +67,8 @@ extension Cover {
 }
 
 // MARK: - Database Table Definition + Migrations
-extension Cover: DatabaseMigratable {
-    static func createTable(db: Database) throws {
+extension Cover: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             // ids
             t.autoIncrementedPrimaryKey(Columns.id.name)
@@ -86,7 +86,7 @@ extension Cover: DatabaseMigratable {
         })
     }
     
-    static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
         // nothing for now
     }
 }

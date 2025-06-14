@@ -66,9 +66,9 @@ extension Host: TableRecord {
     }
 }
 
-extension Host: DatabaseUnique {
+extension Host: Domain.Models.Database.DatabaseUnique {
     /// when performing a findOrCreate, uses this to determine whether to find/create the host
-    static func uniqueFilter(for instance: Domain.Models.Persistence.Host) -> GRDB.QueryInterfaceRequest<Domain.Models.Persistence.Host> {
+    public static func uniqueFilter(for instance: Domain.Models.Persistence.Host) -> GRDB.QueryInterfaceRequest<Domain.Models.Persistence.Host> {
         filter(Columns.baseUrl == instance.baseUrl)
     }
 }
@@ -83,8 +83,8 @@ extension Host {
 }
 
 // MARK: - Database Table Definition + Migrations
-extension Host: DatabaseMigratable {
-    static func createTable(db: GRDB.Database) throws {
+extension Host: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: GRDB.Database) throws {
         try db.create(table: databaseTableName, body: { t in
             t.autoIncrementedPrimaryKey(Columns.id.name)
             
@@ -118,7 +118,7 @@ extension Host: DatabaseMigratable {
         })
     }
     
-    static func migrate(with migrator: inout GRDB.DatabaseMigrator, from version: Version) throws {
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
         // nothing for now
     }
 }

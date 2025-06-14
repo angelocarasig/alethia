@@ -50,8 +50,8 @@ extension MangaCollection {
 }
 
 // MARK: - Database Table Definition + Migrations
-extension MangaCollection: DatabaseMigratable {
-    static func createTable(db: Database) throws {
+extension MangaCollection: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             // note: no composite primary key here as manga can be in multiple collections
             
@@ -65,7 +65,7 @@ extension MangaCollection: DatabaseMigratable {
         })
     }
     
-    static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
         // nothing for now
     }
 }

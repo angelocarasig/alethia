@@ -132,8 +132,8 @@ extension Manga {
 }
 
 // MARK: - Database Table Definition + Migrations
-extension Manga: DatabaseMigratable {
-    static func createTable(db: Database) throws {
+extension Manga: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             // ids
             t.autoIncrementedPrimaryKey(Columns.id.name)
@@ -155,7 +155,7 @@ extension Manga: DatabaseMigratable {
         })
     }
     
-    static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
         // nothing for now
     }
 }

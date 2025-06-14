@@ -140,8 +140,8 @@ extension Origin {
 }
 
 // MARK: - Database Table Definition + Migrations
-extension Origin: DatabaseMigratable {
-    static func createTable(db: Database) throws {
+extension Origin: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             // ids
             t.autoIncrementedPrimaryKey(Columns.id.name)
@@ -164,7 +164,7 @@ extension Origin: DatabaseMigratable {
         })
     }
     
-    static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
         // nothing for now
     }
 }

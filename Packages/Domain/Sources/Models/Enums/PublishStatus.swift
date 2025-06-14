@@ -11,7 +11,7 @@ import GRDB
 internal typealias PublishStatus = Domain.Models.Enums.PublishStatus
 
 public extension Domain.Models.Enums {
-    enum PublishStatus: String, Codable, CaseIterable, SQLExpressible {
+    enum PublishStatus: String, Codable, CaseIterable, DatabaseValueConvertible {
         case Unknown
         case Ongoing
         case Completed

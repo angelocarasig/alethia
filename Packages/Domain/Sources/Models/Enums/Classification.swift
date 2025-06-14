@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  Classification.swift
 //  Domain
 //
 //  Created by Angelo Carasig on 14/6/2025.
@@ -11,7 +11,7 @@ import GRDB
 internal typealias Classification = Domain.Models.Enums.Classification
 
 public extension Domain.Models.Enums {
-    enum Classification: String, Codable, CaseIterable, SQLExpressible {
+    enum Classification: String, Codable, CaseIterable, DatabaseValueConvertible {
         case Unknown
         case Safe
         case Suggestive

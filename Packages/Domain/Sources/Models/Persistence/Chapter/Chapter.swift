@@ -129,8 +129,8 @@ extension Chapter {
 }
 
 // MARK: - Database Table Definnition + Migrations
-extension Chapter: DatabaseMigratable {
-    static func createTable(db: Database) throws {
+extension Chapter: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: Database) throws {
         try db.create(table: self.databaseTableName, body: { t in
             // ids
             t.autoIncrementedPrimaryKey(Columns.id.name)
@@ -153,7 +153,7 @@ extension Chapter: DatabaseMigratable {
         })
     }
     
-    static func migrate(with migrator: inout DatabaseMigrator, from version: Version) throws {
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
         // nothing for now
     }
 }

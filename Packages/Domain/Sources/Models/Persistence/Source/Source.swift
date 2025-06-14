@@ -119,8 +119,8 @@ extension Source {
 }
 
 // MARK: - Database Table Definition + Migrations
-extension Source: DatabaseMigratable {
-    static func createTable(db: Database) throws {
+extension Source: Domain.Models.Database.DatabaseMigratable {
+    public static func createTable(db: Database) throws {
         try db.create(table: databaseTableName, body: { t in
             // ids
             t.autoIncrementedPrimaryKey(Columns.id.name)
@@ -143,7 +143,7 @@ extension Source: DatabaseMigratable {
         })
     }
     
-    static func migrate(with migrator: inout GRDB.DatabaseMigrator, from version: Version) throws {
+    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
         // nothing for now
     }
 }
