@@ -38,8 +38,8 @@ extension Host: TableRecord {
     }
 }
 
-extension Host: FetchableRecord {}
-extension Host: PersistableRecord {}
+extension Host: FetchableRecord, PersistableRecord {}
+
 extension Host: DatabaseUnique {
     static func uniqueFilter(for instance: Host) -> QueryInterfaceRequest<Host> {
         filter(Columns.baseUrl == instance.baseUrl)

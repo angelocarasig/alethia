@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1701F02B2DFC54F50097A7C8 /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = 1701F02A2DFC54F50097A7C8 /* Domain */; };
 		17165EB12DED698300915ACC /* Collections in Frameworks */ = {isa = PBXBuildFile; productRef = 17165EB02DED698300915ACC /* Collections */; };
 		171660382DEF214200915ACC /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 171660372DEF214200915ACC /* CHANGELOG.md */; };
 		1716603A2DEF22E600915ACC /* DATABASE.md in Resources */ = {isa = PBXBuildFile; fileRef = 171660392DEF22E600915ACC /* DATABASE.md */; };
@@ -14,7 +15,6 @@
 		173D95812DFC3B4A00480B67 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 173D95802DFC3B4A00480B67 /* Core */; };
 		174FAAAC2DD237D600AD7BE3 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 174FAAAB2DD237D300AD7BE3 /* README.md */; };
 		176C40592DCB380A00B521AD /* Flow in Frameworks */ = {isa = PBXBuildFile; productRef = 176C40582DCB380A00B521AD /* Flow */; };
-		179E8D752DA6A3DE00F43EBC /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 179E8D742DA6A3DE00F43EBC /* GRDB */; };
 		17B0AC7B2DE43C1500B11B76 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 17B0AC7A2DE43C1500B11B76 /* ZIPFoundation */; };
 		17EAA3E02DB3281F00CB9EE5 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 17EAA3DF2DB3281F00CB9EE5 /* Kingfisher */; };
 /* End PBXBuildFile section */
@@ -42,6 +42,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Core,
+				Domain,
 			);
 			target = 17D458CD2DA6A34700CF3BA4 /* Alethia */;
 		};
@@ -94,8 +95,8 @@
 				176C40592DCB380A00B521AD /* Flow in Frameworks */,
 				17EAA3E02DB3281F00CB9EE5 /* Kingfisher in Frameworks */,
 				171661D02DF041A600915ACC /* Drops in Frameworks */,
-				179E8D752DA6A3DE00F43EBC /* GRDB in Frameworks */,
 				173D95812DFC3B4A00480B67 /* Core in Frameworks */,
+				1701F02B2DFC54F50097A7C8 /* Domain in Frameworks */,
 				17B0AC7B2DE43C1500B11B76 /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -177,13 +178,13 @@
 			);
 			name = Alethia;
 			packageProductDependencies = (
-				179E8D742DA6A3DE00F43EBC /* GRDB */,
 				17EAA3DF2DB3281F00CB9EE5 /* Kingfisher */,
 				176C40582DCB380A00B521AD /* Flow */,
 				17B0AC7A2DE43C1500B11B76 /* ZIPFoundation */,
 				17165EB02DED698300915ACC /* Collections */,
 				171661CF2DF041A600915ACC /* Drops */,
 				173D95802DFC3B4A00480B67 /* Core */,
+				1701F02A2DFC54F50097A7C8 /* Domain */,
 			);
 			productName = Alethia;
 			productReference = 17D458CE2DA6A34700CF3BA4 /* Alethia.app */;
@@ -218,7 +219,6 @@
 			mainGroup = 17D458C52DA6A34700CF3BA4;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				179E8D732DA6A3DE00F43EBC /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 				17EAA3DD2DB3280E00CB9EE5 /* XCRemoteSwiftPackageReference "Kingfisher" */,
 				176C40572DCB37DF00B521AD /* XCRemoteSwiftPackageReference "SwiftUI-Flow" */,
 				17B0AC792DE43C1500B11B76 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
@@ -570,14 +570,6 @@
 				minimumVersion = 3.0.2;
 			};
 		};
-		179E8D732DA6A3DE00F43EBC /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/groue/GRDB.swift.git";
-			requirement = {
-				branch = master;
-				kind = branch;
-			};
-		};
 		17B0AC792DE43C1500B11B76 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/weichsel/ZIPFoundation";
@@ -597,6 +589,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		1701F02A2DFC54F50097A7C8 /* Domain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Domain;
+		};
 		17165EB02DED698300915ACC /* Collections */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 17165EAF2DED698300915ACC /* XCRemoteSwiftPackageReference "swift-collections" */;
@@ -615,11 +611,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 176C40572DCB37DF00B521AD /* XCRemoteSwiftPackageReference "SwiftUI-Flow" */;
 			productName = Flow;
-		};
-		179E8D742DA6A3DE00F43EBC /* GRDB */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 179E8D732DA6A3DE00F43EBC /* XCRemoteSwiftPackageReference "GRDB.swift" */;
-			productName = GRDB;
 		};
 		17B0AC7A2DE43C1500B11B76 /* ZIPFoundation */ = {
 			isa = XCSwiftPackageProductDependency;
