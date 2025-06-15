@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "F15D3429-F0B5-428C-A5C0-93D15BC642C8",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "DataTests",
+        "name" : "DataTests"
+      }
+    }
+  ],
+  "version" : 1
+}

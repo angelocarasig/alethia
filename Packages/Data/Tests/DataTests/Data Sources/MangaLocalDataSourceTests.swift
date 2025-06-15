@@ -360,6 +360,213 @@ struct MangaLocalDataSourceTests {
         #expect(results.count == 0)
     }
     
+    @Test("test_getMangaDetails_withFTS5_handlesDiacritics")
+    func testFTS5DiacriticsHandling() async throws {
+        // arrange
+        try await database.write { db in
+            // create manga with accented characters
+            var manga1 = Domain.Models.Persistence.Manga(
+                title: "Café au Lait",
+                synopsis: "A story about coffee"
+            )
+            manga1.id = 1
+            manga1.inLibrary = true
+            try manga1.insert(db)
+            
+            // create manga with different diacritics
+            var manga2 = Domain.Models.Persistence.Manga(
+                title: "Naïve Résumé",
+                synopsis: "A story about job hunting"
+            )
+            manga2.id = 2
+            manga2.inLibrary = true
+            try manga2.insert(db)
+            
+            // add alternative title with diacritics
+            try Domain.Models.Persistence.Title(
+                mangaId: 1,
+                title: "Café et Crème"
+            ).insert(db)
+            
+            // add alternative title without diacritics for comparison
+            try Domain.Models.Persistence.Title(
+                mangaId: 2,
+                title: "Naive Resume"
+            ).insert(db)
+        }
+        
+        // act & assert - search without diacritics should find accented version
+        let cafeEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "cafe", // no accent
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let cafeResults = try await dataSource.getMangaDetails(entry: cafeEntry).async()
+        #expect(cafeResults.count == 1)
+        #expect(cafeResults.first?.manga.title == "Café au Lait")
+        
+        // act & assert - search with different accent should still find
+        let cafeAccentEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "cafè", // different accent
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let cafeAccentResults = try await dataSource.getMangaDetails(entry: cafeAccentEntry).async()
+        #expect(cafeAccentResults.count == 1)
+        #expect(cafeAccentResults.first?.manga.title == "Café au Lait")
+        
+        // act & assert - search for "naive" should find "Naïve"
+        let naiveEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "naive",
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let naiveResults = try await dataSource.getMangaDetails(entry: naiveEntry).async()
+        #expect(naiveResults.count == 1)
+        #expect(naiveResults.first?.manga.title == "Naïve Résumé")
+        
+        // act & assert - search for "resume" should find "Résumé"
+        let resumeEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "resume",
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let resumeResults = try await dataSource.getMangaDetails(entry: resumeEntry).async()
+        #expect(resumeResults.count == 1)
+        #expect(resumeResults.first?.manga.title == "Naïve Résumé")
+        
+        // act & assert - partial match with diacritics
+        let creamEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "creme", // searching without accent
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let creamResults = try await dataSource.getMangaDetails(entry: creamEntry).async()
+        #expect(creamResults.count == 1)
+        #expect(creamResults.first?.manga.id == 1)
+        // verify alternative title was loaded
+        #expect(creamResults.first?.titles.contains { $0.title == "Café et Crème" } == true)
+        
+        // act & assert - prefix search with diacritics
+        let naEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "na", // prefix of "Naïve"
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let naResults = try await dataSource.getMangaDetails(entry: naEntry).async()
+        #expect(naResults.count == 1)
+        #expect(naResults.first?.manga.title == "Naïve Résumé")
+        
+        // act & assert - search with accented prefix should also work
+        let naAccentEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "naï", // prefix with accent
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let naAccentResults = try await dataSource.getMangaDetails(entry: naAccentEntry).async()
+        #expect(naAccentResults.count == 1)
+        #expect(naAccentResults.first?.manga.title == "Naïve Résumé")
+    }
+    
+    @Test("test_getMangaDetails_withFTS5_handlesSpecialCharactersAndDiacritics")
+    func testFTS5SpecialCharactersWithDiacritics() async throws {
+        // arrange
+        try await database.write { db in
+            // create manga with special characters and diacritics
+            var manga1 = Domain.Models.Persistence.Manga(
+                title: "L'Étoile du Nord",
+                synopsis: "A story about stars"
+            )
+            manga1.id = 1
+            manga1.inLibrary = true
+            try manga1.insert(db)
+            
+            // create manga with combined diacritics
+            var manga2 = Domain.Models.Persistence.Manga(
+                title: "Pokémon: Les Aventures",
+                synopsis: "Pokemon adventures"
+            )
+            manga2.id = 2
+            manga2.inLibrary = true
+            try manga2.insert(db)
+            
+            // add alternative titles
+            try Domain.Models.Persistence.Title(
+                mangaId: 1,
+                title: "L'Etoile" // without accents
+            ).insert(db)
+        }
+        
+        // act & assert - search for "etoile" should find "Étoile"
+        let etoileEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "etoile",
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let etoileResults = try await dataSource.getMangaDetails(entry: etoileEntry).async()
+        #expect(etoileResults.count == 1)
+        #expect(etoileResults.first?.manga.title == "L'Étoile du Nord")
+        
+        // act & assert - search for "pokemon" should find "Pokémon"
+        let pokemonEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "pokemon",
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let pokemonResults = try await dataSource.getMangaDetails(entry: pokemonEntry).async()
+        #expect(pokemonResults.count == 1)
+        #expect(pokemonResults.first?.manga.title == "Pokémon: Les Aventures")
+        
+        // act & assert - partial word search ignoring apostrophe and accent is not a diacritic and should fail on L'Étoile
+        let letoileEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "Letoile", // no apostrophe or accent
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let letoileResults = try await dataSource.getMangaDetails(entry: letoileEntry).async()
+        #expect(letoileResults.count == 0)
+    }
+    
     @Test("test_getMangaDetails_withNoMatches_returnsEmptyArray")
     func testNoMatches() async throws {
         // arrange
