@@ -8,7 +8,7 @@
 import Foundation
 import GRDB
 
-struct SourceRoute: Codable, Identifiable {
+struct SourceRoute: Identifiable, Codable {
     var id: Int64?
     
     var name: String

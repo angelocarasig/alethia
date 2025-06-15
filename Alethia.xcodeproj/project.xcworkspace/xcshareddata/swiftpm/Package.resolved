@@ -1,10 +1,10 @@
 {
-  "originHash" : "3ad196c4864cba985930534c19d324130224633b222f3d3c6a1c994375686b4e",
+  "originHash" : "5735d57b3809a1ba85aa43be5f60296d7517df33e6bb3def02e17fdabc860040",
   "pins" : [
     {
       "identity" : "drops",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/omaralbeik/Drops",
+      "location" : "https://github.com/omaralbeik/Drops.git",
       "state" : {
         "revision" : "a183ee6f79f21c940092a19c2cba756555422371",
         "version" : "1.7.0"
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/groue/GRDB.swift.git",
       "state" : {
-        "branch" : "master",
-        "revision" : "04e73c26c4ce8218ab85aaf791942bb0b204f330"
+        "revision" : "a5a1be26b4513dc7ec360eb56bc08a345bac6649",
+        "version" : "7.5.0"
       }
     },
     {
@@ -49,7 +49,7 @@
     {
       "identity" : "zipfoundation",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/weichsel/ZIPFoundation",
+      "location" : "https://github.com/weichsel/ZIPFoundation.git",
       "state" : {
         "revision" : "02b6abe5f6eef7e3cbd5f247c5cc24e246efcfe0",
         "version" : "0.9.19"

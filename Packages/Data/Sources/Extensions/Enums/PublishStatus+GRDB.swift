@@ -1,0 +1,11 @@
+//
+//  PublishStatus+GRDB.swift
+//  Data
+//
+//  Created by Angelo Carasig on 15/6/2025.
+//
+
+import Domain
+import GRDB
+
+extension Domain.Models.Enums.PublishStatus: @retroactive DatabaseValueConvertible {}
