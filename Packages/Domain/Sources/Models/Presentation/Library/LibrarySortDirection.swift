@@ -8,7 +8,7 @@
 internal typealias LibrarySortDirection = Domain.Models.Presentation.LibrarySortDirection
 
 public extension Domain.Models.Presentation {
-    enum LibrarySortDirection: String {
+    enum LibrarySortDirection: String, Sendable {
         case descending = "Descending" // (A-Z)
         case ascending = "Ascending"  // (Z-A)
         

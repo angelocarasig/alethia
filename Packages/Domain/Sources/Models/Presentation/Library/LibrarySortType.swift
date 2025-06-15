@@ -6,7 +6,7 @@
 //
 
 public extension Domain.Models.Presentation {
-    enum LibrarySortType: String, CaseIterable, Equatable, Identifiable {
+    enum LibrarySortType: String, CaseIterable, Equatable, Identifiable, Sendable {
         public var id: String { self.rawValue }
         
         case title = "Title"

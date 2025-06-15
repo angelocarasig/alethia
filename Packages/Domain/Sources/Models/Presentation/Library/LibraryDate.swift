@@ -11,7 +11,7 @@ import Foundation
 internal typealias LibraryDate = Domain.Models.Presentation.LibraryDate
 
 public extension Domain.Models.Presentation {
-    enum LibraryDate: Equatable, CaseIterable, Hashable {
+    enum LibraryDate: Equatable, CaseIterable, Hashable, Sendable {
         case none
         case before(date: Date)                 // Default should be last decade
         case after(date: Date)                  // Default should be next decade

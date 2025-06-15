@@ -7,8 +7,8 @@
 
 internal typealias LibraryTag = Domain.Models.Presentation.LibraryTag
 
-extension Domain.Models.Presentation {
-    struct LibraryTag {
+public extension Domain.Models.Presentation {
+    struct LibraryTag: Sendable {
         let tag: Domain.Models.Persistence.Tag
         var inclusionType: InclusionType
         

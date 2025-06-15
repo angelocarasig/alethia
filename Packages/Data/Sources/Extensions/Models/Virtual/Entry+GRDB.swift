@@ -9,7 +9,6 @@ import Foundation
 import GRDB
 import Domain
 
-
 private typealias Entry = Domain.Models.Virtual.Entry
 private typealias Manga = Domain.Models.Persistence.Manga
 private typealias Cover = Domain.Models.Persistence.Cover
@@ -19,6 +18,8 @@ private typealias Host = Domain.Models.Persistence.Host
 private typealias Chapter = Domain.Models.Persistence.Chapter
 
 // MARK: - Database Conformance
+extension Entry: @retroactive FetchableRecord {}
+
 extension Entry: @retroactive TableRecord {
     public enum Columns {
         // grouping by how they are selected
@@ -143,5 +144,11 @@ extension Entry: @retroactive Data.Infrastructure.DatabaseMigratable {
     
     public static func migrate(with migrator: inout DatabaseMigrator, from version: Data.Infrastructure.Version) throws {
         // nothing for now
+    }
+}
+
+public extension Entry {
+    static func fetchAll(in db: Database) throws -> [Domain.Models.Virtual.Entry] {
+        return try asRequest.fetchAll(db)
     }
 }

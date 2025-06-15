@@ -9,27 +9,53 @@ import Foundation
 import SwiftUI
 
 public extension Domain.Models.Presentation {
-    struct LibraryFilters {
+    struct LibraryFilters: Sendable {
         // MARK: Basic
-        var searchText: String = ""
-        var collection: Domain.Models.Persistence.Collection? = nil
+        public var searchText: String = ""
+        public var collection: Domain.Models.Persistence.Collection? = nil
         
         // MARK: Sorting
-        var sortType: LibrarySortType = .title
-        var sortDirection: LibrarySortDirection = .descending
+        public var sortType: LibrarySortType = .title
+        public var sortDirection: LibrarySortDirection = .descending
         
         // MARK: Dates
-        var addedAt: LibraryDate = .none
-        var updatedAt: LibraryDate = .none
+        public var addedAt: LibraryDate = .none
+        public var updatedAt: LibraryDate = .none
         
         // MARK: Tags
-        var tags: [LibraryTag] = []
+        public var tags: [LibraryTag] = []
         
         // MARK: Content Type
-        var publishStatus: [Domain.Models.Enums.PublishStatus] = []
-        var classification: [Domain.Models.Enums.Classification] = []
+        public var publishStatus: [Domain.Models.Enums.PublishStatus] = []
+        public var classification: [Domain.Models.Enums.Classification] = []
         
-        enum FilterType {
+        public init() {
+            
+        }
+        
+        public init(
+            searchText: String,
+            collection: Domain.Models.Persistence.Collection? = nil,
+            sortType: LibrarySortType,
+            sortDirection: LibrarySortDirection,
+            addedAt: LibraryDate,
+            updatedAt: LibraryDate,
+            tags: [LibraryTag],
+            publishStatus: [Domain.Models.Enums.PublishStatus],
+            classification: [Domain.Models.Enums.Classification]
+        ) {
+            self.searchText = searchText
+            self.collection = collection
+            self.sortType = sortType
+            self.sortDirection = sortDirection
+            self.addedAt = addedAt
+            self.updatedAt = updatedAt
+            self.tags = tags
+            self.publishStatus = publishStatus
+            self.classification = classification
+        }
+        
+        public enum FilterType {
             // excludes basic + sorting
             case date
             case tag(includes: Bool)
@@ -44,14 +70,14 @@ public extension Domain.Models.Presentation {
             }
         }
         
-        struct ActiveFilter: Identifiable {
-            let id = UUID()
+        public struct ActiveFilter: Identifiable {
+            public let id = UUID()
             
-            let name: String
-            let color: Color
-            let type: FilterType
+            public let name: String
+            public let color: Color
+            public let type: FilterType
             
-            init(name: String, type: FilterType) {
+            public init(name: String, type: FilterType) {
                 self.name = name
                 self.color = type.color
                 self.type = type

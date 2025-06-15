@@ -14,6 +14,7 @@ public extension Domain.Models.Persistence {
         case maximumLengthReached(Int)
         case badName(String)
         case invalidColor(String, reason: String)
+        case notFound(Int64?)
         
         public var errorDescription: String? {
             switch self {
@@ -31,6 +32,8 @@ public extension Domain.Models.Persistence {
                 
             case .invalidColor(let color, let reason):
                 return "The collection color '\(color)' is invalid: \(reason)"
+            case .notFound(let id):
+                return "Collection with id \(String(describing: id)) not found."
             }
         }
     }
