@@ -46,13 +46,13 @@ extension Origin {
     
     // belongs to a single (optional) source
     public static let source = belongsTo(Domain.Models.Persistence.Source.self)
-    var source: QueryInterfaceRequest<Source> {
+    var source: QueryInterfaceRequest<Domain.Models.Persistence.Source> {
         request(for: Domain.Models.Persistence.Origin.source)
     }
     
     // has many chapters
     public static let chapters = hasMany(Domain.Models.Persistence.Chapter.self)
-    var chapters: QueryInterfaceRequest<Chapter> {
+    var chapters: QueryInterfaceRequest<Domain.Models.Persistence.Chapter> {
         request(for: Domain.Models.Persistence.Origin.chapters)
     }
     

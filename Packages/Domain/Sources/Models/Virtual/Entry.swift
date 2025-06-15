@@ -10,7 +10,7 @@ import Foundation
 internal typealias Entry = Domain.Models.Virtual.Entry
 
 public extension Domain.Models.Virtual {
-    struct Entry: Identifiable, Hashable, Decodable {
+    struct Entry: Identifiable, Hashable, Decodable, Sendable {
         // MARK: - Properties
         
         /// underlying manga id if it exists
@@ -58,6 +58,21 @@ public extension Domain.Models.Virtual {
         public var addedAt: Date
         public var updatedAt: Date
         public var lastReadAt: Date?
+        
+        public enum CodingKeys: String, CodingKey {
+            case mangaId
+            case sourceId
+            case title
+            case slug
+            case cover
+            case fetchUrl
+            case unread
+            case match
+            case inLibrary
+            case addedAt
+            case updatedAt
+            case lastReadAt
+        }
         
         public init(
             mangaId: Int64? = nil,

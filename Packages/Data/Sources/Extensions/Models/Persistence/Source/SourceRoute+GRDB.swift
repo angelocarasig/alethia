@@ -31,7 +31,7 @@ extension SourceRoute: @retroactive TableRecord {
 extension SourceRoute {
     // belongs to a single source
     public static let source = belongsTo(Domain.Models.Persistence.Source.self)
-    var source: QueryInterfaceRequest<Source> {
+    var source: QueryInterfaceRequest<Domain.Models.Persistence.Source> {
         request(for: Domain.Models.Persistence.SourceRoute.source)
     }
 }

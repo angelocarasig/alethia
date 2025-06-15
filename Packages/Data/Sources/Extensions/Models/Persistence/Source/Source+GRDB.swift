@@ -41,13 +41,13 @@ extension Source: @retroactive TableRecord {
 extension Source {
     // belongs to a single host
     public static let host = belongsTo(Domain.Models.Persistence.Host.self)
-    var host: QueryInterfaceRequest<Host> {
+    var host: QueryInterfaceRequest<Domain.Models.Persistence.Host> {
         request(for: Domain.Models.Persistence.Source.host)
     }
     
     // has many routes
     public static let routes = hasMany(Domain.Models.Persistence.SourceRoute.self)
-    var routes: QueryInterfaceRequest<SourceRoute> {
+    var routes: QueryInterfaceRequest<Domain.Models.Persistence.SourceRoute> {
         request(for: Domain.Models.Persistence.Source.routes)
     }
     

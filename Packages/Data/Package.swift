@@ -26,6 +26,11 @@ let package = Package(
                 "Domain"
             ],
             path: "Sources"
+        ),
+        .testTarget(
+            name: "DataTests",
+            dependencies: ["Data"],
+            path: "Tests/DataTests"
         )
     ]
 )

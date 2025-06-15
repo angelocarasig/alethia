@@ -9,7 +9,7 @@ internal typealias EntryMatch = Domain.Models.Enums.EntryMatch
 
 public extension Domain.Models.Enums {
     /// matching property to indicate an entry's inclusive state in the library
-    enum EntryMatch: Codable {
+    enum EntryMatch: Codable, Sendable {
         /// does not exist in library at all
         case none
         

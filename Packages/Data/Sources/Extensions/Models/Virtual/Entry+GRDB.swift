@@ -52,7 +52,7 @@ extension Entry: @retroactive TableRecord {
 }
 
 internal extension Entry {
-    static var asRequest: SQLRequest<Entry> {
+    static var asRequest: SQLRequest<Domain.Models.Virtual.Entry> {
         // all query props in base
         let base = """
             SELECT

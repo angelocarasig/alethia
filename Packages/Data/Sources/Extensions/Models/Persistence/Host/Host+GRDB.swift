@@ -30,7 +30,7 @@ extension Host: @retroactive TableRecord {
 
 extension Host: @retroactive Data.Infrastructure.DatabaseUnique {
     /// when performing a findOrCreate, uses this to determine whether to find/create the host
-    public static func uniqueFilter(for instance: Host) -> QueryInterfaceRequest<Host> {
+    public static func uniqueFilter(for instance: Domain.Models.Persistence.Host) -> QueryInterfaceRequest<Domain.Models.Persistence.Host> {
         filter(Columns.baseUrl == instance.baseUrl)
     }
 }
@@ -39,7 +39,7 @@ extension Host: @retroactive Data.Infrastructure.DatabaseUnique {
 extension Host {
     // has many sources
     public static let sources = hasMany(Domain.Models.Persistence.Source.self)
-    var sources: QueryInterfaceRequest<Source> {
+    var sources: QueryInterfaceRequest<Domain.Models.Persistence.Source> {
         request(for: Domain.Models.Persistence.Host.sources)
     }
 }

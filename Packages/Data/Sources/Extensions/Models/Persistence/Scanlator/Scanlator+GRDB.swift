@@ -27,7 +27,7 @@ extension Scanlator: @retroactive TableRecord {
 }
 
 extension Scanlator: @retroactive Data.Infrastructure.DatabaseUnique {
-    public static func uniqueFilter(for instance: Scanlator) -> QueryInterfaceRequest<Scanlator> {
+    public static func uniqueFilter(for instance: Domain.Models.Persistence.Scanlator) -> QueryInterfaceRequest<Domain.Models.Persistence.Scanlator> {
         filter(Columns.name == instance.name)
     }
 }
