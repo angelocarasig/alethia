@@ -26,6 +26,8 @@ extension Domain.Models.Persistence.Manga {
         var manga = Self(title: title, synopsis: synopsis)
         manga.id = id
         manga.inLibrary = true
+        manga.addedAt = Date()
+        manga.updatedAt = Date()
         return manga
     }
 }

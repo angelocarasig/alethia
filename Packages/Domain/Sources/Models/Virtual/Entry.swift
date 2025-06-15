@@ -45,10 +45,10 @@ public extension Domain.Models.Virtual {
         public var fetchUrl: String?
         
         /// unread count for the entry's underlying manga chapter list count
-        public var unread: Int = 0
+        public var unread: Int
         
         /// match type
-        public var match: Domain.Models.Enums.EntryMatch = .none
+        public var match: Domain.Models.Enums.EntryMatch
         
         // MARK: - Internal
         /// these properties are required for in-library filtering and are mirrors of default
@@ -101,6 +101,37 @@ public extension Domain.Models.Virtual {
             self.updatedAt = updatedAt
             self.lastReadAt = lastReadAt
         }
+        
+        // Custom decoder to handle NULLs from database
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            
+            mangaId = try container.decodeIfPresent(Int64.self, forKey: .mangaId)
+            sourceId = try container.decodeIfPresent(Int64.self, forKey: .sourceId)
+            title = try container.decode(String.self, forKey: .title)
+            
+            // Handle nullable slug - default to empty string
+            slug = try container.decodeIfPresent(String.self, forKey: .slug) ?? ""
+            
+            // Handle nullable cover - default to empty string
+            cover = try container.decodeIfPresent(String.self, forKey: .cover) ?? ""
+            
+            fetchUrl = try container.decodeIfPresent(String.self, forKey: .fetchUrl)
+            unread = try container.decodeIfPresent(Int.self, forKey: .unread) ?? 0
+            
+            // Handle match - default to .none if not present
+            if let matchString = try container.decodeIfPresent(String.self, forKey: .match),
+               let matchValue = Domain.Models.Enums.EntryMatch(rawValue: matchString) {
+                match = matchValue
+            } else {
+                match = .none
+            }
+            
+            inLibrary = try container.decode(Bool.self, forKey: .inLibrary)
+            addedAt = try container.decode(Date.self, forKey: .addedAt)
+            updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+            lastReadAt = try container.decodeIfPresent(Date.self, forKey: .lastReadAt)
+        }
     }
 }
 
@@ -128,5 +159,3 @@ public extension Entry {
         }
     }
 }
-
-

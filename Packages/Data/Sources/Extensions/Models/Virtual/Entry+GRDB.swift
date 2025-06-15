@@ -64,14 +64,18 @@ internal extension Entry {
                 m.updatedAt AS updatedAt,
                 m.lastReadAt AS lastReadAt,
                 
-                best_origin.sourceId AS sourceId,
-                best_origin.slug AS slug,
+                COALESCE(best_origin.sourceId, CAST(NULL AS INTEGER)) AS sourceId,
+                COALESCE(best_origin.slug, '') AS slug,
         
-                (RTRIM(h.baseUrl, '/') || '/' || 
-                 LTRIM(s.path, '/') || '/manga/' || 
-                 best_origin.slug) AS fetchUrl,
+                CASE 
+                    WHEN h.baseUrl IS NOT NULL AND s.path IS NOT NULL AND best_origin.slug IS NOT NULL THEN
+                        (RTRIM(h.baseUrl, '/') || '/' || 
+                         LTRIM(s.path, '/') || '/manga/' || 
+                         best_origin.slug)
+                    ELSE NULL
+                END AS fetchUrl,
                 
-                active_cover.url AS cover,
+                COALESCE(active_cover.url, '') AS cover,
                 
                 CAST(IFNULL(unread_stats.unread_count, 0) AS INTEGER) AS unread
         """

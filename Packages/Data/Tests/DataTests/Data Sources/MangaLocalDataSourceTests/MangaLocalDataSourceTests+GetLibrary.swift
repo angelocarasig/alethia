@@ -90,18 +90,20 @@ extension MangaLocalDataSourceTests {
         func testCollectionFilter() async throws {
             // arrange
             try await database.write { db in
-                // create collections
+                // create collections with different ordering values
                 let collection1 = try Domain.Models.Persistence.Collection(
                     name: "Favorites",
                     color: "#FF0000",
-                    icon: "star.fill"
+                    icon: "star.fill",
+                    ordering: 0  // First collection gets ordering 0
                 )
                 try collection1.insert(db)
                 
                 let collection2 = try Domain.Models.Persistence.Collection(
                     name: "Reading",
                     color: "#00FF00",
-                    icon: "book.fill"
+                    icon: "book.fill",
+                    ordering: 1  // Second collection gets ordering 1 due to unique constraint
                 )
                 try collection2.insert(db)
                 
