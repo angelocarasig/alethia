@@ -1,13 +1,14 @@
 //
 //  DatabaseUnique.swift
-//  Domain
+//  Data
 //
 //  Created by Angelo Carasig on 14/6/2025.
 //
 
 import GRDB
+import Domain
 
-public extension Domain.Models.Database {
+public extension Data.Infrastructure {
     /// Provides find-or-create pattern for unique records.
     ///
     /// Returns existing records instead of throwing unique constraint errors.
@@ -22,7 +23,7 @@ public extension Domain.Models.Database {
     }
 }
 
-public extension Domain.Models.Database.DatabaseUnique {
+public extension Data.Infrastructure.DatabaseUnique {
     /// Returns existing record if found, otherwise creates and returns new one.
     static func findOrCreate(_ db: Database, instance: Self) throws -> Self {
         if let existing = try uniqueFilter(for: instance).fetchOne(db) {

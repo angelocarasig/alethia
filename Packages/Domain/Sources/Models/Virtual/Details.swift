@@ -5,11 +5,9 @@
 //  Created by Angelo Carasig on 14/6/2025.
 //
 
-import GRDB
-
 public extension Domain.Models.Virtual {
     /// all relevant models joined with an underlying `Manga` model to be used in displaying details
-    struct Details: Decodable, FetchableRecord {
+    struct Details: Decodable, Sendable {
         // MARK: - Core
         /// main manga object
         public let manga: Domain.Models.Persistence.Manga
@@ -37,10 +35,9 @@ public extension Domain.Models.Virtual {
     }
 }
 
-// MARK: - Nested Types
 public extension Domain.Models.Virtual.Details {
     /// represents an origin with its source hierarchy and available scanlators
-    struct SourceInfo: Decodable {
+    struct SourceInfo: Decodable, Sendable {
         public let origin: Domain.Models.Persistence.Origin
         public let source: Domain.Models.Persistence.Source?
         public let host: Domain.Models.Persistence.Host?
@@ -49,13 +46,13 @@ public extension Domain.Models.Virtual.Details {
     }
     
     /// represents a scanlator with their priority for a specific origin
-    struct ScanlatorInfo: Decodable {
+    struct ScanlatorInfo: Decodable, Sendable {
         public let scanlator: Domain.Models.Persistence.Scanlator
         public let priority: Int
     }
     
     /// represents a chapter with its full context including source and scanlator
-    struct ChapterInfo: Decodable {
+    struct ChapterInfo: Decodable, Sendable {
         public let chapter: Domain.Models.Persistence.Chapter
         public let scanlator: Domain.Models.Persistence.Scanlator
         

@@ -6,12 +6,9 @@
 //
 
 import SwiftUI
-import GRDB
-
-internal typealias Classification = Domain.Models.Enums.Classification
 
 public extension Domain.Models.Enums {
-    enum Classification: String, Codable, CaseIterable, DatabaseValueConvertible {
+    enum Classification: String, Codable, CaseIterable, Sendable {
         case Unknown
         case Safe
         case Suggestive

@@ -6,15 +6,12 @@
 //
 
 import Foundation
-import GRDB
-
-internal typealias Manga = Domain.Models.Persistence.Manga
 
 public extension Domain.Models.Persistence {
     /// a manga series
     ///
     /// the main unit of the app really
-    struct Manga: Identifiable, Codable {
+    struct Manga: Identifiable, Codable, Sendable {
         // MARK: - Properties
         
         /// unique database identifier
@@ -63,99 +60,23 @@ public extension Domain.Models.Persistence {
         /// - chapter.number ∈ ℝ\ℤ (e.g., 1.5, 2.1, 3.9)
         public var showHalfChapters: Bool = true
         
-        init(title: String, synopsis: String) {
+        public init(title: String, synopsis: String) {
             self.title = title
             self.synopsis = synopsis
         }
-    }
-}
-
-// MARK: - Database Conformance
-extension Manga: FetchableRecord, PersistableRecord {}
-
-extension Manga: TableRecord {
-    public enum Columns {
-        public static let id = Column(CodingKeys.id)
-        public static let title = Column(CodingKeys.title)
-        public static let synopsis = Column(CodingKeys.synopsis)
         
-        public static let addedAt = Column(CodingKeys.addedAt)
-        public static let updatedAt = Column(CodingKeys.updatedAt)
-        public static let lastReadAt = Column(CodingKeys.lastReadAt)
-        
-        public static let inLibrary = Column(CodingKeys.inLibrary)
-        public static let orientation = Column(CodingKeys.orientation)
-        public static let showAllChapters = Column(CodingKeys.showAllChapters)
-        public static let showHalfChapters = Column(CodingKeys.showHalfChapters)
-    }
-}
-
-// MARK: - Database Relations
-extension Manga {
-    // has many titles
-    public static let titles = hasMany(Domain.Models.Persistence.Title.self)
-    var titles: QueryInterfaceRequest<Domain.Models.Persistence.Title> {
-        request(for: Manga.titles)
-    }
-    
-    // has many covers
-    public static let covers = hasMany(Domain.Models.Persistence.Cover.self)
-    var covers: QueryInterfaceRequest<Domain.Models.Persistence.Cover> {
-        request(for: Manga.covers)
-    }
-    
-    // has many origins
-    public static let origins = hasMany(Domain.Models.Persistence.Origin.self)
-    var origins: QueryInterfaceRequest<Domain.Models.Persistence.Origin> {
-        request(for: Manga.origins)
-    }
-    
-    // has many authors
-    public static let mangaAuthors = hasMany(Domain.Models.Persistence.MangaAuthor.self)
-    public static let authors = hasMany(Author.self, through: mangaAuthors, using: MangaAuthor.author)
-    var authors: QueryInterfaceRequest<Domain.Models.Persistence.Author> {
-        request(for: Manga.authors)
-    }
-    
-    // has many tags
-    public static let tags = hasMany(Domain.Models.Persistence.Tag.self)
-    var tags: QueryInterfaceRequest<Domain.Models.Persistence.Tag> {
-        request(for: Manga.tags)
-    }
-    
-    // has many collections
-    public static let mangaCollections = hasMany(Domain.Models.Persistence.MangaCollection.self)
-    public static let collections = hasMany(Collection.self, through: mangaCollections, using: Domain.Models.Persistence.MangaCollection.collection)
-    var collections: QueryInterfaceRequest<Domain.Models.Persistence.Collection> {
-        request(for: Manga.collections)
-    }
-}
-
-// MARK: - Database Table Definition + Migrations
-extension Manga: Domain.Models.Database.DatabaseMigratable {
-    public static func createTable(db: Database) throws {
-        try db.create(table: databaseTableName, body: { t in
-            // ids
-            t.autoIncrementedPrimaryKey(Columns.id.name)
-            
-            // properties
-            t.column(Columns.title.name, .text)
-                .notNull()
-                .collate(.nocase)
-            t.column(Columns.synopsis.name, .text).notNull()
-            t.column(Columns.addedAt.name, .datetime).notNull()
-            t.column(Columns.updatedAt.name, .datetime).notNull()
-            t.column(Columns.lastReadAt.name, .datetime) // Include from start
-            
-            // control
-            t.column(Columns.inLibrary.name, .boolean).notNull()
-            t.column(Columns.orientation.name, .text).notNull()
-            t.column(Columns.showAllChapters.name, .boolean).notNull()
-            t.column(Columns.showHalfChapters.name, .boolean).notNull()
-        })
-    }
-    
-    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
-        // nothing for now
+        // MARK: - Coding Keys
+        public enum CodingKeys: String, CodingKey {
+            case id
+            case title
+            case synopsis
+            case addedAt
+            case updatedAt
+            case lastReadAt
+            case inLibrary
+            case orientation
+            case showAllChapters
+            case showHalfChapters
+        }
     }
 }

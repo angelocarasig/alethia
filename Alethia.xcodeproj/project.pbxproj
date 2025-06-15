@@ -16,6 +16,7 @@
 		174FAAAC2DD237D600AD7BE3 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 174FAAAB2DD237D300AD7BE3 /* README.md */; };
 		176C40592DCB380A00B521AD /* Flow in Frameworks */ = {isa = PBXBuildFile; productRef = 176C40582DCB380A00B521AD /* Flow */; };
 		17B0AC7B2DE43C1500B11B76 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 17B0AC7A2DE43C1500B11B76 /* ZIPFoundation */; };
+		17C941802DFE964100797C9A /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 17C9417F2DFE964100797C9A /* GRDB */; };
 		17EAA3E02DB3281F00CB9EE5 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 17EAA3DF2DB3281F00CB9EE5 /* Kingfisher */; };
 /* End PBXBuildFile section */
 
@@ -96,6 +97,7 @@
 				17165EB12DED698300915ACC /* Collections in Frameworks */,
 				176C40592DCB380A00B521AD /* Flow in Frameworks */,
 				17EAA3E02DB3281F00CB9EE5 /* Kingfisher in Frameworks */,
+				17C941802DFE964100797C9A /* GRDB in Frameworks */,
 				171661D02DF041A600915ACC /* Drops in Frameworks */,
 				173D95812DFC3B4A00480B67 /* Core in Frameworks */,
 				1701F02B2DFC54F50097A7C8 /* Domain in Frameworks */,
@@ -187,6 +189,7 @@
 				171661CF2DF041A600915ACC /* Drops */,
 				173D95802DFC3B4A00480B67 /* Core */,
 				1701F02A2DFC54F50097A7C8 /* Domain */,
+				17C9417F2DFE964100797C9A /* GRDB */,
 			);
 			productName = Alethia;
 			productReference = 17D458CE2DA6A34700CF3BA4 /* Alethia.app */;
@@ -226,6 +229,7 @@
 				17B0AC792DE43C1500B11B76 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 				17165EAF2DED698300915ACC /* XCRemoteSwiftPackageReference "swift-collections" */,
 				171661CE2DF041A600915ACC /* XCRemoteSwiftPackageReference "Drops" */,
+				17C9417E2DFE964100797C9A /* XCRemoteSwiftPackageReference "GRDB" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 17D458CF2DA6A34700CF3BA4 /* Products */;
@@ -580,6 +584,14 @@
 				minimumVersion = 0.9.19;
 			};
 		};
+		17C9417E2DFE964100797C9A /* XCRemoteSwiftPackageReference "GRDB" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift";
+			requirement = {
+				kind = exactVersion;
+				version = 7.5.0;
+			};
+		};
 		17EAA3DD2DB3280E00CB9EE5 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/onevcat/Kingfisher.git";
@@ -618,6 +630,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 17B0AC792DE43C1500B11B76 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
 			productName = ZIPFoundation;
+		};
+		17C9417F2DFE964100797C9A /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 17C9417E2DFE964100797C9A /* XCRemoteSwiftPackageReference "GRDB" */;
+			productName = GRDB;
 		};
 		17EAA3DF2DB3281F00CB9EE5 /* Kingfisher */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -6,13 +6,10 @@
 //
 
 import Foundation
-import GRDB
-
-internal typealias Host = Domain.Models.Persistence.Host
 
 public extension Domain.Models.Persistence {
     /// represents a content host provider in the system
-    struct Host: Identifiable, Codable {
+    struct Host: Identifiable, Codable, Sendable {
         // MARK: - Properties
         
         /// unique database identifier
@@ -50,81 +47,20 @@ public extension Domain.Models.Persistence {
             
             try validate()
         }
-    }
-}
-
-// MARK: - Database Conformance
-extension Host: FetchableRecord, PersistableRecord {}
-
-extension Host: TableRecord {
-    public enum Columns {
-        public static let id = Column(CodingKeys.id)
-        public static let name = Column(CodingKeys.name)
-        public static let author = Column(CodingKeys.author)
-        public static let repository = Column(CodingKeys.repository)
-        public static let baseUrl = Column(CodingKeys.baseUrl)
-    }
-}
-
-extension Host: Domain.Models.Database.DatabaseUnique {
-    /// when performing a findOrCreate, uses this to determine whether to find/create the host
-    public static func uniqueFilter(for instance: Domain.Models.Persistence.Host) -> GRDB.QueryInterfaceRequest<Domain.Models.Persistence.Host> {
-        filter(Columns.baseUrl == instance.baseUrl)
-    }
-}
-
-// MARK: - Database Relations
-extension Host {
-    // has many sources
-    static let sources = hasMany(Domain.Models.Persistence.Source.self)
-    var sources: QueryInterfaceRequest<Domain.Models.Persistence.Source> {
-        request(for: Domain.Models.Persistence.Host.sources)
-    }
-}
-
-// MARK: - Database Table Definition + Migrations
-extension Host: Domain.Models.Database.DatabaseMigratable {
-    public static func createTable(db: GRDB.Database) throws {
-        try db.create(table: databaseTableName, body: { t in
-            t.autoIncrementedPrimaryKey(Columns.id.name)
-            
-            t.column(Columns.name.name, .text)
-                .notNull()
-                .indexed()
-                .collate(.nocase)
-                .check { length($0) > 0 }
-                .check(sql: "name NOT GLOB '*[/?#@!$&''()*+,;=:]*'")
-            
-            t.column(Columns.author.name, .text)
-                .notNull()
-                .collate(.nocase)
-                .check { length($0) > 0 }
-                .check(sql: "author NOT GLOB '*[/?#@!$&''()*+,;=:]*'")
-            
-            t.column(Columns.repository.name, .text)
-                .notNull()
-                .collate(.nocase)
-                .check { length($0) > 0 }
-                .check(sql: "repository LIKE 'http%'") // must start with http
-            
-            t.column(Columns.baseUrl.name, .text)
-                .notNull()
-                .collate(.nocase)
-                .unique(onConflict: .fail)
-                .check { length($0) > 0 }
-                .check(sql: "baseUrl LIKE 'http%'")  // must start with http
-            
-            t.uniqueKey([Columns.repository.name, Columns.baseUrl.name], onConflict: .fail)
-        })
-    }
-    
-    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
-        // nothing for now
+        
+        // MARK: - Coding Keys
+        public enum CodingKeys: String, CodingKey {
+            case id
+            case name
+            case author
+            case repository
+            case baseUrl
+        }
     }
 }
 
 // MARK: - Validators
-private extension Host {
+private extension Domain.Models.Persistence.Host {
     static let invalidatingSet = CharacterSet(charactersIn: "/\\?#@!$&'()*+,;=:")
     
     func validate() throws {
@@ -137,14 +73,14 @@ private extension Host {
     func validateName() throws {
         try validateRequired(name, parameter: "name")
         try validateCharacters(name, parameter: "name") { error in
-            HostError.invalidName(error)
+            Domain.Models.Persistence.HostError.invalidName(error)
         }
     }
     
     func validateAuthor() throws {
         try validateRequired(author, parameter: "author")
         try validateCharacters(author, parameter: "author") { error in
-            HostError.invalidAuthor(error)
+            Domain.Models.Persistence.HostError.invalidAuthor(error)
         }
     }
     
@@ -152,15 +88,15 @@ private extension Host {
         try validateRequired(repository, parameter: "repository")
         
         guard let url = URL(string: repository) else {
-            throw HostError.invalidRepository(URL(string: "invalid://")!, reason: "Invalid URL format")
+            throw Domain.Models.Persistence.HostError.invalidRepository(URL(string: "invalid://")!, reason: "Invalid URL format")
         }
         
         guard url.scheme != nil else {
-            throw HostError.invalidRepository(url, reason: "Missing URL scheme")
+            throw Domain.Models.Persistence.HostError.invalidRepository(url, reason: "Missing URL scheme")
         }
         
         guard url.host != nil else {
-            throw HostError.invalidRepository(url, reason: "Missing host domain")
+            throw Domain.Models.Persistence.HostError.invalidRepository(url, reason: "Missing host domain")
         }
     }
     

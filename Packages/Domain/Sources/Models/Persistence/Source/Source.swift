@@ -5,13 +5,9 @@
 //  Created by Angelo Carasig on 14/6/2025.
 //
 
-import GRDB
-
-internal typealias Source = Domain.Models.Persistence.Source
-
 public extension Domain.Models.Persistence {
     /// represents an individual source provided by the underlying host
-    struct Source: Identifiable, Codable {
+    struct Source: Identifiable, Codable, Sendable {
         // MARK: - Properties
         
         /// unique database identifier
@@ -56,7 +52,7 @@ public extension Domain.Models.Persistence {
         /// the disabled source do not display their chapters if any.
         public var disabled: Bool = false
         
-        init(
+        public init(
             id: Int64? = nil,
             hostId: Int64,
             name: String,
@@ -77,73 +73,18 @@ public extension Domain.Models.Persistence {
             self.pinned = pinned
             self.disabled = disabled
         }
-    }
-}
-
-// MARK: - Database Conformance
-extension Source: FetchableRecord, PersistableRecord {}
-
-extension Source: TableRecord {
-    public enum Columns {
-        public static let id = Column(CodingKeys.id)
-        public static let hostId = Column(CodingKeys.hostId)
         
-        public static let name = Column(CodingKeys.name)
-        public static let icon = Column(CodingKeys.icon)
-        public static let path = Column(CodingKeys.path)
-        
-        public static let website = Column(CodingKeys.website)
-        public static let description = Column(CodingKeys.description)
-        
-        public static let pinned = Column(CodingKeys.pinned)
-        public static let disabled = Column(CodingKeys.disabled)
-    }
-}
-
-// MARK: - Database Relations
-extension Source {
-    // belongs to a single host
-    static let host = belongsTo(Domain.Models.Persistence.Host.self)
-    var host: QueryInterfaceRequest<Domain.Models.Persistence.Host> {
-        request(for: Domain.Models.Persistence.Source.host)
-    }
-    
-    // has many routes
-    static let routes = hasMany(Domain.Models.Persistence.SourceRoute.self)
-    var routes: QueryInterfaceRequest<Domain.Models.Persistence.SourceRoute> {
-        request(for: Domain.Models.Persistence.Source.routes)
-    }
-    
-    // has many origins
-    static let origins = hasMany(Domain.Models.Persistence.Origin.self)
-}
-
-// MARK: - Database Table Definition + Migrations
-extension Source: Domain.Models.Database.DatabaseMigratable {
-    public static func createTable(db: Database) throws {
-        try db.create(table: databaseTableName, body: { t in
-            // ids
-            t.autoIncrementedPrimaryKey(Columns.id.name)
-            t.column(Columns.hostId.name, .integer)
-                .notNull()
-                .references(Host.databaseTableName, onDelete: .cascade)
-            
-            // properties
-            t.column(Columns.name.name, .text).notNull()
-            t.column(Columns.icon.name, .text).notNull()
-            t.column(Columns.path.name, .text).notNull()
-            
-            // external
-            t.column(Columns.website.name, .text).notNull()
-            t.column(Columns.description.name, .text).notNull()
-            
-            // controls
-            t.column(Columns.pinned.name, .boolean).notNull()
-            t.column(Columns.disabled.name, .boolean).notNull()
-        })
-    }
-    
-    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
-        // nothing for now
+        // MARK: - Coding Keys
+        public enum CodingKeys: String, CodingKey {
+            case id
+            case hostId
+            case name
+            case icon
+            case path
+            case website
+            case description
+            case pinned
+            case disabled
+        }
     }
 }

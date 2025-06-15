@@ -6,7 +6,6 @@
 //
 
 public extension Domain.Models {
-    struct Database {}
     struct Enums {}
     struct Persistence {}
     struct Presentation {}

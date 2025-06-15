@@ -6,12 +6,9 @@
 //
 
 import SwiftUI
-import GRDB
-
-internal typealias PublishStatus = Domain.Models.Enums.PublishStatus
 
 public extension Domain.Models.Enums {
-    enum PublishStatus: String, Codable, CaseIterable, DatabaseValueConvertible {
+    enum PublishStatus: String, Codable, CaseIterable, Sendable {
         case Unknown
         case Ongoing
         case Completed

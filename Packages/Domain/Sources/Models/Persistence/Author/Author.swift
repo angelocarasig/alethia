@@ -5,15 +5,11 @@
 //  Created by Angelo Carasig on 14/6/2025.
 //
 
-import GRDB
-
-internal typealias Author = Domain.Models.Persistence.Author
-
 public extension Domain.Models.Persistence {
     /// represents an author for a given manga
     ///
     /// note that an author is not exclusive to a writer, and instead includes both writers/artists/etc.
-    struct Author: Identifiable, Codable {
+    struct Author: Identifiable, Codable, Sendable {
         // MARK: - Properties
         
         /// unique database identifier
@@ -22,55 +18,18 @@ public extension Domain.Models.Persistence {
         /// name of the author
         public var name: String
         
-        init(
+        public init(
             id: Int64? = nil,
             name: String
         ) {
             self.id = id
             self.name = name
         }
-    }
-}
-
-// MARK: - Database Conformance
-extension Author: FetchableRecord, PersistableRecord {}
-
-extension Author: TableRecord {
-    public enum Columns {
-        public static let id = Column(CodingKeys.id)
-        public static let name = Column(CodingKeys.name)
-    }
-}
-
-extension Author: Domain.Models.Database.DatabaseUnique {
-    public static func uniqueFilter(for instance: Domain.Models.Persistence.Author) -> QueryInterfaceRequest<Domain.Models.Persistence.Author> {
-        filter(Columns.name == instance.name)
-    }
-}
-
-// MARK: - Database Relations
-extension Author {
-    // has many manga <-> manga has many authors
-    static let mangaAuthors = hasMany(Domain.Models.Persistence.MangaAuthor.self)
-    static let manga = hasMany(Domain.Models.Persistence.Manga.self, through: mangaAuthors, using: Domain.Models.Persistence.MangaAuthor.manga)
-}
-
-// MARK: - Database Table Definition + Migrations
-extension Author: Domain.Models.Database.DatabaseMigratable {
-    public static func createTable(db: Database) throws {
-        try db.create(table: databaseTableName, body: { t in
-            // ids
-            t.autoIncrementedPrimaryKey(Columns.id.name)
-            
-            // properties
-            t.column(Columns.name.name, .text)
-                .notNull()
-                .unique()
-                .collate(.nocase)
-        })
-    }
-    
-    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
-        // nothing for now
+        
+        // MARK: - Coding Keys
+        public enum CodingKeys: String, CodingKey {
+            case id
+            case name
+        }
     }
 }

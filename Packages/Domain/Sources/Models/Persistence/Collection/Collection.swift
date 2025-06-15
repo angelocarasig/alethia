@@ -6,13 +6,10 @@
 //
 
 import Foundation
-import GRDB
-
-internal typealias Collection = Domain.Models.Persistence.Collection
 
 public extension Domain.Models.Persistence {
     /// acts as a way to group manga with some extra metadata (mainly visual)
-    struct Collection: Identifiable, Equatable, Codable {
+    struct Collection: Identifiable, Codable, Sendable, Equatable {
         // MARK: - Properties
         
         public static let minimumNameLength = 3
@@ -54,75 +51,20 @@ public extension Domain.Models.Persistence {
             
             try validate()
         }
-    }
-}
-
-// MARK: - Database Conformance
-extension Collection: FetchableRecord, PersistableRecord {}
-
-extension Collection: TableRecord {
-    public enum Columns {
-        public static let id = Column(CodingKeys.id)
-        public static let name = Column(CodingKeys.name)
-        public static let color = Column(CodingKeys.color)
-        public static let icon = Column(CodingKeys.icon)
-        public static let ordering = Column(CodingKeys.ordering)
-    }
-}
-
-extension Collection: Domain.Models.Database.DatabaseUnique {
-    /// when performing a findOrCreate, uses this to determine whether to find/create the collection
-    public static func uniqueFilter(for instance: Domain.Models.Persistence.Collection) -> QueryInterfaceRequest<Domain.Models.Persistence.Collection> {
-        filter(Columns.name == instance.name)
-    }
-}
-
-// MARK: - Database Relations
-extension Collection {
-    // has many manga <-> manga has many collections
-    static let mangaCollections = hasMany(Domain.Models.Persistence.MangaCollection.self)
-    static let manga = hasMany(Domain.Models.Persistence.Manga.self, through: mangaCollections, using: Domain.Models.Persistence.MangaCollection.manga)
-}
-
-// MARK: - Database Table Definition + Migrations
-extension Collection: Domain.Models.Database.DatabaseMigratable {
-    public static func createTable(db: Database) throws {
-        try db.create(table: databaseTableName, body: { t in
-            // ids
-            t.autoIncrementedPrimaryKey(Columns.id.name)
-            
-            // properties
-            t.column(Columns.name.name, .text)
-                .notNull()
-                .unique()
-                .collate(.nocase)
-                .check { length($0) >= Collection.minimumNameLength && length($0) <= Collection.maximumNameLength }
-            
-            t.column(Columns.color.name, .text)
-                .notNull()
-                .defaults(to: "#007AFF") // iOS blue
-                .check(sql: "color GLOB '#[0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]'")
-            
-            t.column(Columns.icon.name, .text)
-                .notNull()
-                .defaults(to: "square.inset.filled")
-                .check { length($0) > 0 }
-            
-            // control
-            t.column(Columns.ordering.name, .integer)
-                .notNull()
-                .unique()
-                .defaults(to: 0)
-        })
-    }
-    
-    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
-        // nothing for now
+        
+        // MARK: - Coding Keys
+        public enum CodingKeys: String, CodingKey {
+            case id
+            case name
+            case color
+            case icon
+            case ordering
+        }
     }
 }
 
 // MARK: - Validators
-extension Collection {
+extension Domain.Models.Persistence.Collection {
     static let hexColorPattern = "^#[0-9A-Fa-f]{6}$"
     
     func validate() throws {
@@ -135,17 +77,17 @@ extension Collection {
         try validateRequired(name, parameter: "name")
         
         guard name.count >= Self.minimumNameLength else {
-            throw CollectionError.minimumLengthNotReached(name.count)
+            throw Domain.Models.Persistence.CollectionError.minimumLengthNotReached(name.count)
         }
         
         guard name.count <= Self.maximumNameLength else {
-            throw CollectionError.maximumLengthReached(name.count)
+            throw Domain.Models.Persistence.CollectionError.maximumLengthReached(name.count)
         }
         
         // check for reserved names if needed
         let reservedNames = ["all", "default", "new", "none"]
         if reservedNames.contains(name.lowercased()) {
-            throw CollectionError.badName(name)
+            throw Domain.Models.Persistence.CollectionError.badName(name)
         }
     }
     
@@ -157,7 +99,7 @@ extension Collection {
         let range = NSRange(location: 0, length: color.utf16.count)
         
         guard colorRegex.firstMatch(in: color, options: [], range: range) != nil else {
-            throw CollectionError.invalidColor(color, reason: "Must be hex format (#RRGGBB)")
+            throw Domain.Models.Persistence.CollectionError.invalidColor(color, reason: "Must be hex format (#RRGGBB)")
         }
     }
     
@@ -167,7 +109,7 @@ extension Collection {
     
     func validateRequired(_ value: String, parameter: String) throws {
         guard !value.isEmpty else {
-            throw CollectionError.emptyValue("", parameter: parameter)
+            throw Domain.Models.Persistence.CollectionError.emptyValue("", parameter: parameter)
         }
     }
 }

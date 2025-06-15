@@ -10,7 +10,7 @@ import Foundation
 typealias HostError = Domain.Models.Persistence.HostError
 
 public extension Domain.Models.Persistence {
-    enum HostError: LocalizedError {
+    enum HostError: LocalizedError, Sendable {
         case emptyValue(String, parameter: String)
         case invalidName(String)
         case invalidAuthor(String)

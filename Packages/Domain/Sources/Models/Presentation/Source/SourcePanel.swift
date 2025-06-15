@@ -5,13 +5,9 @@
 //  Created by Angelo Carasig on 14/6/2025.
 //
 
-import GRDB
-
-internal typealias SourcePanel = Domain.Models.Presentation.SourcePanel
-
 public extension Domain.Models.Presentation {
     /// db-fetching persistence model
-    struct SourcePanelItem: Decodable, FetchableRecord {
+    struct SourcePanelItem: Decodable {
         public let host: Domain.Models.Persistence.Host
         public let source: Domain.Models.Persistence.Source
         public let route: Domain.Models.Persistence.SourceRoute

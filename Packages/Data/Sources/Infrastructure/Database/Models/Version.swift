@@ -1,15 +1,17 @@
 //
 //  Version.swift
-//  Domain
+//  Data
 //
 //  Created by Angelo Carasig on 14/6/2025.
 //
 
-public extension Domain.Models.Database {
+import Domain
+
+public extension Data.Infrastructure {
     /// Semantic version representable.
     ///
     /// Version control for the database and used for naming conventions in migrations
-    struct Version: Comparable {
+    struct Version: Comparable, Sendable {
         let major: Int
         let minor: Int
         let patch: Int

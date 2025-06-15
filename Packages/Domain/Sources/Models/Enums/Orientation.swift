@@ -7,10 +7,8 @@
 
 import Foundation
 
-internal typealias Orientation = Domain.Models.Enums.Orientation
-
 public extension Domain.Models.Enums {
-    enum Orientation: String, Codable, CaseIterable {
+    enum Orientation: String, Codable, CaseIterable, Sendable {
         /// default value
         ///
         /// used in a use-case to conditionally return LTR (default horizontal)

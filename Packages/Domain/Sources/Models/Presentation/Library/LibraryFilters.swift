@@ -8,13 +8,11 @@
 import Foundation
 import SwiftUI
 
-internal typealias LibraryFilters = Domain.Models.Presentation.LibraryFilters
-
 public extension Domain.Models.Presentation {
     struct LibraryFilters {
         // MARK: Basic
         var searchText: String = ""
-        var collection: Collection? = nil
+        var collection: Domain.Models.Persistence.Collection? = nil
         
         // MARK: Sorting
         var sortType: LibrarySortType = .title
@@ -28,8 +26,8 @@ public extension Domain.Models.Presentation {
         var tags: [LibraryTag] = []
         
         // MARK: Content Type
-        var publishStatus: [PublishStatus] = []
-        var classification: [Classification] = []
+        var publishStatus: [Domain.Models.Enums.PublishStatus] = []
+        var classification: [Domain.Models.Enums.Classification] = []
         
         enum FilterType {
             // excludes basic + sorting

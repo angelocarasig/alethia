@@ -9,7 +9,7 @@ internal typealias LibraryTag = Domain.Models.Presentation.LibraryTag
 
 extension Domain.Models.Presentation {
     struct LibraryTag {
-        let tag: Tag
+        let tag: Domain.Models.Persistence.Tag
         var inclusionType: InclusionType
         
         enum InclusionType {

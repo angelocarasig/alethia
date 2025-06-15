@@ -7,10 +7,8 @@
 
 import Foundation
 
-internal typealias CollectionError = Domain.Models.Persistence.CollectionError
-
 public extension Domain.Models.Persistence {
-    enum CollectionError: LocalizedError {
+    enum CollectionError: LocalizedError, Sendable {
         case emptyValue(String, parameter: String)
         case minimumLengthNotReached(Int)
         case maximumLengthReached(Int)

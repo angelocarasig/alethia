@@ -7,14 +7,14 @@
 
 import Domain
 
-typealias Database = Domain.Models.Database
 typealias Persistence = Domain.Models.Persistence
 typealias Virtual = Domain.Models.Virtual
 
 public struct Data {
+    public struct Infrastructure {}
     public struct DataSources {}
-    public struct Network {}
     public struct Repositories {}
+    public struct Database {}
     
     private init() {}
 }

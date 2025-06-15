@@ -1,5 +1,5 @@
 //
-//  +Migrator.swift
+//  DatabaseProvider+Migrator.swift
 //  Data
 //
 //  Created by Angelo Carasig on 14/6/2025.
@@ -8,7 +8,7 @@
 import Domain
 import GRDB
 
-extension DatabaseProvider {
+extension Data.Infrastructure.DatabaseProvider {
     var migrator: DatabaseMigrator {
         do {
             var migrator = DatabaseMigrator()
@@ -35,7 +35,7 @@ extension DatabaseProvider {
             return migrator
         }
         catch {
-            fatalError(Database.DatabaseError.migrationFailure(error).localizedDescription)
+            fatalError(Data.Infrastructure.DatabaseError.migrationFailure(error).localizedDescription)
         }
     }
 }

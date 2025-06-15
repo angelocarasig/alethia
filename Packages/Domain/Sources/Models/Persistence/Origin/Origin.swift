@@ -6,16 +6,13 @@
 //
 
 import Foundation
-import GRDB
-
-internal typealias Origin = Domain.Models.Persistence.Origin
 
 public extension Domain.Models.Persistence {
     /// acts as joining aggregator between a manga and its content source
     ///
     /// - multi-source aggregation support via the origin
     /// - offers source-specific metadata that can differ between different sources
-    struct Origin: Identifiable, Codable {
+    struct Origin: Identifiable, Codable, Sendable {
         // MARK: - Properties
         
         /// unique database identifier
@@ -67,15 +64,15 @@ public extension Domain.Models.Persistence {
         /// lower values have higher precedence (0 = highest priority).
         public var priority: Int = -1
         
-        init(
+        public init(
             id: Int64? = nil,
             sourceId: Int64,
             mangaId: Int64,
             slug: String,
             url: String,
             referer: String,
-            classification: Classification,
-            status: PublishStatus,
+            classification: Domain.Models.Enums.Classification,
+            status: Domain.Models.Enums.PublishStatus,
             createdAt: Date,
             priority: Int
         ) {
@@ -92,79 +89,19 @@ public extension Domain.Models.Persistence {
             
             self.priority = priority
         }
-    }
-}
-
-// MARK: - Database Conformance
-extension Origin: FetchableRecord, PersistableRecord {}
-
-extension Origin: TableRecord {
-    public enum Columns {
-        public static let id = Column(CodingKeys.id)
-        public static let sourceId = Column(CodingKeys.sourceId)
-        public static let mangaId = Column(CodingKeys.mangaId)
         
-        public static let slug = Column(CodingKeys.slug)
-        public static let url = Column(CodingKeys.url)
-        public static let referer = Column(CodingKeys.referer)
-        public static let classification = Column(CodingKeys.classification)
-        public static let status = Column(CodingKeys.status)
-        public static let createdAt = Column(CodingKeys.createdAt)
-        
-        public static let priority = Column(CodingKeys.priority)
-    }
-}
-
-// MARK: - Database Relations
-extension Origin {
-    // belongs to a single manga
-    static let manga = belongsTo(Domain.Models.Persistence.Manga.self)
-    
-    // belongs to a single (optional) source
-    static let source = belongsTo(Domain.Models.Persistence.Source.self)
-    var source: QueryInterfaceRequest<Domain.Models.Persistence.Source> {
-        request(for: Domain.Models.Persistence.Origin.source)
-    }
-    
-    // has many chapters
-    static let chapters = hasMany(Domain.Models.Persistence.Chapter.self)
-    var chapters: QueryInterfaceRequest<Domain.Models.Persistence.Chapter> {
-        request(for: Domain.Models.Persistence.Origin.chapters)
-    }
-    
-    // has many channels
-    static let channels = hasMany(Domain.Models.Persistence.Channel.self)
-    
-    // has many scanlators
-    static let scanlators = hasMany(Domain.Models.Persistence.Scanlator.self, through: channels, using: Domain.Models.Persistence.Channel.scanlator)
-}
-
-// MARK: - Database Table Definition + Migrations
-extension Origin: Domain.Models.Database.DatabaseMigratable {
-    public static func createTable(db: Database) throws {
-        try db.create(table: databaseTableName, body: { t in
-            // ids
-            t.autoIncrementedPrimaryKey(Columns.id.name)
-            t.column(Columns.sourceId.name, .integer)
-                .references(Source.databaseTableName, onDelete: .setNull)
-            t.column(Columns.mangaId.name, .integer)
-                .notNull()
-                .references(Manga.databaseTableName, onDelete: .cascade)
-            
-            // properties
-            t.column(Columns.slug.name, .text).notNull()
-            t.column(Columns.url.name, .text).notNull()
-            t.column(Columns.referer.name, .text).notNull()
-            t.column(Columns.classification.name, .text).notNull()
-            t.column(Columns.status.name, .text).notNull()
-            t.column(Columns.createdAt.name, .date).notNull()
-            
-            // control
-            t.column(Columns.priority.name, .integer).notNull()
-        })
-    }
-    
-    public static func migrate(with migrator: inout DatabaseMigrator, from version: Domain.Models.Database.Version) throws {
-        // nothing for now
+        // MARK: - Coding Keys
+        public enum CodingKeys: String, CodingKey {
+            case id
+            case sourceId
+            case mangaId
+            case slug
+            case url
+            case referer
+            case classification
+            case status
+            case createdAt
+            case priority
+        }
     }
 }

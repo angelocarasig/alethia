@@ -5,7 +5,7 @@
 //  Created by Angelo Carasig on 14/6/2025.
 //
 
-typealias EntryMatch = Domain.Models.Enums.EntryMatch
+internal typealias EntryMatch = Domain.Models.Enums.EntryMatch
 
 public extension Domain.Models.Enums {
     /// matching property to indicate an entry's inclusive state in the library

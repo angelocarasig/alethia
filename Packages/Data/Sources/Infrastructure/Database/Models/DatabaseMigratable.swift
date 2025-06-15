@@ -1,13 +1,14 @@
 //
 //  DatabaseMigratable.swift
-//  Domain
+//  Data
 //
 //  Created by Angelo Carasig on 14/6/2025.
 //
 
 import GRDB
+import Domain
 
-public extension Domain.Models.Database {
+public extension Data.Infrastructure {
     /// Protocol for models that can create and migrate their database schema.
     ///
     /// Separates table creation (initial schema) from migrations (schema updates).

@@ -7,10 +7,6 @@
 
 import Foundation
 
-internal typealias MangaRemoteDataSource = Data.DataSources.MangaRemoteDataSource
-
 extension Data.DataSources {
-    final class MangaRemoteDataSource {
-        
-    }
+    final class MangaRemoteDataSource {}
 }
