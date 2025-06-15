@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  MangaRepositoryImpl.swift
 //  Data
 //
 //  Created by Angelo Carasig on 14/6/2025.
@@ -11,17 +11,20 @@ import Combine
 fileprivate typealias MangaRepository = Domain.Repositories.MangaRepository
 
 public extension Data.Repositories {
-    final class MangaRepositoryImplement: MangaRepository {
+    final class MangaRepositoryImpl: MangaRepository {
         private let local: MangaLocalDataSource
         private let remote: Data.DataSources.MangaRemoteDataSource
         
-        init(local: Data.DataSources.MangaLocalDataSource, remote: Data.DataSources.MangaRemoteDataSource) {
+        public init(
+            local: Data.DataSources.MangaLocalDataSource,
+            remote: Data.DataSources.MangaRemoteDataSource
+        ) {
             self.local = local
             self.remote = remote
         }
         
         public func getLibrary(filters: Domain.Models.Presentation.LibraryFilters, collectionId: Int64?) -> AnyPublisher<[Domain.Models.Virtual.Entry], any Error> {
-            fatalError("Not Implemented")
+            return local.getLibrary(filters: filters, collectionId: collectionId)
         }
         
         public func addMangaToLibrary(mangaId: Int64, collectionIds: [Int64]) throws {

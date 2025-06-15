@@ -18,8 +18,8 @@ public extension Data.DataSources {
     final class MangaLocalDataSource: Sendable {
         private let database: DatabaseWriter
         
-        internal init(database: DatabaseWriter = DatabaseProvider.shared.writer) {
-            self.database = database
+        public init() {
+            self.database = DatabaseProvider.shared.writer
         }
     }
 }

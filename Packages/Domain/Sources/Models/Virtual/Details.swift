@@ -5,6 +5,8 @@
 //  Created by Angelo Carasig on 14/6/2025.
 //
 
+import Foundation
+
 public extension Domain.Models.Virtual {
     /// all relevant models joined with an underlying `Manga` model to be used in displaying details
     struct Details: Decodable, Sendable {
@@ -113,5 +115,61 @@ public extension Domain.Models.Virtual.Details {
             self.source = source
             self.host = host
         }
+    }
+}
+
+// MARK: - Domain-specific functions
+public extension Domain.Models.Virtual.Details {
+    /// Converts details to an entry with a specific source ID.
+    /// Used when resolving collisions where multiple manga match the same entry.
+    ///
+    /// - Parameters:
+    ///   - sourceId: The source ID to use for the entry
+    ///   - originalEntry: The original entry to preserve slug and cover information from
+    /// - Returns: A resolved entry with exact match
+    func toEntry(sourceId: Int64, from originalEntry: Domain.Models.Virtual.Entry) -> Domain.Models.Virtual.Entry {
+        let matchingSource = sources.first { $0.source?.id == sourceId }
+        
+        return Domain.Models.Virtual.Entry(
+            mangaId: manga.id,
+            sourceId: sourceId,
+            title: manga.title,
+            slug: matchingSource?.origin.slug ?? "",
+            cover: covers.first { $0.active }?.url ?? "",
+            fetchUrl: buildFetchUrl(for: matchingSource),
+            unread: calculateUnreadCount(),
+            match: .exact,
+            inLibrary: manga.inLibrary,
+            addedAt: manga.addedAt,
+            updatedAt: manga.updatedAt,
+            lastReadAt: manga.lastReadAt
+        )
+    }
+    
+    /// Builds the fetch URL for a source info
+    private func buildFetchUrl(for sourceInfo: SourceInfo?) -> String? {
+        guard let sourceInfo = sourceInfo,
+              let host = sourceInfo.host,
+              let source = sourceInfo.source else {
+            return nil
+        }
+        
+        let baseUrl = host.baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let sourcePath = source.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let slug = sourceInfo.origin.slug
+        
+        return "\(baseUrl)/\(sourcePath)/manga/\(slug)"
+    }
+    
+    /// Calculates unread chapter count based on current manga settings
+    private func calculateUnreadCount() -> Int {
+        chapters
+            .filter { info in
+                let chapter = info.chapter
+                let isUnread = chapter.progress < 1.0
+                let shouldShow = manga.showHalfChapters || chapter.number.truncatingRemainder(dividingBy: 1) == 0
+                return isUnread && shouldShow
+            }
+            .count
     }
 }

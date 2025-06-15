@@ -14,7 +14,7 @@ public protocol GetLibraryUseCase {
 public final class GetLibraryUseCaseImpl: GetLibraryUseCase {
     private let repository: Domain.Repositories.MangaRepository
     
-    init(repository: Domain.Repositories.MangaRepository) {
+    public init(repository: Domain.Repositories.MangaRepository) {
         self.repository = repository
     }
     

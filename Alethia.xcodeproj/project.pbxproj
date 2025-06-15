@@ -46,6 +46,7 @@
 				Core,
 				Data,
 				Domain,
+				Presentation,
 			);
 			target = 17D458CD2DA6A34700CF3BA4 /* Alethia */;
 		};

@@ -34,7 +34,7 @@ public extension Domain.Repositories {
     /// - ``updateMangaCollections(mangaId:collectionIds:)``
     /// - ``updateOriginPriorities(mangaId:newPriorities:)``
     /// - ``updateScanlatorPriorities(originId:newPriorities:)``
-    protocol MangaRepository {
+    protocol MangaRepository: Sendable {
         // MARK: - Library Operations
         
         /// Observes library entries with applied filters.
