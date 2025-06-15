@@ -63,30 +63,61 @@ internal extension MangaLocalDataSource {
 
 private extension MangaLocalDataSource {
     func findByTitle(_ title: String, db: Database) throws -> [Domain.Models.Persistence.Manga] {
-        var results: [Domain.Models.Persistence.Manga] = []
+        // create search pattern
+        guard let pattern = FTS5Pattern(matchingAllPrefixesIn: title) else {
+            return []
+        }
+        
         var foundIds = Set<Int64>()
+        var results: [Domain.Models.Persistence.Manga] = []
         
-        // main title matches
-        let mainMatches = try Domain.Models.Persistence.Manga
-            .filter(Domain.Models.Persistence.Manga.Columns.title == title)
-            .fetchAll(db)
+        // search main titles using FTS5
+        let mainTitleIds = try Int64.fetchAll(
+            db,
+            sql: """
+                SELECT rowid 
+                FROM \(MangaTitleFTS5.databaseTableName) 
+                WHERE \(MangaTitleFTS5.databaseTableName) MATCH ?
+            """,
+            arguments: [pattern]
+        )
         
-        for manga in mainMatches {
-            if let id = manga.id {
-                results.append(manga)
-                foundIds.insert(id)
+        // fetch manga for main title matches
+        if !mainTitleIds.isEmpty {
+            let mainMatches = try Domain.Models.Persistence.Manga
+                .filter(mainTitleIds.contains(Domain.Models.Persistence.Manga.Columns.id))
+                .fetchAll(db)
+            
+            for manga in mainMatches {
+                if let id = manga.id {
+                    results.append(manga)
+                    foundIds.insert(id)
+                }
             }
         }
         
-        // alternative title matches
-        let altMatches = try Domain.Models.Persistence.Manga
-            .joining(required: Domain.Models.Persistence.Manga.titles
-                .filter(Domain.Models.Persistence.Title.Columns.title == title))
-            .fetchAll(db)
+        // search alternative titles using FTS5
+        let altTitleMangaIds = try Int64.fetchAll(
+            db,
+            sql: """
+                SELECT DISTINCT mangaId 
+                FROM \(MangaAltTitleFTS5.databaseTableName) 
+                WHERE \(MangaAltTitleFTS5.databaseTableName) MATCH ?
+            """,
+            arguments: [pattern]
+        )
         
-        for manga in altMatches {
-            if let id = manga.id, !foundIds.contains(id) {
-                results.append(manga)
+        // fetch manga for alt title matches (excluding already found)
+        if !altTitleMangaIds.isEmpty {
+            let altMatches = try Domain.Models.Persistence.Manga
+                .filter(altTitleMangaIds.contains(Domain.Models.Persistence.Manga.Columns.id))
+                .filter(!foundIds.contains(Domain.Models.Persistence.Manga.Columns.id))
+                .fetchAll(db)
+            
+            for manga in altMatches {
+                if let id = manga.id {
+                    results.append(manga)
+                }
             }
         }
         

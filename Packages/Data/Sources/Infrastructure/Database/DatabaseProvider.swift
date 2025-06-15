@@ -39,6 +39,7 @@ public extension Data.Infrastructure {
             
             // MARK: - Views
             Virtual.Entry.self, // unique case as entry used for other things too
+            Persistence.Misc.VirtualTables.self,
             Persistence.Misc.Views.self,
             Persistence.Misc.Indexes.self,
         ]

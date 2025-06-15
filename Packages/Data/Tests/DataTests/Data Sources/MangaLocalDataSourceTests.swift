@@ -154,6 +154,212 @@ struct MangaLocalDataSourceTests {
         #expect(foundIds == Set([1, 2, 3]))
     }
     
+    @Test("test_getMangaDetails_withFTS5Search_matchesVariousPatterns")
+    func testFTS5TitleSearch() async throws {
+        // arrange
+        try await database.write { db in
+            // create manga with specific title
+            var manga = Domain.Models.Persistence.Manga(
+                title: "Mayonaka Heart Tune",
+                synopsis: "Test manga"
+            )
+            manga.id = 1
+            manga.inLibrary = true
+            try manga.insert(db)
+            
+            // add alternative title
+            try Domain.Models.Persistence.Title(
+                mangaId: 1,
+                title: "Midnight"
+            ).insert(db)
+        }
+        
+        // act & assert - exact match
+        let exactEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "Mayonaka Heart Tune",
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let exactResults = try await dataSource.getMangaDetails(entry: exactEntry).async()
+        #expect(exactResults.count == 1)
+        #expect(exactResults.first?.manga.title == "Mayonaka Heart Tune")
+        
+        // act & assert - partial word match
+        let heartEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "Heart",
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let heartResults = try await dataSource.getMangaDetails(entry: heartEntry).async()
+        #expect(heartResults.count == 1)
+        #expect(heartResults.first?.manga.title == "Mayonaka Heart Tune")
+        
+        // act & assert - prefix match
+        let prefixEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "H",
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let prefixResults = try await dataSource.getMangaDetails(entry: prefixEntry).async()
+        #expect(prefixResults.count == 1)
+        #expect(prefixResults.first?.manga.title == "Mayonaka Heart Tune")
+        
+        // act & assert - no match
+        let noMatchEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "X",
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let noMatchResults = try await dataSource.getMangaDetails(entry: noMatchEntry).async()
+        #expect(noMatchResults.isEmpty)
+        
+        // act & assert - alternative title prefix match
+        let altTitleEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "Mid",
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let altTitleResults = try await dataSource.getMangaDetails(entry: altTitleEntry).async()
+        #expect(altTitleResults.count == 1)
+        #expect(altTitleResults.first?.manga.title == "Mayonaka Heart Tune")
+        
+        // verify the alternative title was loaded
+        #expect(altTitleResults.first?.titles.contains { $0.title == "Midnight" } == true)
+    }
+    
+    @Test("test_getMangaDetails_withFTS5_handlesCaseInsensitiveSearch")
+    func testFTS5CaseInsensitive() async throws {
+        // arrange
+        try await database.write { db in
+            var manga = Domain.Models.Persistence.Manga(
+                title: "Attack on Titan",
+                synopsis: "Test manga"
+            )
+            manga.id = 1
+            manga.inLibrary = true
+            try manga.insert(db)
+        }
+        
+        // act - lowercase search
+        let lowercaseEntry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "attack",
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let results = try await dataSource.getMangaDetails(entry: lowercaseEntry).async()
+        
+        // assert
+        #expect(results.count == 1)
+        #expect(results.first?.manga.title == "Attack on Titan")
+    }
+    
+    @Test("test_getMangaDetails_withFTS5_matchesMultipleWords")
+    func testFTS5MultiWordSearch() async throws {
+        // arrange
+        try await database.write { db in
+            // create multiple manga
+            var manga1 = Domain.Models.Persistence.Manga(
+                title: "One Piece",
+                synopsis: "Pirates"
+            )
+            manga1.id = 1
+            manga1.inLibrary = true
+            try manga1.insert(db)
+            
+            var manga2 = Domain.Models.Persistence.Manga(
+                title: "One Punch Man",
+                synopsis: "Hero"
+            )
+            manga2.id = 2
+            manga2.inLibrary = true
+            try manga2.insert(db)
+            
+            var manga3 = Domain.Models.Persistence.Manga(
+                title: "Piece of Cake",
+                synopsis: "Romance"
+            )
+            manga3.id = 3
+            manga3.inLibrary = true
+            try manga3.insert(db)
+        }
+        
+        // act - search for "One Piece" (should match all tokens)
+        let entry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "One Piece",
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let results = try await dataSource.getMangaDetails(entry: entry).async()
+        
+        // assert - should only find exact "One Piece" with FTS5Pattern(matchingAllTokensIn:)
+        #expect(results.count == 1)
+        #expect(results.first?.manga.title == "One Piece")
+    }
+    
+    @Test("test_getMangaDetails_withFTS5_failsOnNonPrefixes")
+    func testFTS5FailsOnNonPrefixes() async throws {
+        // arrange
+        try await database.write { db in
+            // create manga with specific title
+            var manga = Domain.Models.Persistence.Manga(
+                title: "Mayonaka Heart Tune",
+                synopsis: "Test manga"
+            )
+            manga.id = 1
+            manga.inLibrary = true
+            try manga.insert(db)
+            
+            // add alternative title
+            try Domain.Models.Persistence.Title(
+                mangaId: 1,
+                title: "Midnight"
+            ).insert(db)
+        }
+        
+        // act - search for "ear" (substring of the 'heart' in stubbed manga title)
+        let entry = Domain.Models.Virtual.Entry(
+            mangaId: nil,
+            sourceId: nil,
+            title: "ear",
+            slug: "test",
+            cover: "",
+            inLibrary: false
+        )
+        
+        let results = try await dataSource.getMangaDetails(entry: entry).async()
+        
+        // assert - should return none
+        #expect(results.count == 0)
+    }
+    
     @Test("test_getMangaDetails_withNoMatches_returnsEmptyArray")
     func testNoMatches() async throws {
         // arrange
