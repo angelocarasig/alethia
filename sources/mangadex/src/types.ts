@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { LanguageSchema } from '@repo/schema';
 
-const SlugSchema = z.string().uuid();
+const SlugSchema = z.uuid();
 const LocalizedStringSchema = z.record(LanguageSchema, z.string());
 
 const BaseRelationshipSchema = z.object({
