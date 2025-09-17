@@ -11,6 +11,8 @@ export const SortOptionSchema = z.enum([
   'year',
   'views',
   'follows',
+  'createdAt',
+  'updatedAt',
 ]);
 
 export const FilterOptionSchema = z.enum([
@@ -18,7 +20,8 @@ export const FilterOptionSchema = z.enum([
   'status',
   'contentRating',
   'year',
-  'language',
+  'originalLanguage',
+  'translatedLanguage',
   'author',
   'artist',
   'includeTag',

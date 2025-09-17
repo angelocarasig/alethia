@@ -31,7 +31,7 @@ export const ChapterSchema = z.strictObject({
   url: z.url().describe('The URL of the chapter'),
 
   date: z.iso
-    .datetime({ local: false, offset: false, precision: 0 })
+    .datetime({ local: false, offset: true, precision: 0 })
     .describe('The date when the chapter was published'),
 });
 

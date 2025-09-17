@@ -26,7 +26,7 @@ export const AuthSuccessResponseSchema = z.strictObject({
   metadata: z
     .object({
       expiresAt: z.iso
-        .datetime()
+        .datetime({ local: false, offset: true, precision: 0 })
         .optional()
         .describe('ISO 8601 timestamp when the authentication expires'),
 

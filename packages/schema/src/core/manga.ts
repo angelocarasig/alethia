@@ -32,11 +32,11 @@ export const MangaSchema = z.strictObject({
     .describe('A brief summary or description of the manga'),
 
   createdAt: z.iso
-    .datetime({ local: false, offset: false, precision: 0 })
+    .datetime({ local: false, offset: true, precision: 0 })
     .describe('The date and time when the manga was created'),
 
   updatedAt: z.iso
-    .datetime({ local: false, offset: false, precision: 0 })
+    .datetime({ local: false, offset: true, precision: 0 })
     .describe('The last time the manga was updated'),
 
   classification: ClassificationSchema,

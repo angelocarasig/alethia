@@ -51,9 +51,7 @@ export const SearchResponseSchema = z.object({
 
   page: z.number().describe('Current page number'),
 
-  limit: z.number().describe('Results per page'),
-
-  hasMore: z.boolean().describe('Whether more results are available'),
+  more: z.boolean().describe('Whether more results are available'),
 });
 
 export type SearchResponse = z.infer<typeof SearchResponseSchema>;
