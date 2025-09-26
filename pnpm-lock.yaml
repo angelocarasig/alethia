@@ -126,6 +126,9 @@ importers:
 
   packages/contracts:
     dependencies:
+      '@repo/http-client':
+        specifier: workspace:*
+        version: link:../http-client
       '@repo/schema':
         specifier: workspace:*
         version: link:../schema
@@ -175,6 +178,15 @@ importers:
       typescript-eslint:
         specifier: ^8.39.0
         version: 8.39.0(eslint@9.33.0)(typescript@5.9.2)
+
+  packages/http-client:
+    devDependencies:
+      '@repo/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
 
   packages/schema:
     dependencies:

@@ -19,7 +19,6 @@ import {
 } from '@repo/schema';
 
 import {
-  USER_AGENT,
   ENDPOINTS,
   CDN_ENDPOINTS,
   IMAGE_QUALITY,
@@ -40,6 +39,10 @@ import {
   ContentRating,
   MangaStatus,
   LocalizedString,
+  MangadexCollectionResponse,
+  MangadexEntityResponse,
+  ChapterFeedResponse,
+  AtHomeServerResponse,
 } from './types';
 
 export default class MangaDexSource extends Adapter {
@@ -153,9 +156,12 @@ export default class MangaDexSource extends Adapter {
     params: URLSearchParams,
     headers?: Record<string, string>,
   ): Promise<SearchResponse> {
-    const response = await this.fetchFromApi(ENDPOINTS.manga, params, headers);
-    const json = await response.json();
-    const collection = MangadexCollectionResponseSchema.parse(json);
+    const response = await this.httpClient.get<MangadexCollectionResponse>(
+      ENDPOINTS.manga,
+      { params, headers },
+    );
+
+    const collection = MangadexCollectionResponseSchema.parse(response.data);
 
     const limit = Number(params.get('limit'));
     const offset = Number(params.get('offset'));
@@ -172,14 +178,16 @@ export default class MangaDexSource extends Adapter {
     slug: string,
     headers?: Record<string, string>,
   ): Promise<Manga> {
-    const url = new URL(`${ENDPOINTS.manga}/${slug}`);
+    const params = new URLSearchParams();
     MangaDexSource.DETAIL_INCLUDES.forEach((include) =>
-      url.searchParams.append('includes[]', include),
+      params.append('includes[]', include),
     );
 
-    const response = await this.fetchFromApi(url.toString(), null, headers);
-    const json = await response.json();
-    const entityResponse = MangadexEntityResponseSchema.parse(json);
+    const response = await this.httpClient.get<MangadexEntityResponse>(
+      `${ENDPOINTS.manga}/${slug}`,
+      { params, headers },
+    );
+    const entityResponse = MangadexEntityResponseSchema.parse(response.data);
     const { id, attributes, relationships = [] } = entityResponse.data;
 
     const authors = relationships.filter(
@@ -241,28 +249,30 @@ export default class MangaDexSource extends Adapter {
     let hasMore = true;
 
     while (hasMore) {
-      const url = new URL(ENDPOINTS.feed(mangaSlug));
-      url.searchParams.append('limit', String(limit));
-      url.searchParams.append('offset', String(offset));
-      url.searchParams.append('order[chapter]', 'asc');
-      url.searchParams.append('order[volume]', 'asc');
+      const params = new URLSearchParams();
+      params.append('limit', String(limit));
+      params.append('offset', String(offset));
+      params.append('order[chapter]', 'asc');
+      params.append('order[volume]', 'asc');
 
       this.source.languages.forEach((lang) =>
-        url.searchParams.append('translatedLanguage[]', lang),
+        params.append('translatedLanguage[]', lang),
       );
 
       MangaDexSource.CHAPTER_INCLUDES.forEach((include) =>
-        url.searchParams.append('includes[]', include),
+        params.append('includes[]', include),
       );
 
       // include all ratings for chapters regardless of manga rating
       ['safe', 'suggestive', 'erotica', 'pornographic'].forEach((rating) =>
-        url.searchParams.append('contentRating[]', rating),
+        params.append('contentRating[]', rating),
       );
 
-      const response = await this.fetchFromApi(url.toString(), null, headers);
-      const json = await response.json();
-      const feedResponse = ChapterFeedResponseSchema.parse(json);
+      const response = await this.httpClient.get<ChapterFeedResponse>(
+        ENDPOINTS.feed(mangaSlug),
+        { params, headers },
+      );
+      const feedResponse = ChapterFeedResponseSchema.parse(response.data);
 
       const validChapters = feedResponse.data
         .filter((chapter) => chapter.attributes.pages > 0)
@@ -285,14 +295,16 @@ export default class MangaDexSource extends Adapter {
   }
 
   async getChapter(
-    _: string, // mangaslug unused - chapters are fetched directly by id
+    _: string, // manga slug unused - chapters are fetched directly by id
     chapterSlug: string,
     headers?: Record<string, string>,
   ): Promise<string[]> {
-    const url = ENDPOINTS.at_home(chapterSlug);
-    const response = await this.fetchFromApi(url, null, headers);
-    const json = await response.json();
-    const atHomeResponse = AtHomeServerResponseSchema.parse(json);
+    const response = await this.httpClient.get<AtHomeServerResponse>(
+      ENDPOINTS.at_home(chapterSlug),
+      { headers },
+    );
+
+    const atHomeResponse = AtHomeServerResponseSchema.parse(response.data);
 
     const { baseUrl, chapter } = atHomeResponse;
     const { hash, data: fileNames, dataSaver: dataSaverFileNames } = chapter;
@@ -310,31 +322,6 @@ export default class MangaDexSource extends Adapter {
 
     return pagesToUse.map(
       (fileName: string) => `${baseUrl}/${quality}/${hash}/${fileName}`,
-    );
-  }
-
-  private async fetchFromApi(
-    endpoint: string,
-    params: URLSearchParams | null,
-    headers?: Record<string, string>,
-  ): Promise<Response> {
-    const url = params ? `${endpoint}?${params.toString()}` : endpoint;
-
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': USER_AGENT,
-        ...headers,
-      },
-    });
-
-    if (response.ok) {
-      return response;
-    }
-
-    const body = await response.text().catch(() => 'unknown error');
-    throw new Error(
-      `mangadex api error (${response.status}): ${response.statusText} - ${body}`,
     );
   }
 

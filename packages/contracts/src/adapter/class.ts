@@ -7,6 +7,7 @@ import {
   SearchResponse,
 } from '../api';
 import { Source } from './types';
+import { HTTPClient } from '@repo/http-client';
 
 /**
  * Abstract adapter class for integrating manga sources.
@@ -37,6 +38,8 @@ export abstract class Adapter {
    */
   protected source: Source;
 
+  protected httpClient: HTTPClient;
+
   /**
    * Creates an instance of Adapter.
    * @param {Source} source - The source configuration
@@ -54,6 +57,7 @@ export abstract class Adapter {
     }
 
     this.source = source;
+    this.httpClient = new HTTPClient();
   }
 
   /**
