@@ -237,9 +237,6 @@ export default class MangaDexSource extends Adapter {
       url.searchParams.append('order[chapter]', 'asc');
       url.searchParams.append('order[volume]', 'asc');
       url.searchParams.append('translatedLanguage[]', 'en');
-      url.searchParams.append('contentRating[]', 'safe');
-      url.searchParams.append('contentRating[]', 'suggestive');
-      url.searchParams.append('contentRating[]', 'erotica');
 
       // fetch chapter batch
       const response = await this.fetchFromApi(url.toString(), null, headers);
@@ -255,7 +252,7 @@ export default class MangaDexSource extends Adapter {
       // transform and add valid chapters to collection
       const validChapters = chapters
         .filter((chapter: any) => chapter.attributes?.pages > 0)
-        .map((chapter: any) => this.buildChapter(chapter, mangaSlug));
+        .map((chapter: any) => this.buildChapter(chapter));
 
       allChapters.push(...validChapters);
 
@@ -397,7 +394,7 @@ export default class MangaDexSource extends Adapter {
     return mappings[status] || 'Unknown';
   }
 
-  private buildChapter(apiChapter: any, mangaSlug: string): Chapter {
+  private buildChapter(apiChapter: any): Chapter {
     const { id, attributes, relationships = [] } = apiChapter;
 
     // extract scanlation group name

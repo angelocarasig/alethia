@@ -42,6 +42,17 @@ export abstract class Adapter {
    * @param {Source} source - The source configuration
    */
   constructor(source: Source) {
+    if (
+      // tags can't be empty if tag filters are supported
+      (source.search.filters.includes('includeTag') ||
+        source.search.filters.includes('excludeTag')) &&
+      source.search.tags.length === 0
+    ) {
+      throw new Error(
+        `Source '${source.name}' includes tag filters but has no tags defined in the configuration.`,
+      );
+    }
+
     this.source = source;
   }
 

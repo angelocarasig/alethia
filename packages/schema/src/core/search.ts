@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TagSchema } from './tag';
 
 export const SortOptionSchema = z.enum([
   'relevance',
@@ -34,6 +35,8 @@ export const SearchSchema = z.object({
   sort: z.array(SortOptionSchema).default(['relevance']),
 
   filters: z.array(FilterOptionSchema).default([]),
+
+  tags: z.array(TagSchema).default([]),
 });
 
 export type SortOption = z.infer<typeof SortOptionSchema>;

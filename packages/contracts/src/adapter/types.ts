@@ -32,7 +32,9 @@ export const SourceSchema = z.strictObject({
   nsfw: z
     .boolean()
     .default(false)
-    .describe('Whether the source is NSFW (Not Safe For Work)'),
+    .describe(
+      'Whether the source is by default an NSFW (Not Safe For Work) source',
+    ),
 
   url: z.url().describe('The URL of the source'),
 
