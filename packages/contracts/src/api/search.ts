@@ -47,8 +47,6 @@ export type SearchRequest = z.infer<typeof SearchRequestSchema>;
 export const SearchResponseSchema = z.object({
   results: z.array(EntrySchema).describe('Array of manga matching the search'),
 
-  total: z.number().describe('Total number of results available'),
-
   page: z.number().describe('Current page number'),
 
   more: z.boolean().describe('Whether more results are available'),

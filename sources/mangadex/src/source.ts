@@ -28,8 +28,15 @@ import {
 
 import {
   CoverArtRelationship,
+  AuthorRelationship,
+  ArtistRelationship,
+  ScanlationGroupRelationship,
   MangadexEntry,
+  ChapterEntry,
   MangadexCollectionResponseSchema,
+  MangadexEntityResponseSchema,
+  ChapterFeedResponseSchema,
+  AtHomeServerResponseSchema,
   ContentRating,
   MangaStatus,
   LocalizedString,
@@ -70,11 +77,17 @@ export default class MangaDexSource extends Adapter {
     'tag',
   ] as const;
 
+  private static readonly CHAPTER_INCLUDES = [
+    'scanlation_group',
+    'user',
+  ] as const;
+
   constructor(source: Source) {
     super(source);
   }
 
   protected async performAuthentication(_: AuthRequest): Promise<AuthResponse> {
+    // mangadex doesn't require auth for public api
     return {
       success: true,
       headers: {},
@@ -84,17 +97,14 @@ export default class MangaDexSource extends Adapter {
   protected buildParams(request: SearchRequest): URLSearchParams {
     const params = new URLSearchParams();
 
-    // add search query if provided
     if (request.query) {
       params.append('title', request.query);
     }
 
-    // calculate pagination offset
     const offset = (request.page - 1) * request.limit;
     params.append('limit', String(request.limit));
     params.append('offset', String(offset));
 
-    // apply sort order unless using default relevance
     if (request.sort !== 'relevance') {
       const apiSortField =
         MangaDexSource.API_SORT_MAPPING[
@@ -105,7 +115,6 @@ export default class MangaDexSource extends Adapter {
       }
     }
 
-    // map and apply user filters to api parameters
     const filters = request.filters || {};
     Object.entries(filters).forEach(([key, value]) => {
       const apiParam =
@@ -119,14 +128,19 @@ export default class MangaDexSource extends Adapter {
       values.forEach((v) => params.append(apiParam, String(v)));
     });
 
-    // apply default status filter if not specified
+    // apply defaults when not explicitly filtered
     if (!filters.status) {
       CONTENT_FILTERS.defaultStatuses.forEach((status) =>
         params.append('status[]', status),
       );
     }
 
-    // include required relationships for response
+    if (!filters.contentRating) {
+      CONTENT_FILTERS.defaultContentRatings.forEach((rating) =>
+        params.append('contentRating[]', rating),
+      );
+    }
+
     MangaDexSource.SEARCH_INCLUDES.forEach((include) =>
       params.append('includes[]', include),
     );
@@ -138,21 +152,16 @@ export default class MangaDexSource extends Adapter {
     params: URLSearchParams,
     headers?: Record<string, string>,
   ): Promise<SearchResponse> {
-    // fetch and parse api response
     const response = await this.fetchFromApi(ENDPOINTS.manga, params, headers);
-    const collection = MangadexCollectionResponseSchema.parse(
-      await response.json(),
-    );
+    const json = await response.json();
+    const collection = MangadexCollectionResponseSchema.parse(json);
 
-    // extract pagination info from params
     const limit = Number(params.get('limit'));
     const offset = Number(params.get('offset'));
     const currentPage = Math.floor(offset / limit) + 1;
 
-    // build search response with transformed entries
     return {
       results: collection.data.map((entry) => this.buildSearchEntry(entry)),
-      total: collection.total,
       page: currentPage,
       more: offset + limit < collection.total,
     };
@@ -162,59 +171,64 @@ export default class MangaDexSource extends Adapter {
     slug: string,
     headers?: Record<string, string>,
   ): Promise<Manga> {
-    // build url with required includes
     const url = new URL(`${ENDPOINTS.manga}/${slug}`);
     MangaDexSource.DETAIL_INCLUDES.forEach((include) =>
       url.searchParams.append('includes[]', include),
     );
 
-    // fetch and validate response
     const response = await this.fetchFromApi(url.toString(), null, headers);
     const json = await response.json();
+    const entityResponse = MangadexEntityResponseSchema.parse(json);
+    const { id, attributes, relationships = [] } = entityResponse.data;
 
-    if (json.result !== 'ok' || !json.data) {
-      throw new Error('Invalid MangaDex API response structure');
-    }
+    const authors = relationships.filter(
+      (rel): rel is AuthorRelationship => rel.type === 'author',
+    );
 
-    const { id, attributes, relationships = [] } = json.data;
+    const artists = relationships.filter(
+      (rel): rel is ArtistRelationship => rel.type === 'artist',
+    );
 
-    // transform api data to domain model
+    const covers = relationships.filter(
+      (rel): rel is CoverArtRelationship => rel.type === 'cover_art',
+    );
+
+    // combine authors and artists, removing duplicates
+    const authorNames = [
+      ...new Set([
+        ...authors.map((a) => a.attributes?.name).filter(Boolean),
+        ...artists.map((a) => a.attributes?.name).filter(Boolean),
+      ]),
+    ];
+
     return MangaSchema.parse({
       slug: id,
-
       title: this.selectPreferredTitle(attributes.title),
-
-      authors: relationships
-        .filter((rel: any) => rel.type === 'author' && rel.attributes?.name)
-        .map((rel: any) => rel.attributes.name),
-
-      alternativeTitles: (attributes.altTitles || [])
-        .flatMap((titleObject: LocalizedString) => Object.values(titleObject))
-        .filter((title: string) => title.trim().length > 0),
-
+      authors: authorNames.length > 0 ? authorNames : undefined,
+      alternativeTitles:
+        attributes.altTitles
+          ?.flatMap((titleObject: LocalizedString) =>
+            Object.values(titleObject),
+          )
+          .filter((title: string) => title.trim().length > 0) || undefined,
       synopsis: this.selectPreferredDescription(attributes.description),
-
       createdAt: attributes.createdAt,
-
       updatedAt: attributes.updatedAt,
-
       classification: this.mapToClassification(attributes.contentRating),
-
       publication: this.mapToPublication(attributes.status),
-
-      tags: (attributes.tags || [])
-        .filter((tag: any) => tag.attributes?.name?.en)
-        .map((tag: any) => tag.attributes.name.en),
-
-      covers: relationships
-        .filter(
-          (rel: any) => rel.type === 'cover_art' && rel.attributes?.fileName,
-        )
-        .map(
-          (rel: any) =>
-            `${CDN_ENDPOINTS.covers}/${id}/${rel.attributes.fileName}`,
-        ),
-
+      tags:
+        attributes.tags
+          ?.filter((tag) => tag.attributes?.name?.en)
+          .map((tag) => tag.attributes.name.en) || undefined,
+      covers:
+        covers.length > 0
+          ? covers
+              .filter((cover) => cover.attributes?.fileName)
+              .map(
+                (cover) =>
+                  `${CDN_ENDPOINTS.covers}/${id}/${cover.attributes.fileName}`,
+              )
+          : undefined,
       url: `https://mangadex.org/title/${id}`,
     });
   }
@@ -224,45 +238,47 @@ export default class MangaDexSource extends Adapter {
     headers?: Record<string, string>,
   ): Promise<Chapter[]> {
     const allChapters: Chapter[] = [];
-    const limit = 100; // mangadex max is 100 per request
+    const limit = 100; // mangadex max per request
     let offset = 0;
     let hasMore = true;
 
     while (hasMore) {
-      // build feed url with pagination and includes
-      const url = new URL(`${ENDPOINTS.manga}/${mangaSlug}/feed`);
+      const url = new URL(ENDPOINTS.feed(mangaSlug));
       url.searchParams.append('limit', String(limit));
       url.searchParams.append('offset', String(offset));
-      url.searchParams.append('includes[]', 'scanlation_group');
       url.searchParams.append('order[chapter]', 'asc');
       url.searchParams.append('order[volume]', 'asc');
-      url.searchParams.append('translatedLanguage[]', 'en');
 
-      // fetch chapter batch
+      this.source.languages.forEach((lang) =>
+        url.searchParams.append('translatedLanguage[]', lang),
+      );
+
+      MangaDexSource.CHAPTER_INCLUDES.forEach((include) =>
+        url.searchParams.append('includes[]', include),
+      );
+
+      // include all ratings for chapters regardless of manga rating
+      ['safe', 'suggestive', 'erotica', 'pornographic'].forEach((rating) =>
+        url.searchParams.append('contentRating[]', rating),
+      );
+
       const response = await this.fetchFromApi(url.toString(), null, headers);
       const json = await response.json();
+      const feedResponse = ChapterFeedResponseSchema.parse(json);
 
-      if (json.result !== 'ok') {
-        throw new Error('Invalid MangaDex chapter feed response');
-      }
-
-      // handle empty data gracefully
-      const chapters = json.data || [];
-
-      // transform and add valid chapters to collection
-      const validChapters = chapters
-        .filter((chapter: any) => chapter.attributes?.pages > 0)
-        .map((chapter: any) => this.buildChapter(chapter));
+      const validChapters = feedResponse.data
+        .filter((chapter) => chapter.attributes.pages > 0)
+        .map((chapter) => this.buildChapter(chapter));
 
       allChapters.push(...validChapters);
 
-      // check if there are more chapters to fetch
-      hasMore = chapters.length === limit && json.total > offset + limit;
+      hasMore =
+        feedResponse.data.length === limit &&
+        feedResponse.total > offset + limit;
       offset += limit;
 
-      // safety check to prevent infinite loops
       if (offset > 10000) {
-        console.warn(`Stopping chapter fetch at ${offset} for safety`);
+        console.warn(`stopping chapter fetch at ${offset} for safety`);
         break;
       }
     }
@@ -271,38 +287,32 @@ export default class MangaDexSource extends Adapter {
   }
 
   async getChapter(
-    _: string, // doesn't use mangaSlug
+    _: string, // mangaslug unused - chapters are fetched directly by id
     chapterSlug: string,
     headers?: Record<string, string>,
   ): Promise<string[]> {
-    // fetch at-home server data which includes both the base URL and file lists
     const url = ENDPOINTS.at_home(chapterSlug);
     const response = await this.fetchFromApi(url, null, headers);
-    const data = await response.json();
+    const json = await response.json();
+    const atHomeResponse = AtHomeServerResponseSchema.parse(json);
 
-    if (data.result !== 'ok' || !data.baseUrl || !data.chapter) {
-      throw new Error('Invalid MangaDex at-home response');
-    }
-
-    const { baseUrl, chapter } = data;
+    const { baseUrl, chapter } = atHomeResponse;
     const { hash, data: fileNames, dataSaver: dataSaverFileNames } = chapter;
 
-    if (!hash || !fileNames || fileNames.length === 0) {
-      throw new Error('Chapter has no available pages');
+    if (!fileNames?.length) {
+      return [];
     }
 
-    // determine which file list to use based on image quality settings
     const useDataSaver =
-      IMAGE_QUALITY.page.dataSaver && dataSaverFileNames?.length > 0;
+      IMAGE_QUALITY.page.dataSaver &&
+      dataSaverFileNames &&
+      dataSaverFileNames.length > 0;
     const pagesToUse = useDataSaver ? dataSaverFileNames : fileNames;
     const quality = useDataSaver ? 'data-saver' : 'data';
 
-    // build page urls
-    const pageUrls = pagesToUse.map(
+    return pagesToUse.map(
       (fileName: string) => `${baseUrl}/${quality}/${hash}/${fileName}`,
     );
-
-    return pageUrls;
   }
 
   private async fetchFromApi(
@@ -324,24 +334,20 @@ export default class MangaDexSource extends Adapter {
       return response;
     }
 
-    const body = await response.text().catch(() => 'Unknown error');
+    const body = await response.text().catch(() => 'unknown error');
     throw new Error(
-      `MangaDex API error (${response.status}): ${response.statusText} - ${body}`,
+      `mangadex api error (${response.status}): ${response.statusText} - ${body}`,
     );
   }
 
   private buildSearchEntry(apiEntry: MangadexEntry): Entry {
-    // find cover art relationship
     const coverArt = apiEntry.relationships?.find(
       (rel): rel is CoverArtRelationship => rel.type === 'cover_art',
     );
 
-    // build cover url if available
-    let coverUrl = '';
-    if (coverArt?.attributes?.fileName) {
-      const size = IMAGE_QUALITY.cover.medium;
-      coverUrl = `${CDN_ENDPOINTS.covers}/${apiEntry.id}/${coverArt.attributes.fileName}.${size}.jpg`;
-    }
+    const coverUrl = coverArt?.attributes?.fileName
+      ? `${CDN_ENDPOINTS.covers}/${apiEntry.id}/${coverArt.attributes.fileName}.${IMAGE_QUALITY.cover.medium}.jpg`
+      : null;
 
     return EntrySchema.parse({
       slug: apiEntry.id,
@@ -350,68 +356,24 @@ export default class MangaDexSource extends Adapter {
     });
   }
 
-  private selectPreferredTitle(titles: LocalizedString): string {
-    // check for titles in preferred language order
-    for (const language of MangaDexSource.PREFERRED_TITLE_LANGUAGES) {
-      if (titles[language]) {
-        return titles[language];
-      }
-    }
+  private buildChapter(chapterEntry: ChapterEntry): Chapter {
+    const { id, attributes, relationships = [] } = chapterEntry;
 
-    // fallback to first available title
-    const firstAvailable = Object.values(titles)[0];
-    if (!firstAvailable) {
-      throw new Error('No title found for manga entry');
-    }
-
-    return firstAvailable;
-  }
-
-  private selectPreferredDescription(descriptions?: LocalizedString): string {
-    if (!descriptions) return '';
-    return descriptions.en || Object.values(descriptions)[0] || '';
-  }
-
-  private mapToClassification(rating: ContentRating): Classification {
-    const mappings: Record<ContentRating, Classification> = {
-      safe: 'Safe',
-      suggestive: 'Suggestive',
-      erotica: 'Erotica',
-      pornographic: 'Pornographic',
-    };
-
-    return mappings[rating] || 'Unknown';
-  }
-
-  private mapToPublication(status: MangaStatus): Publication {
-    const mappings: Record<MangaStatus, Publication> = {
-      ongoing: 'Ongoing',
-      completed: 'Completed',
-      cancelled: 'Cancelled',
-      hiatus: 'Hiatus',
-    };
-
-    return mappings[status] || 'Unknown';
-  }
-
-  private buildChapter(apiChapter: any): Chapter {
-    const { id, attributes, relationships = [] } = apiChapter;
-
-    // extract scanlation group name
     const scanlationGroup = relationships.find(
-      (rel: any) => rel.type === 'scanlation_group',
+      (rel): rel is ScanlationGroupRelationship =>
+        rel.type === 'scanlation_group',
     );
-    const scanlator = scanlationGroup?.attributes?.name || 'Unknown Scanlator';
 
-    // parse chapter number with fallback
-    const chapterNum = attributes.chapter || '0';
-    const parsedNumber = parseFloat(chapterNum) || 0;
+    const scanlator = scanlationGroup?.attributes?.name || undefined;
+    const chapterNum = attributes.chapter;
+    const parsedNumber = chapterNum ? parseFloat(chapterNum) : undefined;
 
-    // build chapter title
-    const title = attributes.title?.trim();
-    const chapterTitle = title
-      ? `Chapter ${chapterNum}: ${title}`
-      : `Chapter ${chapterNum}`;
+    const titlePart = attributes.title?.trim();
+    const chapterTitle = chapterNum
+      ? titlePart
+        ? `Chapter ${chapterNum}: ${titlePart}`
+        : `Chapter ${chapterNum}`
+      : titlePart || undefined;
 
     return ChapterSchema.parse({
       slug: id,
@@ -422,5 +384,47 @@ export default class MangaDexSource extends Adapter {
       url: `https://mangadex.org/chapter/${id}`,
       date: attributes.publishAt || attributes.createdAt,
     });
+  }
+
+  private selectPreferredTitle(titles: LocalizedString): string | undefined {
+    for (const language of MangaDexSource.PREFERRED_TITLE_LANGUAGES) {
+      if (titles[language]) {
+        return titles[language];
+      }
+    }
+    return Object.values(titles)[0];
+  }
+
+  private selectPreferredDescription(
+    descriptions?: LocalizedString,
+  ): string | undefined {
+    if (!descriptions) return undefined;
+    return descriptions.en || Object.values(descriptions)[0];
+  }
+
+  private mapToClassification(rating?: ContentRating): Classification {
+    if (!rating) return 'Unknown';
+
+    const mappings: Record<ContentRating, Classification> = {
+      safe: 'Safe',
+      suggestive: 'Suggestive',
+      erotica: 'Erotica',
+      pornographic: 'Pornographic',
+    };
+
+    return mappings[rating] || 'Unknown';
+  }
+
+  private mapToPublication(status?: MangaStatus): Publication {
+    if (!status) return 'Unknown';
+
+    const mappings: Record<MangaStatus, Publication> = {
+      ongoing: 'Ongoing',
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+      hiatus: 'Hiatus',
+    };
+
+    return mappings[status] || 'Unknown';
   }
 }
