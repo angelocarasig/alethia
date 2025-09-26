@@ -288,7 +288,7 @@ const MANGADEX_TAGS = [
 export const config: Source = {
   name: 'MangaDex',
   slug: 'mangadex',
-  icon: 'https://mangadex.org/img/brand/mangadex-logo.svg',
+  icon: 'https://raw.githubusercontent.com/angelocarasig/alethia/refs/heads/main/sources/mangadex/public/icon.png',
   languages: ['en'],
   nsfw: false,
   url: 'https://mangadex.org',
