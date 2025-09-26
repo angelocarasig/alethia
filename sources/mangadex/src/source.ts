@@ -86,6 +86,7 @@ export default class MangaDexSource extends Adapter {
     super(source);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected async performAuthentication(_: AuthRequest): Promise<AuthResponse> {
     // mangadex doesn't require auth for public api
     return {
@@ -204,13 +205,13 @@ export default class MangaDexSource extends Adapter {
     return MangaSchema.parse({
       slug: id,
       title: this.selectPreferredTitle(attributes.title),
-      authors: authorNames.length > 0 ? authorNames : undefined,
+      authors: authorNames,
       alternativeTitles:
         attributes.altTitles
           ?.flatMap((titleObject: LocalizedString) =>
             Object.values(titleObject),
           )
-          .filter((title: string) => title.trim().length > 0) || undefined,
+          .filter((title: string) => title.trim().length > 0) || [],
       synopsis: this.selectPreferredDescription(attributes.description),
       createdAt: attributes.createdAt,
       updatedAt: attributes.updatedAt,
@@ -219,16 +220,13 @@ export default class MangaDexSource extends Adapter {
       tags:
         attributes.tags
           ?.filter((tag) => tag.attributes?.name?.en)
-          .map((tag) => tag.attributes.name.en) || undefined,
-      covers:
-        covers.length > 0
-          ? covers
-              .filter((cover) => cover.attributes?.fileName)
-              .map(
-                (cover) =>
-                  `${CDN_ENDPOINTS.covers}/${id}/${cover.attributes.fileName}`,
-              )
-          : undefined,
+          .map((tag) => tag.attributes.name.en) || [],
+      covers: covers
+        .filter((cover) => cover.attributes?.fileName)
+        .map(
+          (cover) =>
+            `${CDN_ENDPOINTS.covers}/${id}/${cover.attributes.fileName}`,
+        ),
       url: `https://mangadex.org/title/${id}`,
     });
   }
