@@ -10,6 +10,7 @@
     "@repo/contracts": "workspace:*",
     "@repo/schema": "workspace:*",
     "@source/mangadex": "workspace:*",
+    "@source/weebcentral": "workspace:*",
     "hono": "^4.9.7"
   },
   "devDependencies": {

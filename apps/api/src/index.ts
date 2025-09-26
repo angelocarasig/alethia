@@ -4,12 +4,15 @@ import {
   HostSchema,
   SearchRequestSchema,
 } from '@repo/contracts';
-import MangaDexSource from '@source/mangadex';
+
 import { Hono } from 'hono';
+
+import MangaDexSource from '@source/mangadex';
+import WeebCentralSource from '@source/weebcentral';
 
 const app = new Hono();
 
-const adapters: Adapter[] = [MangaDexSource];
+const adapters: Adapter[] = [MangaDexSource, WeebCentralSource];
 
 const host: Host = {
   name: 'elysium',
