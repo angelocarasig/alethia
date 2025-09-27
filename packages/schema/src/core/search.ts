@@ -8,7 +8,6 @@ export const SortOptionSchema = z.enum([
   'popularity',
   'rating',
   'chapters',
-  'alphabetical',
   'year',
   'views',
   'follows',
