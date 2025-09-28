@@ -17,6 +17,10 @@ public struct Source {
     /// Local path to the icon, which should be a .png for transparency support
     public let icon: URL
     
+    public let pinned: Bool
+    
+    public let disabled: Bool
+    
     /// Host details styled to @hostAuthor/hostName
     public let host: String
     

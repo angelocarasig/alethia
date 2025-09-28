@@ -28,5 +28,8 @@ public struct Manga {
     public let updatedAt: Date
     public let lastFetchedAt: Date
     public let lastReadAt: Date
+    
     public let orientation: Orientation
+    public let showAllChapters: Bool
+    public let showHalfChapters: Bool
 }
