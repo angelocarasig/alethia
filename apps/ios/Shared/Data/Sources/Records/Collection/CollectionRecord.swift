@@ -15,7 +15,6 @@ internal struct CollectionRecord: Codable {
     
     var name: String
     var description: String?
-    var isPrivate: Bool = false
     var createdAt: Date = .now
     var updatedAt: Date = .now
 }
@@ -27,9 +26,9 @@ extension CollectionRecord: FetchableRecord, MutablePersistableRecord {
     
     enum Columns {
         static let id = Column(CodingKeys.id)
+        
         static let name = Column(CodingKeys.name)
         static let description = Column(CodingKeys.description)
-        static let isPrivate = Column(CodingKeys.isPrivate)
         static let createdAt = Column(CodingKeys.createdAt)
         static let updatedAt = Column(CodingKeys.updatedAt)
     }

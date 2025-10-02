@@ -13,7 +13,7 @@ internal struct OriginRecord: Codable {
     typealias ID = Tagged<Self, Int64>
     private(set) var id: ID?
     private(set) var mangaId: MangaRecord.ID
-    var sourceId: SourceRecord.ID?
+    private(set) var sourceId: SourceRecord.ID? // mutate only via TableRecord.delete()
     
     private(set) var slug: String
     private(set) var url: String
@@ -53,6 +53,14 @@ extension OriginRecord {
     
     var manga: QueryInterfaceRequest<MangaRecord> {
         request(for: OriginRecord.manga)
+    }
+}
+
+extension OriginRecord {
+    static let source = belongsTo(SourceRecord.self)
+    
+    var source: QueryInterfaceRequest<SourceRecord> {
+        request(for: OriginRecord.source)
     }
 }
 
