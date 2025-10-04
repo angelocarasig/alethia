@@ -17,7 +17,7 @@ public protocol HostRepository: Sendable {
     func saveHost(manifest: HostManifest, hostURL: URL) async throws -> Host
     
     /// Fetches all saved hosts
-    func getAllHosts() async throws -> [Host]
+    func getAllHosts() -> AsyncStream<[Host]>
     
     /// Deletes a host by ID
     func deleteHost(id: Int64) async throws

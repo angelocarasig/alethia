@@ -27,4 +27,8 @@ extension UseCaseFactory {
     func makeSaveHostUseCase() -> SaveHostUseCase {
         SaveHostUseCaseImpl(repository: repositoryFactory.hostRepository)
     }
+    
+    func makeGetAllhostsUseCase() -> GetAllHostsUseCase {
+        GetAllHostsUseCaseImpl(repository: repositoryFactory.hostRepository)
+    }
 }

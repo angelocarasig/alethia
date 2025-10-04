@@ -29,4 +29,8 @@ public extension Injector {
     static func makeSaveHostUseCase() -> SaveHostUseCase {
         useCaseFactory.makeSaveHostUseCase()
     }
+    
+    static func makeGetAllHostsUseCase() -> GetAllHostsUseCase {
+        useCaseFactory.makeGetAllhostsUseCase()
+    }
 }

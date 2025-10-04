@@ -128,9 +128,123 @@ public final class HostRepositoryImpl: HostRepository {
         )
     }
     
-    public func getAllHosts() async throws -> [Host] {
-        // implementation would go here
-        return []
+    public func getAllHosts() -> AsyncStream<[Host]> {
+        AsyncStream { continuation in
+            // get the stream from data source
+            let recordsStream = localDataSource.observeAllHosts()
+            
+            // create task to transform records to domain entities
+            let task = Task {
+                for await recordsData in recordsStream {
+                    if Task.isCancelled { break }
+                    
+                    do {
+                        let hosts = try self.mapRecordsToHosts(recordsData)
+                        continuation.yield(hosts)
+                    } catch {
+                        // log error but continue stream
+                        print("Error mapping hosts: \(error)")
+                        // optionally yield empty array or previous state
+                        continuation.yield([])
+                    }
+                }
+                continuation.finish()
+            }
+            
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+    
+    // MARK: - Private Mapping Helpers
+    
+    private func mapRecordsToHosts(_ recordsData: [(HostRecord, [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])])]) throws -> [Host] {
+        try recordsData.map { (hostRecord, sourcesData) in
+            guard let hostId = hostRecord.id else {
+                throw RepositoryError.mappingError(reason: "Host ID is nil")
+            }
+            
+            let hostDisplayName = "@\(hostRecord.author)/\(hostRecord.name)"
+            
+            let sources = try sourcesData.compactMap { (sourceRecord, configRecord, tagRecords, presetRecords) -> Source? in
+                guard let sourceId = sourceRecord.id else {
+                    throw RepositoryError.mappingError(reason: "Source ID is nil")
+                }
+                
+                // map tags
+                let tags = tagRecords.map { SearchTag(
+                    slug: $0.slug,
+                    name: $0.name,
+                    nsfw: $0.nsfw
+                )}
+                
+                // map presets
+                let presets = try presetRecords.compactMap { presetRecord -> SearchPreset? in
+                    guard let presetId = presetRecord.id else { return nil }
+                    
+                    // decode filters from json data
+                    let filters: [FilterOption: FilterValue]
+                    if presetRecord.filters.isEmpty {
+                        filters = [:]
+                    } else {
+                        let decoder = JSONDecoder()
+                        let filterDict = try decoder.decode([String: FilterValue].self, from: presetRecord.filters)
+                        // convert string keys to FilterOption enum
+                        filters = filterDict.compactMapKeys { FilterOption(rawValue: $0) }
+                    }
+                    
+                    // find tags for this preset
+                    let presetTags = tags.filter { tag in
+                        presetRecord.tagIds.contains { tagId in
+                            tagRecords.first { $0.slug == tag.slug && $0.id?.rawValue == tagId.rawValue } != nil
+                        }
+                    }
+                    
+                    return SearchPreset(
+                        id: presetId.rawValue,
+                        name: presetRecord.name,
+                        filters: filters,
+                        sortOption: presetRecord.sortOption,
+                        sortDirection: presetRecord.sortDirection,
+                        tags: presetTags
+                    )
+                }
+                
+                // map auth
+                let auth = mapAuthType(sourceRecord.authType)
+                
+                // build search object
+                let search = Search(
+                    supportedSorts: configRecord?.supportedSorts ?? [],
+                    supportedFilters: configRecord?.supportedFilters ?? [],
+                    tags: tags,
+                    presets: presets
+                )
+                
+                return Source(
+                    id: sourceId.rawValue,
+                    slug: sourceRecord.slug,
+                    name: sourceRecord.name,
+                    icon: sourceRecord.icon,
+                    pinned: sourceRecord.pinned,
+                    disabled: sourceRecord.disabled,
+                    host: hostDisplayName,
+                    auth: auth,
+                    search: search
+                )
+            }
+            
+            return Host(
+                id: hostId.rawValue,
+                name: hostRecord.name,
+                author: hostRecord.author,
+                url: hostRecord.url,
+                repository: hostRecord.repository,
+                official: hostRecord.official,
+                sources: sources
+            )
+        }
     }
     
     public func deleteHost(id: Int64) async throws {
@@ -156,5 +270,18 @@ public final class HostRepositoryImpl: HostRepository {
         case .cookie:
             return .cookie(fields: CookieAuthFields(cookie: ""))
         }
+    }
+}
+
+// helper extension for dictionary key mapping
+private extension Dictionary {
+    func compactMapKeys<T: Hashable>(_ transform: (Key) -> T?) -> [T: Value] {
+        var result = [T: Value]()
+        for (key, value) in self {
+            if let newKey = transform(key) {
+                result[newKey] = value
+            }
+        }
+        return result
     }
 }

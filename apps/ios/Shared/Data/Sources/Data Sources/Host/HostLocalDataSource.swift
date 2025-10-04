@@ -65,7 +65,7 @@ public final class HostLocalDataSource: Sendable {
                     repository: manifest.repository,
                     official: false
                 )
-                #warning("Implement official flag logic")
+#warning("Implement official flag logic")
                 
                 try hostRecord.insert(db)
                 
@@ -75,12 +75,12 @@ public final class HostLocalDataSource: Sendable {
                 
                 // rename temp directory to actual host id
                 let finalHostDirectory = Core.Constants.Paths.host(String(hostId.rawValue))
-
+                
                 // remove existing directory if it exists
                 if FileManager.default.fileExists(atPath: finalHostDirectory.path) {
                     try FileManager.default.removeItem(at: finalHostDirectory)
                 }
-
+                
                 // now move the temp directory
                 try FileManager.default.moveItem(at: hostDirectory, to: finalHostDirectory)
                 
@@ -148,10 +148,88 @@ public final class HostLocalDataSource: Sendable {
         }
     }
     
-    func getAllHosts() async throws -> [(HostRecord, [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])])] {
-        return []
+    /// Returns an AsyncStream that emits whenever the database changes
+    func observeAllHosts() -> AsyncStream<[(HostRecord, [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])])]> {
+        AsyncStream { continuation in
+            // create value observation that tracks all host-related tables
+            let observation = ValueObservation
+                .tracking { db -> [(HostRecord, [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])])] in
+                    try self.fetchAllHostsWithData(db)
+                }
+            
+            // start observation task
+            let task = Task {
+                do {
+                    for try await hostsData in observation.values(in: database.reader) {
+                        if Task.isCancelled { break }
+                        continuation.yield(hostsData)
+                    }
+                    continuation.finish()
+                } catch {
+                    // log error but don't throw - just finish the stream
+                    print("Error observing hosts: \(error)")
+                    continuation.finish()
+                }
+            }
+            
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
     }
     
     func deleteHost(id: Int64) async throws {
+    }
+}
+
+// MARK: Util Functions
+private extension HostLocalDataSource {
+    /// Fetches all hosts with their related data synchronously (for use in observations)
+    private func fetchAllHostsWithData(_ db: GRDB.Database) throws -> [(HostRecord, [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])])] {
+        // fetch all hosts
+        let hosts = try HostRecord
+            .order(HostRecord.Columns.name)
+            .fetchAll(db)
+        
+        var results: [(HostRecord, [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])])] = []
+        
+        for host in hosts {
+            guard let hostId = host.id else { continue }
+            
+            // fetch sources for this host
+            let sources = try SourceRecord
+                .filter(SourceRecord.Columns.hostId == hostId)
+                .order(SourceRecord.Columns.name)
+                .fetchAll(db)
+            
+            var sourcesWithData: [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])] = []
+            
+            for source in sources {
+                guard let sourceId = source.id else { continue }
+                
+                // fetch search config for this source
+                let searchConfig = try SearchConfigRecord
+                    .filter(SearchConfigRecord.Columns.sourceId == sourceId)
+                    .fetchOne(db)
+                
+                // fetch search tags for this source
+                let searchTags = try SearchTagRecord
+                    .filter(SearchTagRecord.Columns.sourceId == sourceId)
+                    .order(SearchTagRecord.Columns.name)
+                    .fetchAll(db)
+                
+                // fetch search presets for this source
+                let searchPresets = try SearchPresetRecord
+                    .filter(SearchPresetRecord.Columns.sourceId == sourceId)
+                    .order(SearchPresetRecord.Columns.name)
+                    .fetchAll(db)
+                
+                sourcesWithData.append((source, searchConfig, searchTags, searchPresets))
+            }
+            
+            results.append((host, sourcesWithData))
+        }
+        
+        return results
     }
 }
