@@ -18,6 +18,13 @@ internal struct SearchConfigRecord: Codable {
     
     var supportedSorts: [Domain.SortOption] = []
     var supportedFilters: [Domain.FilterOption] = []
+    
+    init(sourceId: SourceRecord.ID, supportedSorts: [Domain.SortOption], supportedFilters: [Domain.FilterOption]) {
+        self.id = nil
+        self.sourceId = sourceId
+        self.supportedSorts = supportedSorts
+        self.supportedFilters = supportedFilters
+    }
 }
 
 extension SearchConfigRecord: FetchableRecord, MutablePersistableRecord {

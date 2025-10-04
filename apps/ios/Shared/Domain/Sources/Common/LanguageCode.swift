@@ -6,7 +6,7 @@
 //
 
 /// Subject to changes as for now I listed common translation outputs for countries
-public struct LanguageCode: Codable, Hashable, RawRepresentable {
+public struct LanguageCode: Codable, Sendable, Hashable, RawRepresentable {
     public let rawValue: String
     
     public init(rawValue: String) {

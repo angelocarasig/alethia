@@ -8,8 +8,6 @@
 import SwiftUI
 
 public struct TestView: View {
-    public init() {}
-    
     public var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "checkmark.circle.fill")

@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct Origin {
+public struct Origin: Sendable {
     /// Unique identifier
     public let id: Int64
     

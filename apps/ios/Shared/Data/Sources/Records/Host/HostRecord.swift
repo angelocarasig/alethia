@@ -19,7 +19,16 @@ internal struct HostRecord: Codable {
     private(set) var url: URL
     private(set) var repository: URL
     
-    private var official: Bool
+    var official: Bool
+    
+    init(name: String, author: String, url: URL, repository: URL, official: Bool) {
+        self.id = nil
+        self.name = name
+        self.author = author
+        self.url = url
+        self.repository = repository
+        self.official = official
+    }
 }
 
 extension HostRecord: FetchableRecord, MutablePersistableRecord {

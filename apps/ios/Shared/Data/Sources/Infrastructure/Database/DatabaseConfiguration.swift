@@ -45,9 +45,9 @@ public final class DatabaseConfiguration: @unchecked Sendable {
             config.maximumReaderCount = 5
             
             #if DEBUG
-            config.prepareDatabase { db in
-                db.trace { print("SQL: \($0)") }
-            }
+//            config.prepareDatabase { db in
+//                db.trace { print("SQL: \($0)") }
+//            }
             #endif
             
             writer = try DatabasePool(path: url.path, configuration: config)

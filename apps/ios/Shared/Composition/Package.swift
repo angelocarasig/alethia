@@ -15,7 +15,6 @@ let package = Package(
         .package(path: "../Core"),
         .package(path: "../Domain"),
         .package(path: "../Data"),
-        .package(path: "../Presentation")
     ],
     targets: [
         .target(
@@ -24,7 +23,6 @@ let package = Package(
                 .product(name: "Core", package: "Core"),
                 .product(name: "Domain", package: "Domain"),
                 .product(name: "Data", package: "Data"),
-                .product(name: "Presentation", package: "Presentation")
             ],
             path: "Sources"
         ),

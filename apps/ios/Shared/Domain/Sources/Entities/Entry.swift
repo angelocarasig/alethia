@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct Entry {
+public struct Entry: Sendable {
     public let slug: String
 
     public let title: String

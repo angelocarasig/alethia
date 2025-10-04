@@ -18,6 +18,14 @@ internal struct SearchTagRecord: Codable {
     var slug: String
     var name: String
     var nsfw: Bool = false
+    
+    init(sourceId: SourceRecord.ID, slug: String, name: String, nsfw: Bool) {
+        self.id = nil
+        self.sourceId = sourceId
+        self.slug = slug
+        self.name = name
+        self.nsfw = nsfw
+    }
 }
 
 extension SearchTagRecord: FetchableRecord, MutablePersistableRecord {

@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum Auth: Equatable {
+public enum Auth: Equatable, Sendable {
     case none
     case basic(fields: BasicAuthFields)
     case session(fields: SessionAuthFields)
@@ -16,7 +16,7 @@ public enum Auth: Equatable {
     case cookie(fields: CookieAuthFields)
 }
 
-public enum AuthType: String, Codable {
+public enum AuthType: String, Codable, Sendable {
     case none = "none"
     case basic = "basic"
     case session = "session"
@@ -25,24 +25,46 @@ public enum AuthType: String, Codable {
     case cookie = "cookie"
 }
 
-public struct BasicAuthFields: Equatable {
+public struct BasicAuthFields: Equatable, Sendable {
     public let username: String
     public let password: String
+    
+    public init(username: String, password: String) {
+        self.username = username
+        self.password = password
+    }
 }
 
-public struct SessionAuthFields: Equatable {
+public struct SessionAuthFields: Equatable, Sendable {
     public let username: String
     public let password: String
+    
+    public init(username: String, password: String) {
+        self.username = username
+        self.password = password
+    }
 }
 
-public struct ApiKeyAuthFields: Equatable {
+public struct ApiKeyAuthFields: Equatable, Sendable {
     public let apiKey: String
+    
+    public init(apiKey: String) {
+        self.apiKey = apiKey
+    }
 }
 
-public struct BearerAuthFields: Equatable {
+public struct BearerAuthFields: Equatable, Sendable {
     public let token: String
+    
+    public init(token: String) {
+        self.token = token
+    }
 }
 
-public struct CookieAuthFields: Equatable {
+public struct CookieAuthFields: Equatable, Sendable {
     public let cookie: String
+    
+    public init(cookie: String) {
+        self.cookie = cookie
+    }
 }

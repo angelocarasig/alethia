@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct Source {
+public struct Source: Sendable {
     public let id: Int64
     
     public let slug: String
@@ -29,4 +29,26 @@ public struct Source {
     
     /// The specified search config for this source
     public let search: Search
+    
+    public init(
+        id: Int64,
+        slug: String,
+        name: String,
+        icon: URL,
+        pinned: Bool,
+        disabled: Bool,
+        host: String,
+        auth: Auth,
+        search: Search
+    ) {
+        self.id = id
+        self.slug = slug
+        self.name = name
+        self.icon = icon
+        self.pinned = pinned
+        self.disabled = disabled
+        self.host = host
+        self.auth = auth
+        self.search = search
+    }
 }

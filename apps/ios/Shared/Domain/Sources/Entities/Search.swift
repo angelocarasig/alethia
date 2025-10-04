@@ -7,15 +7,27 @@
 
 import Foundation
 
-public struct Search {
+public struct Search: Sendable {
     public let supportedSorts: [SortOption]
     public let supportedFilters: [FilterOption]
     public let tags: [SearchTag]
     public let presets: [SearchPreset]
+    
+    public init(
+        supportedSorts: [SortOption],
+        supportedFilters: [FilterOption],
+        tags: [SearchTag],
+        presets: [SearchPreset]
+    ) {
+        self.supportedSorts = supportedSorts
+        self.supportedFilters = supportedFilters
+        self.tags = tags
+        self.presets = presets
+    }
 }
 
 /// Source-specific supported sort options
-public enum SortOption: String, CaseIterable, Codable {
+public enum SortOption: String, CaseIterable, Codable, Sendable {
     case alphabetical
     case chapters
     case createdAt
@@ -48,7 +60,7 @@ public enum SortOption: String, CaseIterable, Codable {
 }
 
 /// Source-specific supported filter options
-public enum FilterOption: String, CaseIterable, Codable {
+public enum FilterOption: String, CaseIterable, Codable, Sendable {
     /// Content categorization filters
     case genre
     case demographic
@@ -102,7 +114,7 @@ public enum FilterOption: String, CaseIterable, Codable {
 }
 
 /// Associated value for a given filter option
-public enum FilterValue: Codable, Equatable {
+public enum FilterValue: Codable, Sendable, Equatable {
     case string(String)
     case stringArray([String])
     case number(Int)
@@ -159,14 +171,20 @@ public enum FilterValueType {
 }
 
 /// A tag option available for a given source with include/exclude tag supported filter option
-public struct SearchTag: Equatable, Codable {
+public struct SearchTag: Equatable, Codable, Sendable {
     public let slug: String
     public let name: String
     public let nsfw: Bool
+    
+    public init(slug: String, name: String, nsfw: Bool) {
+        self.slug = slug
+        self.name = name
+        self.nsfw = nsfw
+    }
 }
 
 /// Source-specific preset for a search config
-public struct SearchPreset {
+public struct SearchPreset: Sendable {
     public let id: Int64
     public let name: String
     public let filters: [FilterOption: FilterValue]
@@ -192,31 +210,5 @@ public struct SearchPreset {
     
     public var isValid: Bool {
         filters.allSatisfy { $0.key.expectedType.matches($0.value) }
-    }
-}
-
-#warning("TODO - Move to different layer")
-public struct SearchRequest {
-    public let query: String
-    public let page: Int
-    public let limit: Int
-    public let sort: SortOption
-    public let direction: SortDirection
-    public let filters: [String: FilterValue]?
-    
-    public init(
-        query: String = "",
-        page: Int = 1,
-        limit: Int = Constants.Search.defaultPageSize,
-        sort: SortOption = .relevance,
-        direction: SortDirection = .descending,
-        filters: [FilterOption: FilterValue]? = nil
-    ) {
-        self.query = query
-        self.page = max(1, page)
-        self.limit = min(Constants.Search.maxResults, max(1, limit))
-        self.sort = sort
-        self.direction = direction
-        self.filters = filters?.reduce(into: [:]) { $0[$1.key.rawValue] = $1.value }
     }
 }

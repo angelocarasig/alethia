@@ -7,9 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		841E2A8F2E90D64000363795 /* Composition in Frameworks */ = {isa = PBXBuildFile; productRef = 841E2A8E2E90D64000363795 /* Composition */; };
 		841E2A912E90D64500363795 /* Presentation in Frameworks */ = {isa = PBXBuildFile; productRef = 841E2A902E90D64500363795 /* Presentation */; };
-		841E2A932E90D64800363795 /* Data in Frameworks */ = {isa = PBXBuildFile; productRef = 841E2A922E90D64800363795 /* Data */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,8 +33,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				841E2A912E90D64500363795 /* Presentation in Frameworks */,
-				841E2A8F2E90D64000363795 /* Composition in Frameworks */,
-				841E2A932E90D64800363795 /* Data in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -92,9 +88,7 @@
 			);
 			name = Alethia;
 			packageProductDependencies = (
-				841E2A8E2E90D64000363795 /* Composition */,
 				841E2A902E90D64500363795 /* Presentation */,
-				841E2A922E90D64800363795 /* Data */,
 			);
 			productName = ios;
 			productReference = 84B223E82E87882A004299EA /* Alethia.app */;
@@ -383,17 +377,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		841E2A8E2E90D64000363795 /* Composition */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Composition;
-		};
 		841E2A902E90D64500363795 /* Presentation */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Presentation;
-		};
-		841E2A922E90D64800363795 /* Data */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Data;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

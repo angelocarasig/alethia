@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct Manga {
+public struct Manga: Sendable {
     public let id: Int64
     
     // main metadata
