@@ -14,7 +14,9 @@ let package = Package(
     dependencies: [
         .package(path: "../Core"),
         .package(path: "../Domain"),
-        .package(path: "../Composition")
+        .package(path: "../Composition"),
+        .package(url: "https://github.com/onevcat/Kingfisher.git", .upToNextMajor(from: "8.0.0")),
+        .package(url: "https://github.com/tevelee/SwiftUI-Flow.git", from: "3.1.0")
     ],
     targets: [
         .target(
@@ -22,7 +24,9 @@ let package = Package(
             dependencies: [
                 .product(name: "Core", package: "Core"),
                 .product(name: "Domain", package: "Domain"),
-                .product(name: "Composition", package: "Composition")
+                .product(name: "Composition", package: "Composition"),
+                "Kingfisher",
+                .product(name: "Flow", package: "SwiftUI-Flow")
             ],
             path: "Sources"
         ),
