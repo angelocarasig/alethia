@@ -465,26 +465,196 @@ final class ViewModelImpl: SomeViewModel {
 
 ## Target-Specific Implementations
 
-Each target can provide different implementations while reusing the same views:
+Each target can provide different implementations while reusing the same views. The view uses a protocol, and different platforms provide different implementations with platform-specific behavior.
+
+### Shared View and Protocol
 
 ```swift
-// iOS: Full-featured implementation
-final class IOSLibraryViewModel: LibraryViewModel {
-    // full database, network sync, etc.
+// Presentation/Sources/ViewModels/LibraryViewModel.swift
+public protocol LibraryViewModel: ObservableObject {
+    var mangaItems: [MangaItem] { get }
+    var isGridLayout: Bool { get }
+
+    func loadLibrary() async
+    func selectItem(_ item: MangaItem)
+    func deleteItem(_ item: MangaItem) async
 }
 
-// Widget: Lightweight implementation
-final class WidgetLibraryViewModel: LibraryViewModel {
-    // only reads from shared container
-}
+// Presentation/Sources/Views/LibraryView.swift
+public struct LibraryView: View {
+    @StateObject private var viewModel: any LibraryViewModel
 
-// macOS: Desktop-optimized implementation
-final class MacLibraryViewModel: LibraryViewModel {
-    // different layout logic, keyboard shortcuts
+    public init() {
+        self._viewModel = StateObject(wrappedValue: Resolver.current.resolveLibraryViewModel())
+    }
+
+    public var body: some View {
+        Group {
+            if viewModel.isGridLayout {
+                // grid layout for iOS/iPadOS
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 160))]) {
+                    ForEach(viewModel.mangaItems) { item in
+                        MangaCard(item: item)
+                            .onTapGesture {
+                                viewModel.selectItem(item)
+                            }
+                    }
+                }
+            } else {
+                // list layout for macOS/watchOS
+                List(viewModel.mangaItems) { item in
+                    MangaRow(item: item)
+                        .onTapGesture {
+                            viewModel.selectItem(item)
+                        }
+                }
+            }
+        }
+    }
 }
 ```
 
-All targets use the same `LibraryView` but get different behaviors through their resolvers.
+### iOS Implementation
+
+```swift
+// Composition/Sources/ViewModels/iOS/IOSLibraryViewModel.swift
+final class IOSLibraryViewModel: LibraryViewModel {
+    @Published private(set) var mangaItems: [MangaItem] = []
+    @Published private(set) var isGridLayout = true  // iOS uses grid
+
+    private let haptics = UIImpactFeedbackGenerator(style: .medium)
+
+    func loadLibrary() async {
+        // full database, network sync
+        mangaItems = try await fetchLibraryUseCase.execute()
+    }
+
+    func selectItem(_ item: MangaItem) {
+        // iOS-specific: haptic feedback
+        haptics.impactOccurred()
+        Router.shared.push(.mangaDetail(item.id))
+    }
+
+    func deleteItem(_ item: MangaItem) async {
+        // iOS-specific: swipe to delete with animation
+        withAnimation(.easeOut(duration: 0.3)) {
+            mangaItems.removeAll { $0.id == item.id }
+        }
+        // show undo toast
+    }
+}
+```
+
+### macOS Implementation
+
+```swift
+// Composition/Sources/ViewModels/macOS/MacLibraryViewModel.swift
+final class MacLibraryViewModel: LibraryViewModel {
+    @Published private(set) var mangaItems: [MangaItem] = []
+    @Published private(set) var isGridLayout = false  // macOS uses list
+    @Published var selectedItems: Set<MangaItem.ID> = []  // multi-select
+
+    func loadLibrary() async {
+        mangaItems = try await fetchLibraryUseCase.execute()
+    }
+
+    func selectItem(_ item: MangaItem) {
+        // macOS-specific: support multi-select with cmd key
+        if NSEvent.modifierFlags.contains(.command) {
+            selectedItems.insert(item.id)
+        } else {
+            selectedItems = [item.id]
+        }
+
+        // macOS: open in new window if option key
+        if NSEvent.modifierFlags.contains(.option) {
+            WindowManager.openNewWindow(for: item.id)
+        }
+    }
+
+    func deleteItem(_ item: MangaItem) async {
+        // macOS-specific: move to trash with sound
+        NSSound.moveToTrash?.play()
+
+        // support bulk delete
+        let itemsToDelete = selectedItems.isEmpty ? [item.id] : Array(selectedItems)
+        for id in itemsToDelete {
+            try await deleteUseCase.execute(id)
+        }
+    }
+}
+```
+
+### Widget Implementation
+
+```swift
+// Composition/Sources/ViewModels/Widget/WidgetLibraryViewModel.swift
+final class WidgetLibraryViewModel: LibraryViewModel {
+    @Published private(set) var mangaItems: [MangaItem] = []
+    let isGridLayout = false  // widgets use simple list
+
+    func loadLibrary() async {
+        // widget: only load recent/favorites from shared container (read-only)
+        let items = try await fetchRecentUseCase.execute()
+        mangaItems = Array(items.prefix(5))  // limited items
+    }
+
+    func selectItem(_ item: MangaItem) {
+        // widget: can't navigate, open main app
+        openURL(URL(string: "alethia://manga/\(item.id)")!)
+    }
+
+    func deleteItem(_ item: MangaItem) async {
+        // widget: no delete functionality
+        // widgets are read-only
+    }
+}
+```
+
+### Resolver Setup per Target
+
+```swift
+// iOS App
+@main
+struct AlethiaApp: App {
+    init() {
+        Resolver.setup(IOSViewModelResolver())
+    }
+}
+
+// macOS App
+@main
+struct AlethiaMacApp: App {
+    init() {
+        Resolver.setup(MacViewModelResolver())
+    }
+}
+
+// Widget
+struct AlethiaWidget: Widget {
+    init() {
+        Resolver.setup(WidgetViewModelResolver())
+    }
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(...) {
+            LibraryView()  // same view, different behavior!
+        }
+    }
+}
+```
+
+### Key Points
+
+- **Same View** (`LibraryView`) works on all platforms
+- **Same Protocol** (`LibraryViewModel`) defines the contract
+- **Different Implementations** provide platform-specific behavior:
+  - **iOS**: Touch gestures, haptics, swipe actions, full database access
+  - **macOS**: Keyboard shortcuts, multi-select, windowing, mouse interactions
+  - **watchOS**: Simplified UI, limited functionality, compact layout
+  - **Widget**: Read-only, limited items, deep linking to main app
+- **Platform features** handled internally by ViewModels
+- **View remains agnostic** to platform differences
 
 ## Tradeoffs Accepted
 
