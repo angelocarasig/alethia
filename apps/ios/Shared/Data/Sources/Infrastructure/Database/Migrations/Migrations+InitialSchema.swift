@@ -35,8 +35,8 @@ extension Migrations {
                 t.autoIncrementedPrimaryKey("id")
                 t.column("name", .text).notNull()
                 t.column("author", .text).notNull()
-                t.column("url", .text).notNull()
-                t.column("repository", .text).notNull()
+                t.column("url", .text).notNull().unique(onConflict: .fail)
+                t.column("repository", .text).notNull().unique(onConflict: .fail)
                 t.column("official", .boolean).notNull().defaults(to: false)
             }
             

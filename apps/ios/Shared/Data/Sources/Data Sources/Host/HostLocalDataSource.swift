@@ -65,7 +65,7 @@ public final class HostLocalDataSource: Sendable {
                     repository: manifest.repository,
                     official: false
                 )
-#warning("Implement official flag logic")
+                #warning("Implement official flag logic")
                 
                 try hostRecord.insert(db)
                 
@@ -75,6 +75,13 @@ public final class HostLocalDataSource: Sendable {
                 
                 // rename temp directory to actual host id
                 let finalHostDirectory = Core.Constants.Paths.host(String(hostId.rawValue))
+
+                // remove existing directory if it exists
+                if FileManager.default.fileExists(atPath: finalHostDirectory.path) {
+                    try FileManager.default.removeItem(at: finalHostDirectory)
+                }
+
+                // now move the temp directory
                 try FileManager.default.moveItem(at: hostDirectory, to: finalHostDirectory)
                 
                 // update icon paths to final location

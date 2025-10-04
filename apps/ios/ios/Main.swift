@@ -13,7 +13,37 @@ import Composition
 struct Main: App {
     var body: some Scene {
         WindowGroup {
-            AddHostView()
+            TabView {
+                Text("TODO")
+                    .tabItem {
+                        Image(systemName: "house.fill")
+                        Text("Home")
+                    }
+                
+                Text("TODO")
+                    .tabItem {
+                        Image(systemName: "books.vertical.fill")
+                        Text("Library")
+                    }
+                
+                Text("TODO")
+                    .tabItem {
+                        Image(systemName: "magnifyingglass")
+                        Text("Search")
+                    }
+                
+                SourcesScreen()
+                    .tabItem {
+                        Image(systemName: "plus.square.dashed")
+                        Text("Sources")
+                    }
+                
+                Text("TODO")
+                    .tabItem {
+                        Image(systemName: "clock.fill")
+                        Text("History")
+                    }
+            }
         }
     }
 }

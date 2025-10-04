@@ -18,7 +18,7 @@ enum RepositoryError: LocalizedError {
             return "Invalid manifest: \(reason)"
         case .mappingError(let reason):
             return "Mapping error: \(reason)"
-        case .hostAlreadyExists(let id, let url):
+        case .hostAlreadyExists(_, let url):
             return "Host with url '\(url.absoluteString)' already exists."
         }
     }

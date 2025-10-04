@@ -23,6 +23,17 @@ public enum AuthType: String, Codable, Sendable {
     case apiKey = "apiKey"
     case bearer = "bearer"
     case cookie = "cookie"
+    
+    public var displayText: String {
+        switch self {
+        case .none: return "No Auth"
+        case .apiKey: return "Token Auth"
+        case .basic: return "Basic Auth"
+        case .bearer: return "Bearer Auth"
+        case .cookie: return "Cookie Auth"
+        case .session: return "Session Auth"
+        }
+    }
 }
 
 public struct BasicAuthFields: Equatable, Sendable {

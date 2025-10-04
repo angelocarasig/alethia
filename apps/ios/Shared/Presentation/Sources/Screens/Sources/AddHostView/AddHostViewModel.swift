@@ -12,17 +12,20 @@ import Domain
 @MainActor
 @Observable
 final class AddHostViewModel {
-    public var urlText: String = "https://api.alethia.moe" {
+    var hostURL: String = "https://api.alethia.moe" {
         didSet {
-            if oldValue != urlText && validatedManifest != nil {
+            if oldValue != hostURL && validatedManifest != nil {
+                errorMessage = nil
                 validatedManifest = nil
                 validatedHostURL = nil
             }
         }
     }
-    public private(set) var isLoading: Bool = false
-    public private(set) var errorMessage: String?
-    public private(set) var validatedManifest: HostManifest?
+    
+    private(set) var isLoading: Bool = false
+    private(set) var isSaving: Bool = false
+    private(set) var errorMessage: String?
+    private(set) var validatedManifest: HostManifest?
     
     @ObservationIgnored
     private var validatedHostURL: URL?
@@ -32,22 +35,21 @@ final class AddHostViewModel {
     @ObservationIgnored
     private let saveHostUseCase: SaveHostUseCase
     
-    public init() {
+    init() {
         self.validateHostUseCase = Injector.makeValidateHostURLUseCase()
         self.saveHostUseCase = Injector.makeSaveHostUseCase()
     }
     
-    public func validateURL() async {
-        guard !urlText.isEmpty,
-              let url = URL(string: urlText) else {
+    func testConnection() async {
+        guard !hostURL.isEmpty,
+              let url = URL(string: hostURL) else {
             errorMessage = "Please enter a valid URL"
+            validatedManifest = nil
             return
         }
         
         isLoading = true
         errorMessage = nil
-        validatedManifest = nil
-        validatedHostURL = nil
         
         do {
             let manifest = try await validateHostUseCase.execute(url: url)
@@ -60,23 +62,26 @@ final class AddHostViewModel {
         isLoading = false
     }
     
-    public func saveHost() async {
+    func saveHost() async -> Bool {
         guard let manifest = validatedManifest,
-              let hostURL = validatedHostURL else { return }
+              let hostURL = validatedHostURL else { return false }
         
-        isLoading = true
+        isSaving = true
         errorMessage = nil
         
         do {
-            try await saveHostUseCase.execute(manifest: manifest, hostURL: hostURL)
+            _ = try await saveHostUseCase.execute(manifest: manifest, hostURL: hostURL)
+            isSaving = false
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            validatedManifest = nil
+            isSaving = false
+            return false
         }
-        
-        isLoading = false
     }
     
-    public func clearError() {
+    func clearError() -> Void {
         errorMessage = nil
     }
 }

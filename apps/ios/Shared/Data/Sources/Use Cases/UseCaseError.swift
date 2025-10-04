@@ -15,11 +15,11 @@ enum UseCaseError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURLScheme:
-            return "URL must use http or https"
+            return "URL must start with either http:// or https://"
         case .noSourcesInManifest:
-            return "Manifest must contain at least one source"
+            return "Manifest must contain at least one source."
         case .invalidManifest(let reason):
-            return "Invalid manifest: \(reason)"
+            return "Invalid: \(reason)"
         }
     }
 }
