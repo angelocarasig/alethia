@@ -272,12 +272,11 @@ extension Migrations.InitialSchema {
             columns: ["originId", "number", "id"]
         )
         
-        // chapter number descending sort
-        try db.create(
-            index: "idx_chapter_number_desc",
-            on: "chapter",
-            columns: ["originId", "number DESC", "id DESC"]
-        )
+        // chapter number descending sort - using raw SQL for DESC
+        try db.execute(sql: """
+            CREATE INDEX idx_chapter_number_desc 
+            ON chapter(originId, number DESC, id DESC)
+        """)
         
         // chapter date ascending sort
         try db.create(
@@ -286,12 +285,11 @@ extension Migrations.InitialSchema {
             columns: ["originId", "date", "number"]
         )
         
-        // chapter date descending sort
-        try db.create(
-            index: "idx_chapter_date_desc",
-            on: "chapter",
-            columns: ["originId", "date DESC", "number DESC"]
-        )
+        // chapter date descending sort - using raw SQL for DESC
+        try db.execute(sql: """
+            CREATE INDEX idx_chapter_date_desc 
+            ON chapter(originId, date DESC, number DESC)
+        """)
         
         // combined sorting for deduplicated chapters
         try db.create(
@@ -555,16 +553,6 @@ extension Migrations.InitialSchema {
             WHERE inLibrary = 1
         """)
         
-        // expression index for chapter count approximation
-        // helps with "chapters available" display
-        try db.execute(sql: """
-            CREATE INDEX idx_origin_chapter_stats
-            ON chapter(
-                originId,
-                MAX(number),
-                COUNT(DISTINCT number)
-            )
-            GROUP BY originId
-        """)
+        // sqlite doesn't support aggregate functions in index expressions
     }
 }

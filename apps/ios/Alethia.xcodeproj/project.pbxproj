@@ -6,7 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		841E2A8F2E90D64000363795 /* Composition in Frameworks */ = {isa = PBXBuildFile; productRef = 841E2A8E2E90D64000363795 /* Composition */; };
+		841E2A912E90D64500363795 /* Presentation in Frameworks */ = {isa = PBXBuildFile; productRef = 841E2A902E90D64500363795 /* Presentation */; };
+		841E2A932E90D64800363795 /* Data in Frameworks */ = {isa = PBXBuildFile; productRef = 841E2A922E90D64800363795 /* Data */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		841E2A8C2E90D5C800363795 /* Composition */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Composition; path = Shared/Composition; sourceTree = "<group>"; };
 		8482D0D32E88C3670098F34F /* Core */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Core; path = Shared/Core; sourceTree = "<group>"; };
 		84B223E82E87882A004299EA /* Alethia.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Alethia.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		84B223FA2E878D96004299EA /* Data */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Data; path = Shared/Data; sourceTree = "<group>"; };
@@ -27,20 +34,32 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				841E2A912E90D64500363795 /* Presentation in Frameworks */,
+				841E2A8F2E90D64000363795 /* Composition in Frameworks */,
+				841E2A932E90D64800363795 /* Data in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		841E2A8D2E90D64000363795 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		84B223DF2E87882A004299EA = {
 			isa = PBXGroup;
 			children = (
+				841E2A8C2E90D5C800363795 /* Composition */,
 				8482D0D32E88C3670098F34F /* Core */,
 				84B223FA2E878D96004299EA /* Data */,
 				84B224032E878E04004299EA /* Domain */,
-				84B223EA2E87882A004299EA /* ios */,
 				84B224042E878E12004299EA /* Presentation */,
+				841E2A8D2E90D64000363795 /* Frameworks */,
+				84B223EA2E87882A004299EA /* ios */,
 				84B223E92E87882A004299EA /* Products */,
 			);
 			sourceTree = "<group>";
@@ -73,6 +92,9 @@
 			);
 			name = Alethia;
 			packageProductDependencies = (
+				841E2A8E2E90D64000363795 /* Composition */,
+				841E2A902E90D64500363795 /* Presentation */,
+				841E2A922E90D64800363795 /* Data */,
 			);
 			productName = ios;
 			productReference = 84B223E82E87882A004299EA /* Alethia.app */;
@@ -359,6 +381,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		841E2A8E2E90D64000363795 /* Composition */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Composition;
+		};
+		841E2A902E90D64500363795 /* Presentation */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Presentation;
+		};
+		841E2A922E90D64800363795 /* Data */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Data;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 84B223E02E87882A004299EA /* Project object */;
 }
