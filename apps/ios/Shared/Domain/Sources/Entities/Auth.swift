@@ -16,6 +16,15 @@ public enum Auth: Equatable {
     case cookie(fields: CookieAuthFields)
 }
 
+public enum AuthType: String, Codable {
+    case none = "none"
+    case basic = "basic"
+    case session = "session"
+    case apiKey = "apiKey"
+    case bearer = "bearer"
+    case cookie = "cookie"
+}
+
 public struct BasicAuthFields: Equatable {
     public let username: String
     public let password: String

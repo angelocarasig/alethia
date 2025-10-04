@@ -5,7 +5,7 @@
 //  Created by Angelo Carasig on 27/9/2025.
 //
 
-public enum Orientation {
+public enum Orientation: Codable {
     case leftToRight
     case rightToLeft
     case vertical
