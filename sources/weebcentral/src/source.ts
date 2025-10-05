@@ -117,10 +117,27 @@ export default class WeebCentralSource extends Adapter {
       headers: {
         ...headers,
         Accept: 'text/html',
+        // add browser-like headers
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
       },
     });
 
     if (!response.ok) {
+      const responseText = await response.text();
+
+      this.logger.error(
+        'weebcentral search request failed',
+        new Error(`HTTP ${response.status}`),
+        {
+          status: response.status,
+          statusText: response.statusText,
+          url,
+          preview: responseText.substring(0, 1000),
+        },
+      );
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
