@@ -9,14 +9,18 @@ import Foundation
 import Domain
 import GRDB
 
-public final class SearchLocalDataSource: Sendable {
+internal protocol SearchLocalDataSource: Sendable {
+    func getHostForSource(_ sourceId: Int64) async throws -> Host?
+}
+
+internal final class SearchLocalDataSourceImpl: SearchLocalDataSource {
     private let database: DatabaseConfiguration
     
-    public init(database: DatabaseConfiguration? = nil) {
+    init(database: DatabaseConfiguration? = nil) {
         self.database = database ?? DatabaseConfiguration.shared
     }
     
-    public func getHostForSource(_ sourceId: Int64) async throws -> Host? {
+    func getHostForSource(_ sourceId: Int64) async throws -> Host? {
         try await database.reader.read { db in
             // fetch source with its host relationship
             guard let sourceRecord = try SourceRecord

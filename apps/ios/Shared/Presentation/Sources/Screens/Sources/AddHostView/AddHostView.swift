@@ -35,8 +35,8 @@ struct AddHostView: View {
                             ErrorBanner(errorMessage)
                         }
                         
-                        if let manifest = vm.validatedManifest {
-                            SuccessContent(manifest)
+                        if let host = vm.validatedHost {
+                            SuccessContent(host)
                         }
                         
                         Spacer(minLength: dimensions.spacing.screen)
@@ -106,7 +106,7 @@ struct AddHostView: View {
             }
             .animation(theme.animations.spring, value: vm.isLoading)
             .animation(theme.animations.spring, value: vm.errorMessage != nil)
-            .animation(theme.animations.spring, value: vm.validatedManifest != nil)
+            .animation(theme.animations.spring, value: vm.validatedHost != nil)
             .animation(theme.animations.spring, value: hasAcceptedAllTerms)
         }
     }
@@ -253,16 +253,16 @@ private extension AddHostView {
     }
     
     @ViewBuilder
-    func SuccessContent(_ manifest: HostManifest) -> some View {
+    func SuccessContent(_ dto: HostDTO) -> some View {
         VStack(spacing: dimensions.spacing.large) {
             Banner(
                 icon: "checkmark.circle.fill",
                 title: "New Host Found",
-                subtitle: "@\(manifest.author)/\(manifest.name)".lowercased(),
+                subtitle: "@\(dto.author)/\(dto.name)".lowercased(),
                 color: theme.colors.appGreen
             )
             
-            SourcesList(manifest)
+            SourcesList(dto)
         }
         .transition(.opacity)
     }
@@ -272,7 +272,7 @@ private extension AddHostView {
         HStack(spacing: dimensions.spacing.regular) {
             Banner(
                 icon: "bolt.circle.fill",
-                title: vm.validatedManifest != nil ? "Re-Test" : "Test",
+                title: vm.validatedHost != nil ? "Re-Test" : "Test",
                 subtitle: nil,
                 color: theme.colors.appOrange,
                 action: {
@@ -298,14 +298,14 @@ private extension AddHostView {
                 }
             )
             .loading(vm.isSaving)
-            .disabled(vm.validatedManifest == nil)
+            .disabled(vm.validatedHost == nil)
         }
         .animation(.easeInOut(duration: 0.25), value: canTest)
         .padding(dimensions.padding.screen)
     }
     
     @ViewBuilder
-    func SourcesList(_ manifest: HostManifest) -> some View {
+    func SourcesList(_ dto: HostDTO) -> some View {
         VStack(alignment: .leading, spacing: dimensions.spacing.minimal) {
             HStack {
                 Text("AVAILABLE SOURCES")
@@ -315,7 +315,7 @@ private extension AddHostView {
                 
                 Spacer()
                 
-                Text("\(manifest.sources.count)")
+                Text("\(dto.sources.count)")
                     .font(.caption)
                     .fontWeight(.bold)
                     .foregroundColor(theme.colors.accent)
@@ -330,10 +330,10 @@ private extension AddHostView {
             }
             
             VStack(spacing: 0) {
-                ForEach(Array(manifest.sources.enumerated()), id: \.element.slug) { index, source in
+                ForEach(Array(dto.sources.enumerated()), id: \.element.slug) { index, source in
                     SourceRow(source)
                     
-                    if index < manifest.sources.count - 1 {
+                    if index < dto.sources.count - 1 {
                         Divider()
                             .foregroundColor(theme.colors.foreground.opacity(0.1))
                     }
@@ -346,10 +346,10 @@ private extension AddHostView {
     }
     
     @ViewBuilder
-    func SourceRow(_ source: SourceManifest) -> some View {
+    func SourceRow(_ source: SourceDTO) -> some View {
         HStack(spacing: dimensions.spacing.large) {
             // source icon
-            AsyncImage(url: source.icon) { phase in
+            AsyncImage(url: URL(string: source.icon)) { phase in
                 switch phase {
                 case .empty:
                     RoundedRectangle(cornerRadius: dimensions.cornerRadius.regular)
@@ -382,9 +382,11 @@ private extension AddHostView {
                     .font(.subheadline)
                     .fontWeight(.semibold)
                 
-                Link(destination: source.url) {
-                    Text(source.url.host() ?? "Unknown URL")
-                        .font(.caption2)
+                if let url = URL(string: source.url) {
+                    Link(destination: url) {
+                        Text(url.host() ?? "Unknown URL")
+                            .font(.caption2)
+                    }
                 }
             }
             

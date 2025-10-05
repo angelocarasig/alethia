@@ -14,7 +14,11 @@ internal struct TagRecord: Codable {
     
     var normalizedName: String
     var displayName: String
-    var canonicalId: ID?  // nil = canonical tag, non-nil = alias pointing to canonical
+    
+    /// References the ID of another TagRecord where:
+    ///   nil = canonical tag
+    ///   non-nil = alias pointing to canonical
+    var canonicalId: TagRecord.ID?
     
     var isCanonical: Bool {
         canonicalId == nil

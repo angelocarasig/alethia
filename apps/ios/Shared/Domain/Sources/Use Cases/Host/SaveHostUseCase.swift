@@ -7,9 +7,7 @@
 
 import Foundation
 
-/// Use case for saving a validated host from its manifest
 public protocol SaveHostUseCase: Sendable {
-    /// Saves a host manifest to the DB and optionally return the domain entity
     @discardableResult
-    func execute(manifest: HostManifest, hostURL: URL) async throws -> Host
+    func execute(_ dto: HostDTO, hostURL: URL) async throws -> Host
 }

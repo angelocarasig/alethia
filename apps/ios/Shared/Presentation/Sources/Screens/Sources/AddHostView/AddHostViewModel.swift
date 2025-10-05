@@ -14,9 +14,9 @@ import Domain
 final class AddHostViewModel {
     var hostURL: String = "https://api.alethia.moe" {
         didSet {
-            if oldValue != hostURL && validatedManifest != nil {
+            if oldValue != hostURL && validatedHost != nil {
                 errorMessage = nil
-                validatedManifest = nil
+                validatedHost = nil
                 validatedHostURL = nil
             }
         }
@@ -25,7 +25,7 @@ final class AddHostViewModel {
     private(set) var isLoading: Bool = false
     private(set) var isSaving: Bool = false
     private(set) var errorMessage: String?
-    private(set) var validatedManifest: HostManifest?
+    private(set) var validatedHost: HostDTO?
     
     @ObservationIgnored
     private var validatedHostURL: URL?
@@ -44,7 +44,7 @@ final class AddHostViewModel {
         guard !hostURL.isEmpty,
               let url = URL(string: hostURL) else {
             errorMessage = "Please enter a valid URL"
-            validatedManifest = nil
+            validatedHost = nil
             return
         }
         
@@ -52,8 +52,8 @@ final class AddHostViewModel {
         errorMessage = nil
         
         do {
-            let manifest = try await validateHostUseCase.execute(url: url)
-            validatedManifest = manifest
+            let dto = try await validateHostUseCase.execute(url: url)
+            validatedHost = dto
             validatedHostURL = url
         } catch {
             errorMessage = error.localizedDescription
@@ -63,19 +63,19 @@ final class AddHostViewModel {
     }
     
     func saveHost() async -> Bool {
-        guard let manifest = validatedManifest,
+        guard let dto = validatedHost,
               let hostURL = validatedHostURL else { return false }
         
         isSaving = true
         errorMessage = nil
         
         do {
-            _ = try await saveHostUseCase.execute(manifest: manifest, hostURL: hostURL)
+            _ = try await saveHostUseCase.execute(dto, hostURL: hostURL)
             isSaving = false
             return true
         } catch {
             errorMessage = error.localizedDescription
-            validatedManifest = nil
+            validatedHost = nil
             isSaving = false
             return false
         }

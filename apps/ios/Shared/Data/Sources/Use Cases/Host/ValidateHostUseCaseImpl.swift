@@ -15,7 +15,7 @@ public final class ValidateHostURLUseCaseImpl: ValidateHostURLUseCase {
         self.repository = repository
     }
     
-    public func execute(url: URL) async throws -> HostManifest {
+    public func execute(url: URL) async throws -> HostDTO {
         // business rule: validate url format before passing to repository
         guard url.scheme == "https" || url.scheme == "http" else {
             throw UseCaseError.invalidURLScheme

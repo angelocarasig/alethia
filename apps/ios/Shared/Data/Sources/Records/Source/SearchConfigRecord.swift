@@ -16,10 +16,14 @@ internal struct SearchConfigRecord: Codable {
     
     private(set) var sourceId: SourceRecord.ID
     
-    var supportedSorts: [Domain.SortOption] = []
-    var supportedFilters: [Domain.FilterOption] = []
+    var supportedSorts: [Domain.Search.Options.Sort] = []
+    var supportedFilters: [Domain.Search.Options.Filter] = []
     
-    init(sourceId: SourceRecord.ID, supportedSorts: [Domain.SortOption], supportedFilters: [Domain.FilterOption]) {
+    init(
+        sourceId: SourceRecord.ID,
+        supportedSorts: [Domain.Search.Options.Sort],
+        supportedFilters: [Domain.Search.Options.Filter]
+    ) {
         self.id = nil
         self.sourceId = sourceId
         self.supportedSorts = supportedSorts

@@ -9,10 +9,10 @@ import Foundation
 
 public protocol HostRepository: Sendable {
     /// Validates a host URL and fetches its manifest
-    func validateHost(url: URL) async throws -> HostManifest
+    func validateHost(url: URL) async throws -> HostDTO
     
     /// Saves a host from its manifest
-    func saveHost(manifest: HostManifest, hostURL: URL) async throws -> Host
+    func saveHost(_ dto: HostDTO, hostURL: URL) async throws -> Host
     
     /// Fetches all saved hosts
     func getAllHosts() -> AsyncStream<[Host]>

@@ -2,7 +2,7 @@
 //  HostRepositoryImpl.swift
 //  Data
 //
-//  Created by Angelo Carasig on 4/10/2025.
+//  Created by Angelo Carasig on 5/10/2025.
 //
 
 import Foundation
@@ -10,41 +10,39 @@ import Domain
 import GRDB
 
 public final class HostRepositoryImpl: HostRepository {
-    private let remote: HostRemoteDataSource
-    private let local: HostLocalDataSource
+    private let remoteDataSource: HostRemoteDataSource
+    private let localDataSource: HostLocalDataSource
     
-    public init(
-        remote: HostRemoteDataSource? = nil,
-        local: HostLocalDataSource? = nil
-    ) {
-        self.remote = remote ?? HostRemoteDataSource()
-        self.local = local ?? HostLocalDataSource()
+    public init() {
+        self.remoteDataSource = HostRemoteDataSourceImpl()
+        self.localDataSource = HostLocalDataSourceImpl()
     }
     
-    public func validateHost(url: URL) async throws -> HostManifest {
-        // fetch manifest from remote
-        let manifest = try await remote.fetchManifest(from: url.trailingSlash(.remove))
+    public func validateHost(url: URL) async throws -> HostDTO {
+        let dto = try await remoteDataSource.fetchManifest(from: url.trailingSlash(.remove))
         
-        // check if host already exists by repository url
-        if let (existingId, existingURL) = try await local.hostExists(with: manifest.repository) {
-            throw RepositoryError.hostAlreadyExists(id: existingId, url: existingURL)
+        // check if already exists
+        if let (_, repositoryURL) = try await localDataSource.hostExists(with: dto.repository) {
+            throw RepositoryError.hostAlreadyExists(
+                id: HostRecord.ID(rawValue: 0), // temporary
+                url: repositoryURL
+            )
         }
         
-        // repository handles validation of the fetched data
-        guard !manifest.name.isEmpty else {
+        // validate
+        guard !dto.name.isEmpty else {
             throw RepositoryError.invalidManifest(reason: "Host name is empty")
         }
         
-        guard !manifest.author.isEmpty else {
+        guard !dto.author.isEmpty else {
             throw RepositoryError.invalidManifest(reason: "Host author is empty")
         }
         
-        guard !manifest.sources.isEmpty else {
+        guard !dto.sources.isEmpty else {
             throw RepositoryError.invalidManifest(reason: "No sources found in manifest")
         }
         
-        // validate each source has required fields
-        for source in manifest.sources {
+        for source in dto.sources {
             guard !source.name.isEmpty else {
                 throw RepositoryError.invalidManifest(reason: "Source name is empty")
             }
@@ -54,84 +52,101 @@ public final class HostRepositoryImpl: HostRepository {
             }
         }
         
-        return manifest
+        return dto
     }
     
-    public func saveHost(manifest: HostManifest, hostURL: URL) async throws -> Host {
-        // delegate to local data source - now returns presets too
-        let (hostRecord, sourceRecords, configRecords, tagRecords, presetRecords) = try await local.saveHost(
-            manifest: manifest,
-            hostURL: hostURL
-        )
+    public func saveHost(_ dto: HostDTO, hostURL: URL) async throws -> Host {
+        let (hostRecord, sourceRecords, configRecords, tagRecords, presetRecords) = try await localDataSource.saveHost(dto, hostURL: hostURL)
         
+        return try mapToHost(
+            hostRecord: hostRecord,
+            sourceRecords: sourceRecords,
+            configRecords: configRecords,
+            tagRecords: tagRecords,
+            presetRecords: presetRecords
+        )
+    }
+    
+    public func getAllHosts() -> AsyncStream<[Host]> {
+        AsyncStream { continuation in
+            let recordsStream = localDataSource.observeAllHosts()
+            
+            let task = Task {
+                for await recordsData in recordsStream {
+                    if Task.isCancelled { break }
+                    
+                    do {
+                        let hosts = try self.mapRecordsToHosts(recordsData)
+                        continuation.yield(hosts)
+                    } catch {
+                        print("Error mapping hosts: \(error)")
+                        continuation.yield([])
+                    }
+                }
+                continuation.finish()
+            }
+            
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+    
+    public func deleteHost(id: Int64) async throws {
+        try await localDataSource.deleteHost(id: id)
+    }
+    
+    // MARK: - Private Mapping Methods
+    
+    private func mapToHost(
+        hostRecord: HostRecord,
+        sourceRecords: [SourceRecord],
+        configRecords: [SearchConfigRecord],
+        tagRecords: [SearchTagRecord],
+        presetRecords: [SearchPresetRecord]
+    ) throws -> Host {
         guard let hostId = hostRecord.id else {
             throw RepositoryError.mappingError(reason: "Host ID is nil")
         }
         
-        // build host display name for sources
         let hostDisplayName = "@\(hostRecord.author)/\(hostRecord.name)"
         
-        // map source records to domain sources
-        let sources = try sourceRecords.enumerated().compactMap { index, sourceRecord -> Source? in
+        let sources = try sourceRecords.compactMap { sourceRecord -> Source? in
             guard let sourceId = sourceRecord.id else {
                 throw RepositoryError.mappingError(reason: "Source ID is nil")
             }
             
-            // get corresponding manifest source for complete data
-            let manifestSource = manifest.sources[index]
-            
-            // find config for this source
             let config = configRecords.first { $0.sourceId == sourceId }
-            
-            // find tags for this source
             let sourceTags = tagRecords.filter { $0.sourceId == sourceId }
-            
-            // find presets for this source
             let sourcePresets = presetRecords.filter { $0.sourceId == sourceId }
             
-            // map tags
             let tags = sourceTags.map { SearchTag(
                 slug: $0.slug,
                 name: $0.name,
                 nsfw: $0.nsfw
             )}
             
-            // map presets
             let presets = try sourcePresets.compactMap { presetRecord -> SearchPreset? in
                 guard let presetId = presetRecord.id else { return nil }
                 
-                // decode the request from json data
                 let decoder = JSONDecoder()
-                let presetRequest = try decoder.decode(PresetRequest.self, from: presetRecord.request)
-                
-                // convert string keys to FilterOption enum and create FilterValue map
-                let filters: [FilterOption: FilterValue]
-                if let requestFilters = presetRequest.filters {
-                    filters = requestFilters.compactMapKeys { FilterOption(rawValue: $0.rawValue) }
-                } else {
-                    filters = [:]
-                }
-                
-                // convert string sort/direction to enums
-                let sortOption = SortOption(rawValue: presetRequest.sort) ?? .relevance
-                let sortDirection = presetRequest.direction == "asc" ? SortDirection.ascending : .descending
+                let request = try decoder.decode(PresetRequestDTO.self, from: presetRecord.request)
                 
                 return SearchPreset(
                     id: presetId.rawValue,
                     name: presetRecord.name,
-                    filters: filters,
-                    sortOption: sortOption,
-                    sortDirection: sortDirection,
+                    description: presetRecord.description,
+                    filters: request.filters ?? [:],
+                    sortOption: request.sort,
+                    sortDirection: request.direction
                 )
             }
             
-            // map auth
             let auth = mapAuthType(sourceRecord.authType)
             
-            // build search object
             let search = Search(
-                supportedSorts: config?.supportedSorts ?? manifestSource.search.sort,
-                supportedFilters: config?.supportedFilters ?? manifestSource.search.filters,
+                supportedSorts: config?.supportedSorts ?? [],
+                supportedFilters: config?.supportedFilters ?? [],
                 tags: tags,
                 presets: presets
             )
@@ -161,128 +176,22 @@ public final class HostRepositoryImpl: HostRepository {
         )
     }
     
-    public func getAllHosts() -> AsyncStream<[Host]> {
-        AsyncStream { continuation in
-            // get the stream from data source
-            let recordsStream = local.observeAllHosts()
-            
-            // create task to transform records to domain entities
-            let task = Task {
-                for await recordsData in recordsStream {
-                    if Task.isCancelled { break }
-                    
-                    do {
-                        let hosts = try self.mapRecordsToHosts(recordsData)
-                        continuation.yield(hosts)
-                    } catch {
-                        // log error but continue stream
-                        print("Error mapping hosts: \(error)")
-                        // optionally yield empty array or previous state
-                        continuation.yield([])
-                    }
-                }
-                continuation.finish()
-            }
-            
-            continuation.onTermination = { _ in
-                task.cancel()
-            }
-        }
-    }
-    
-    // MARK: - Private Mapping Helpers
-    
     private func mapRecordsToHosts(_ recordsData: [(HostRecord, [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])])]) throws -> [Host] {
         try recordsData.map { (hostRecord, sourcesData) in
-            guard let hostId = hostRecord.id else {
-                throw RepositoryError.mappingError(reason: "Host ID is nil")
-            }
+            let sourceRecords = sourcesData.map { $0.0 }
+            let configRecords = sourcesData.compactMap { $0.1 }
+            let tagRecords = sourcesData.flatMap { $0.2 }
+            let presetRecords = sourcesData.flatMap { $0.3 }
             
-            let hostDisplayName = "@\(hostRecord.author)/\(hostRecord.name)"
-            
-            let sources = try sourcesData.compactMap { (sourceRecord, configRecord, tagRecords, presetRecords) -> Source? in
-                guard let sourceId = sourceRecord.id else {
-                    throw RepositoryError.mappingError(reason: "Source ID is nil")
-                }
-                
-                // map tags
-                let tags = tagRecords.map { SearchTag(
-                    slug: $0.slug,
-                    name: $0.name,
-                    nsfw: $0.nsfw
-                )}
-                
-                // map presets
-                let presets = try presetRecords.compactMap { presetRecord -> SearchPreset? in
-                    guard let presetId = presetRecord.id else { return nil }
-                    
-                    // decode the request from json data
-                    let decoder = JSONDecoder()
-                    let presetRequest = try decoder.decode(PresetRequest.self, from: presetRecord.request)
-                    
-                    // convert string keys to FilterOption enum and create FilterValue map
-                    let filters: [FilterOption: FilterValue]
-                    if let requestFilters = presetRequest.filters {
-                        filters = requestFilters.compactMapKeys { FilterOption(rawValue: $0.rawValue) }
-                    } else {
-                        filters = [:]
-                    }
-                    
-                    // convert string sort/direction to enums
-                    let sortOption = SortOption(rawValue: presetRequest.sort) ?? .relevance
-                    let sortDirection = presetRequest.direction == "asc" ? SortDirection.ascending : .descending
-                    
-                    return SearchPreset(
-                        id: presetId.rawValue,
-                        name: presetRecord.name,
-                        filters: filters,
-                        sortOption: sortOption,
-                        sortDirection: sortDirection,
-                    )
-                }
-                
-                // map auth
-                let auth = mapAuthType(sourceRecord.authType)
-                
-                // build search object
-                let search = Search(
-                    supportedSorts: configRecord?.supportedSorts ?? [],
-                    supportedFilters: configRecord?.supportedFilters ?? [],
-                    tags: tags,
-                    presets: presets
-                )
-                
-                return Source(
-                    id: sourceId.rawValue,
-                    slug: sourceRecord.slug,
-                    name: sourceRecord.name,
-                    icon: sourceRecord.icon,
-                    pinned: sourceRecord.pinned,
-                    disabled: sourceRecord.disabled,
-                    host: hostDisplayName,
-                    auth: auth,
-                    search: search,
-                    presets: presets
-                )
-            }
-            
-            return Host(
-                id: hostId.rawValue,
-                name: hostRecord.name,
-                author: hostRecord.author,
-                url: hostRecord.url,
-                repository: hostRecord.repository,
-                official: hostRecord.official,
-                sources: sources
+            return try mapToHost(
+                hostRecord: hostRecord,
+                sourceRecords: sourceRecords,
+                configRecords: configRecords,
+                tagRecords: tagRecords,
+                presetRecords: presetRecords
             )
         }
     }
-    
-    public func deleteHost(id: Int64) async throws {
-        try await local.deleteHost(id: id)
-    }
-    
-    // MARK: - Private Mapping Helpers
     
     private func mapAuthType(_ authType: AuthType?) -> Auth {
         guard let authType = authType else { return .none }
@@ -301,18 +210,5 @@ public final class HostRepositoryImpl: HostRepository {
         case .cookie:
             return .cookie(fields: CookieAuthFields(cookie: ""))
         }
-    }
-}
-
-// helper extension for dictionary key mapping
-private extension Dictionary {
-    func compactMapKeys<T: Hashable>(_ transform: (Key) -> T?) -> [T: Value] {
-        var result = [T: Value]()
-        for (key, value) in self {
-            if let newKey = transform(key) {
-                result[newKey] = value
-            }
-        }
-        return result
     }
 }

@@ -8,169 +8,128 @@
 import Foundation
 
 public struct Search: Sendable {
-    public let supportedSorts: [SortOption]
-    public let supportedFilters: [FilterOption]
+    public let options: Options
     public let tags: [SearchTag]
     public let presets: [SearchPreset]
     
     public init(
-        supportedSorts: [SortOption],
-        supportedFilters: [FilterOption],
+        supportedSorts: [Options.Sort],
+        supportedFilters: [Options.Filter],
         tags: [SearchTag],
         presets: [SearchPreset]
     ) {
-        self.supportedSorts = supportedSorts
-        self.supportedFilters = supportedFilters
+        self.options = Options(
+            sorting: supportedSorts,
+            filtering: supportedFilters
+        )
         self.tags = tags
         self.presets = presets
     }
-}
-
-/// Source-specific supported sort options
-public enum SortOption: String, CaseIterable, Codable, Sendable {
-    case alphabetical
-    case chapters
-    case createdAt
-    case follows
-    case latest
-    case popularity
-    case rating
-    case relevance
-    case title
-    case updatedAt
-    case views
-    case year
     
-    public var displayName: String {
-        switch self {
-        case .alphabetical: "A-Z"
-        case .chapters: "Chapter Count"
-        case .createdAt: "Date Added"
-        case .follows: "Follows"
-        case .latest: "Latest"
-        case .popularity: "Popularity"
-        case .rating: "Rating"
-        case .relevance: "Relevance"
-        case .title: "Title"
-        case .updatedAt: "Last Updated"
-        case .views: "Views"
-        case .year: "Year"
-        }
-    }
-}
-
-/// Source-specific supported filter options
-public enum FilterOption: String, CaseIterable, Codable, Hashable, Sendable {
-    /// Content categorization filters
-    case genre
-    case demographic
-    
-    /// Content metadata filters
-    case status
-    case contentRating
-    case year
-    
-    /// Language filters
-    case originalLanguage
-    case translatedLanguage
-    
-    /// Creator filters
-    case author
-    case artist
-    case publisher
-    
-    /// Tag filters
-    case includeTag
-    case excludeTag
-    
-    public var displayName: String {
-        switch self {
-        case .genre: "Genre"
-        case .demographic: "Demographic"
-        case .status: "Status"
-        case .contentRating: "Content Rating"
-        case .year: "Year"
-        case .originalLanguage: "Original Language"
-        case .translatedLanguage: "Translated Language"
-        case .author: "Author"
-        case .artist: "Artist"
-        case .publisher: "Publisher"
-        case .includeTag: "Include Tags"
-        case .excludeTag: "Exclude Tags"
-        }
-    }
-    
-    public var expectedType: FilterValueType {
-        switch self {
-        case .status, .contentRating, .originalLanguage,
-                .translatedLanguage, .author, .artist, .publisher:
-            return .string
-        case .genre, .includeTag, .excludeTag, .demographic:
-            return .stringArray
-        case .year:
-            return .number
-        }
-    }
-}
-
-/// Associated value for a given filter option
-public enum FilterValue: Codable, Hashable, Sendable, Equatable {
-    case string(String)
-    case stringArray([String])
-    case number(Int)
-    case boolean(Bool)
-    
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
+    public struct Options: Sendable {
+        public let sorting: [Sort]
+        public let filtering: [Filter]
         
-        if let value = try? container.decode(String.self) {
-            self = .string(value)
-        } else if let value = try? container.decode([String].self) {
-            self = .stringArray(value)
-        } else if let value = try? container.decode(Int.self) {
-            self = .number(value)
-        } else if let value = try? container.decode(Bool.self) {
-            self = .boolean(value)
-        } else {
-            throw DecodingError.typeMismatch(
-                FilterValue.self,
-                DecodingError.Context(
-                    codingPath: decoder.codingPath,
-                    debugDescription: "Unable to decode FilterValue"
+        public init(sorting: [Sort], filtering: [Filter]) {
+            self.sorting = sorting
+            self.filtering = filtering
+        }
+    }
+}
+
+public extension Search.Options {
+    enum Sort: String, CaseIterable, Codable, Sendable {
+        case title = "title"
+        case year = "year"
+        case createdAt = "createdAt"
+        case updatedAt = "updatedAt"
+        case relevance = "relevance"
+        case popularity = "popularity"
+        case rating = "rating"
+        case chapters = "chapters"
+        case follows = "follows"
+        
+        public var displayName: String {
+            switch self {
+            case .title: return "Title"
+            case .year: return "Year"
+            case .createdAt: return "Date Added"
+            case .updatedAt: return "Last Updated"
+            case .relevance: return "Relevance"
+            case .popularity: return "Popularity"
+            case .rating: return "Rating"
+            case .chapters: return "Chapter Count"
+            case .follows: return "Follows"
+            }
+        }
+    }
+    
+    enum Filter: String, CaseIterable, Codable, Hashable, Sendable {
+        case year = "year"
+        case includeTag = "includeTag"
+        case excludeTag = "excludeTag"
+        case status = "status"
+        case originalLanguage = "originalLanguage"
+        case translatedLanguage = "translatedLanguage"
+        case contentRating = "contentRating"
+        
+        public var displayName: String {
+            switch self {
+            case .year: return "Year"
+            case .includeTag: return "Include Tags"
+            case .excludeTag: return "Exclude Tags"
+            case .status: return "Status"
+            case .originalLanguage: return "Original Language"
+            case .translatedLanguage: return "Translated Language"
+            case .contentRating: return "Content Rating"
+            }
+        }
+    }
+    
+    enum FilterValue: Codable, Hashable, Sendable, Equatable {
+        case string(String)
+        case stringArray([String])
+        case number(Int)
+        case boolean(Bool)
+        
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            
+            if let intValue = try? container.decode(Int.self) {
+                self = .number(intValue)
+            } else if let boolValue = try? container.decode(Bool.self) {
+                self = .boolean(boolValue)
+            } else if let arrayValue = try? container.decode([String].self) {
+                self = .stringArray(arrayValue)
+            } else if let stringValue = try? container.decode(String.self) {
+                self = .string(stringValue)
+            } else {
+                throw DecodingError.typeMismatch(
+                    FilterValue.self,
+                    DecodingError.Context(
+                        codingPath: decoder.codingPath,
+                        debugDescription: "Unable to decode FilterValue"
+                    )
                 )
-            )
+            }
         }
-    }
-    
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        switch self {
-        case .string(let value): try container.encode(value)
-        case .stringArray(let values): try container.encode(values)
-        case .number(let value): try container.encode(value)
-        case .boolean(let value): try container.encode(value)
-        }
-    }
-}
-
-/// Maps directly to filter values and correlates to the type
-public enum FilterValueType {
-    case string, stringArray, number, boolean
-    
-    func matches(_ value: FilterValue) -> Bool {
-        switch (self, value) {
-        case (.string, .string),
-            (.stringArray, .stringArray),
-            (.number, .number),
-            (.boolean, .boolean):
-            return true
-        default:
-            return false
+        
+        public func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            switch self {
+            case .string(let value):
+                try container.encode(value)
+            case .stringArray(let values):
+                try container.encode(values)
+            case .number(let value):
+                try container.encode(value)
+            case .boolean(let value):
+                try container.encode(value)
+            }
         }
     }
 }
 
-/// A tag option available for a given source with include/exclude tag supported filter option
 public struct SearchTag: Equatable, Codable, Sendable {
     public let slug: String
     public let name: String
@@ -183,29 +142,27 @@ public struct SearchTag: Equatable, Codable, Sendable {
     }
 }
 
-/// Source-specific preset for a search config
 public struct SearchPreset: Sendable, Hashable {
     public let id: Int64
     public let name: String
-    public let filters: [FilterOption: FilterValue]
-    public let sortOption: SortOption
+    public let description: String?
+    public let filters: [Search.Options.Filter: Search.Options.FilterValue]
+    public let sortOption: Search.Options.Sort
     public let sortDirection: SortDirection
     
     public init(
         id: Int64,
         name: String,
-        filters: [FilterOption: FilterValue] = [:],
-        sortOption: SortOption = .relevance,
-        sortDirection: SortDirection = .descending,
+        description: String?,
+        filters: [Search.Options.Filter: Search.Options.FilterValue] = [:],
+        sortOption: Search.Options.Sort = .relevance,
+        sortDirection: SortDirection = .descending
     ) {
         self.id = id
         self.name = name
+        self.description = description
         self.filters = filters
         self.sortOption = sortOption
         self.sortDirection = sortDirection
-    }
-    
-    public var isValid: Bool {
-        filters.allSatisfy { $0.key.expectedType.matches($0.value) }
     }
 }

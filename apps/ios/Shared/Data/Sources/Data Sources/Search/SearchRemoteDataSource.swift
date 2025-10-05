@@ -8,33 +8,37 @@
 import Foundation
 import Domain
 
-public final class SearchRemoteDataSource: Sendable {
+internal protocol SearchRemoteDataSource: Sendable {
+    func searchWithPreset(sourceSlug: String, host: URL, preset: SearchPreset) async throws -> SearchResponseDTO
+    func search(sourceSlug: String, host: URL, request: SearchRequestDTO) async throws -> SearchResponseDTO
+}
+
+internal final class SearchRemoteDataSourceImpl: SearchRemoteDataSource {
     private let networkService: NetworkService
     
-    public init(networkService: NetworkService? = nil) {
+    init(networkService: NetworkService? = nil) {
         self.networkService = networkService ?? NetworkService()
     }
     
-    public func searchWithPreset(sourceSlug: String, host: URL, preset: SearchPreset) async throws -> [Entry] {
-        // construct the search endpoint url
+    func searchWithPreset(sourceSlug: String, host: URL, preset: SearchPreset) async throws -> SearchResponseDTO {
+        // construct search endpoint url
         let searchURL = host
             .appendingPathComponent(sourceSlug)
             .appendingPathComponent("search")
         
-        // build request body from preset
-        // presetrequest already handles the complex encoding internally
-        let requestBody = PresetRequest(
-            query: "",  // presets typically don't include query text
+        // build request dto from preset
+        let requestDTO = SearchRequestDTO(
+            query: "",
             page: 1,
             limit: 20,
-            sort: preset.sortOption.rawValue,
-            direction: preset.sortDirection == .ascending ? "asc" : "desc",
+            sort: preset.sortOption,
+            direction: preset.sortDirection,
             filters: preset.filters
         )
         
-        // encode request body - presetrequest's custom encoder handles the conversion
+        // encode request body
         let encoder = JSONEncoder()
-        let bodyData = try encoder.encode(requestBody)
+        let bodyData = try encoder.encode(requestDTO)
         
         // create request
         var request = URLRequest(url: searchURL)
@@ -46,31 +50,33 @@ public final class SearchRemoteDataSource: Sendable {
         let (data, response) = try await URLSession.shared.data(for: request)
         try networkService.handleResponse(response)
         
-        // decode response to dto
+        // decode response
         let decoder = JSONDecoder()
-        let searchResponse = try decoder.decode(SearchResponseDTO.self, from: data)
-        
-        // map dto to domain entities
-        return searchResponse.results.map { dto in
-            Entry(
-                slug: dto.slug,
-                title: dto.title,
-                cover: dto.cover,
-                state: .noMatch
-            )
-        }
+        return try decoder.decode(SearchResponseDTO.self, from: data)
     }
-}
-
-// dto for response shape
-private struct SearchResponseDTO: Codable {
-    let results: [EntryDTO]
-    let page: Int
-    let more: Bool
-}
-
-private struct EntryDTO: Codable {
-    let slug: String
-    let title: String
-    let cover: URL
+    
+    func search(sourceSlug: String, host: URL, request: SearchRequestDTO) async throws -> SearchResponseDTO {
+        // construct search endpoint url
+        let searchURL = host
+            .appendingPathComponent(sourceSlug)
+            .appendingPathComponent("search")
+        
+        // encode request body
+        let encoder = JSONEncoder()
+        let bodyData = try encoder.encode(request)
+        
+        // create http request
+        var httpRequest = URLRequest(url: searchURL)
+        httpRequest.httpMethod = "POST"
+        httpRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        httpRequest.httpBody = bodyData
+        
+        // make request
+        let (data, response) = try await URLSession.shared.data(for: httpRequest)
+        try networkService.handleResponse(response)
+        
+        // decode response
+        let decoder = JSONDecoder()
+        return try decoder.decode(SearchResponseDTO.self, from: data)
+    }
 }

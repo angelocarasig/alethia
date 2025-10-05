@@ -99,21 +99,7 @@ public struct SourceHomeView: View {
                 .fontWeight(.semibold)
             
             ForEach(source.presets, id: \.self) { preset in
-                HStack {
-                    Image(systemName: "tag.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    
-                    Text(preset.name)
-                        .font(.subheadline)
-                    
-                    Spacer()
-                    
-                    SourceHomeRow(source: source, preset: preset)
-                }
-                .padding(dimensions.padding.regular)
-                .background(theme.colors.tint)
-                .clipShape(RoundedRectangle(cornerRadius: dimensions.cornerRadius.regular))
+                SourceHomeRow(source: source, preset: preset)
             }
         }
     }
