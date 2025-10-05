@@ -374,10 +374,12 @@ private extension AddHostView {
             .clipShape(.rect(cornerRadius: dimensions.cornerRadius.regular))
             
             VStack(alignment: .leading, spacing: dimensions.spacing.minimal) {
+                // title
                 Text(source.name)
                     .font(.subheadline)
                     .fontWeight(.semibold)
                 
+                // auth type
                 HStack {
                     Image(systemName: "key.fill")
                     Text(source.auth.type.displayText)
@@ -396,7 +398,23 @@ private extension AddHostView {
             
             Spacer()
             
-            if true {
+            HStack {
+                Image(systemName: "hexagon")
+                    .font(.caption)
+                Text("^[\(source.presets.count) Preset](inflect: true)")
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+            }
+            .padding(.horizontal, dimensions.padding.regular)
+            .padding(.vertical, dimensions.padding.regular)
+            .background(theme.colors.appGreen.opacity(0.2))
+            .overlay(
+                RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
+                    .strokeBorder(theme.colors.appGreen.opacity(0.3), lineWidth: 1.5)
+            )
+            .cornerRadius(dimensions.cornerRadius.card)
+            
+            if source.nsfw {
                 HStack {
                     Image(systemName: "exclamationmark.triangle")
                         .font(.caption)

@@ -58,8 +58,8 @@ public final class HostRepositoryImpl: HostRepository {
     }
     
     public func saveHost(manifest: HostManifest, hostURL: URL) async throws -> Host {
-        // delegate to local data source
-        let (hostRecord, sourceRecords, configRecords, tagRecords) = try await localDataSource.saveHost(
+        // delegate to local data source - now returns presets too
+        let (hostRecord, sourceRecords, configRecords, tagRecords, presetRecords) = try await localDataSource.saveHost(
             manifest: manifest,
             hostURL: hostURL
         )
@@ -86,12 +86,45 @@ public final class HostRepositoryImpl: HostRepository {
             // find tags for this source
             let sourceTags = tagRecords.filter { $0.sourceId == sourceId }
             
+            // find presets for this source
+            let sourcePresets = presetRecords.filter { $0.sourceId == sourceId }
+            
             // map tags
             let tags = sourceTags.map { SearchTag(
                 slug: $0.slug,
                 name: $0.name,
                 nsfw: $0.nsfw
             )}
+            
+            // map presets
+            let presets = try sourcePresets.compactMap { presetRecord -> SearchPreset? in
+                guard let presetId = presetRecord.id else { return nil }
+                
+                // decode the request from json data
+                let decoder = JSONDecoder()
+                let presetRequest = try decoder.decode(PresetRequest.self, from: presetRecord.request)
+                
+                // convert string keys to FilterOption enum and create FilterValue map
+                let filters: [FilterOption: FilterValue]
+                if let requestFilters = presetRequest.filters {
+                    filters = requestFilters.compactMapKeys { FilterOption(rawValue: $0) }
+                } else {
+                    filters = [:]
+                }
+                
+                // convert string sort/direction to enums
+                let sortOption = SortOption(rawValue: presetRequest.sort) ?? .relevance
+                let sortDirection = presetRequest.direction == "asc" ? SortDirection.ascending : .descending
+                
+                return SearchPreset(
+                    id: presetId.rawValue,
+                    name: presetRecord.name,
+                    filters: filters,
+                    sortOption: sortOption,
+                    sortDirection: sortDirection,
+                    tags: []  // presets from API don't include resolved tags
+                )
+            }
             
             // map auth
             let auth = mapAuthType(sourceRecord.authType)
@@ -101,7 +134,7 @@ public final class HostRepositoryImpl: HostRepository {
                 supportedSorts: config?.supportedSorts ?? manifestSource.search.sort,
                 supportedFilters: config?.supportedFilters ?? manifestSource.search.filters,
                 tags: tags,
-                presets: []
+                presets: presets
             )
             
             return Source(
@@ -183,31 +216,29 @@ public final class HostRepositoryImpl: HostRepository {
                 let presets = try presetRecords.compactMap { presetRecord -> SearchPreset? in
                     guard let presetId = presetRecord.id else { return nil }
                     
-                    // decode filters from json data
+                    // decode the request from json data
+                    let decoder = JSONDecoder()
+                    let presetRequest = try decoder.decode(PresetRequest.self, from: presetRecord.request)
+                    
+                    // convert string keys to FilterOption enum and create FilterValue map
                     let filters: [FilterOption: FilterValue]
-                    if presetRecord.filters.isEmpty {
-                        filters = [:]
+                    if let requestFilters = presetRequest.filters {
+                        filters = requestFilters.compactMapKeys { FilterOption(rawValue: $0) }
                     } else {
-                        let decoder = JSONDecoder()
-                        let filterDict = try decoder.decode([String: FilterValue].self, from: presetRecord.filters)
-                        // convert string keys to FilterOption enum
-                        filters = filterDict.compactMapKeys { FilterOption(rawValue: $0) }
+                        filters = [:]
                     }
                     
-                    // find tags for this preset
-                    let presetTags = tags.filter { tag in
-                        presetRecord.tagIds.contains { tagId in
-                            tagRecords.first { $0.slug == tag.slug && $0.id?.rawValue == tagId.rawValue } != nil
-                        }
-                    }
+                    // convert string sort/direction to enums
+                    let sortOption = SortOption(rawValue: presetRequest.sort) ?? .relevance
+                    let sortDirection = presetRequest.direction == "asc" ? SortDirection.ascending : .descending
                     
                     return SearchPreset(
                         id: presetId.rawValue,
                         name: presetRecord.name,
                         filters: filters,
-                        sortOption: presetRecord.sortOption,
-                        sortDirection: presetRecord.sortDirection,
-                        tags: presetTags
+                        sortOption: sortOption,
+                        sortDirection: sortDirection,
+                        tags: []  // presets from API don't include resolved tags
                     )
                 }
                 

@@ -196,15 +196,13 @@ extension Migrations {
                 t.uniqueKey(["sourceId", "slug"])
             }
             
-            // search_preset table
+            // search_preset table - updated structure
             try db.create(table: "search_preset") { t in
                 t.autoIncrementedPrimaryKey("id")
                 t.belongsTo("source", onDelete: .cascade)
                 t.column("name", .text).notNull()
-                t.column("filters", .blob).notNull()
-                t.column("sortOption", .text).notNull()
-                t.column("sortDirection", .text).notNull()
-                t.column("tagIds", .blob).notNull()
+                t.column("description", .text).defaults(to: "")
+                t.column("request", .blob).notNull()  // json encoded
             }
         }
     }

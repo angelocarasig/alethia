@@ -31,7 +31,7 @@ public final class HostLocalDataSource: Sendable {
         }
     }
     
-    func saveHost(manifest: HostManifest, hostURL: URL) async throws -> (HostRecord, [SourceRecord], [SearchConfigRecord], [SearchTagRecord]) {
+    func saveHost(manifest: HostManifest, hostURL: URL) async throws -> (HostRecord, [SourceRecord], [SearchConfigRecord], [SearchTagRecord], [SearchPresetRecord]) {
         // first, get a temporary host id for directory creation
         let tempHostId = UUID().uuidString
         let hostDirectory = Core.Constants.Paths.host(tempHostId)
@@ -90,6 +90,7 @@ public final class HostLocalDataSource: Sendable {
                 var savedSources: [SourceRecord] = []
                 var savedConfigs: [SearchConfigRecord] = []
                 var savedTags: [SearchTagRecord] = []
+                var savedPresets: [SearchPresetRecord] = []
                 
                 for sourceManifest in manifest.sources {
                     let finalIconPath = finalIconsDirectory.appendingPathComponent("\(sourceManifest.slug).png")
@@ -132,9 +133,25 @@ public final class HostLocalDataSource: Sendable {
                         try tagRecord.insert(db)
                         savedTags.append(tagRecord)
                     }
+                    
+                    // save search presets for this source
+                    for preset in sourceManifest.presets {
+                        let encoder = JSONEncoder()
+                        let requestData = try encoder.encode(preset.request)
+                        
+                        var presetRecord = SearchPresetRecord(
+                            sourceId: sourceId,
+                            name: preset.name,
+                            description: preset.description,
+                            request: requestData
+                        )
+                        
+                        try presetRecord.insert(db)
+                        savedPresets.append(presetRecord)
+                    }
                 }
                 
-                return (hostRecord, savedSources, savedConfigs, savedTags)
+                return (hostRecord, savedSources, savedConfigs, savedTags, savedPresets)
             }
             
             return result

@@ -19,6 +19,7 @@ public struct SourceManifest: Codable, Sendable {
     public let referer: URL
     public let auth: SourceAuthManifest
     public let search: SourceSearchManifest
+    public let presets: [SearchPresetManifest]
     
     public init(
         name: String,
@@ -29,7 +30,8 @@ public struct SourceManifest: Codable, Sendable {
         url: URL,
         referer: URL,
         auth: SourceAuthManifest,
-        search: SourceSearchManifest
+        search: SourceSearchManifest,
+        presets: [SearchPresetManifest]
     ) {
         self.name = name
         self.slug = slug
@@ -40,9 +42,9 @@ public struct SourceManifest: Codable, Sendable {
         self.referer = referer
         self.auth = auth
         self.search = search
+        self.presets = presets
     }
 }
-
 
 /// Represents authentication configuration for a source.
 public struct SourceAuthManifest: Codable, Sendable {

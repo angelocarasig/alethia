@@ -17,10 +17,16 @@ internal struct SearchPresetRecord: Codable {
     private(set) var sourceId: SourceRecord.ID
     
     var name: String
-    var filters: Data // JSON encoded [FilterOption: FilterValue]
-    var sortOption: Domain.SortOption
-    var sortDirection: Domain.SortDirection
-    var tagIds: [SearchTagRecord.ID] = []
+    var description: String?
+    var request: Data // JSON-Encoded PresetRequest
+    
+    init(sourceId: SourceRecord.ID, name: String, description: String?, request: Data) {
+        self.id = nil
+        self.sourceId = sourceId
+        self.name = name
+        self.description = description
+        self.request = request
+    }
 }
 
 extension SearchPresetRecord: FetchableRecord, MutablePersistableRecord {
@@ -32,10 +38,8 @@ extension SearchPresetRecord: FetchableRecord, MutablePersistableRecord {
         static let id = Column(CodingKeys.id)
         static let sourceId = Column(CodingKeys.sourceId)
         static let name = Column(CodingKeys.name)
-        static let filters = Column(CodingKeys.filters)
-        static let sortOption = Column(CodingKeys.sortOption)
-        static let sortDirection = Column(CodingKeys.sortDirection)
-        static let tagIds = Column(CodingKeys.tagIds)
+        static let description = Column(CodingKeys.description)
+        static let request = Column(CodingKeys.request)
     }
     
     mutating func didInsert(_ inserted: InsertionSuccess) {
