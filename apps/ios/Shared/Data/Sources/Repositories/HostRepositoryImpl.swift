@@ -10,23 +10,23 @@ import Domain
 import GRDB
 
 public final class HostRepositoryImpl: HostRepository {
-    private let remoteDataSource: HostRemoteDataSource
-    private let localDataSource: HostLocalDataSource
+    private let remote: HostRemoteDataSource
+    private let local: HostLocalDataSource
     
     public init(
-        remoteDataSource: HostRemoteDataSource? = nil,
-        localDataSource: HostLocalDataSource? = nil
+        remote: HostRemoteDataSource? = nil,
+        local: HostLocalDataSource? = nil
     ) {
-        self.remoteDataSource = remoteDataSource ?? HostRemoteDataSource()
-        self.localDataSource = localDataSource ?? HostLocalDataSource()
+        self.remote = remote ?? HostRemoteDataSource()
+        self.local = local ?? HostLocalDataSource()
     }
     
     public func validateHost(url: URL) async throws -> HostManifest {
         // fetch manifest from remote
-        let manifest = try await remoteDataSource.fetchManifest(from: url.trailingSlash(.remove))
+        let manifest = try await remote.fetchManifest(from: url.trailingSlash(.remove))
         
         // check if host already exists by repository url
-        if let (existingId, existingURL) = try await localDataSource.hostExists(with: manifest.repository) {
+        if let (existingId, existingURL) = try await local.hostExists(with: manifest.repository) {
             throw RepositoryError.hostAlreadyExists(id: existingId, url: existingURL)
         }
         
@@ -59,7 +59,7 @@ public final class HostRepositoryImpl: HostRepository {
     
     public func saveHost(manifest: HostManifest, hostURL: URL) async throws -> Host {
         // delegate to local data source - now returns presets too
-        let (hostRecord, sourceRecords, configRecords, tagRecords, presetRecords) = try await localDataSource.saveHost(
+        let (hostRecord, sourceRecords, configRecords, tagRecords, presetRecords) = try await local.saveHost(
             manifest: manifest,
             hostURL: hostURL
         )
@@ -107,7 +107,7 @@ public final class HostRepositoryImpl: HostRepository {
                 // convert string keys to FilterOption enum and create FilterValue map
                 let filters: [FilterOption: FilterValue]
                 if let requestFilters = presetRequest.filters {
-                    filters = requestFilters.compactMapKeys { FilterOption(rawValue: $0) }
+                    filters = requestFilters.compactMapKeys { FilterOption(rawValue: $0.rawValue) }
                 } else {
                     filters = [:]
                 }
@@ -122,7 +122,6 @@ public final class HostRepositoryImpl: HostRepository {
                     filters: filters,
                     sortOption: sortOption,
                     sortDirection: sortDirection,
-                    tags: []  // presets from API don't include resolved tags
                 )
             }
             
@@ -146,7 +145,8 @@ public final class HostRepositoryImpl: HostRepository {
                 disabled: sourceRecord.disabled,
                 host: hostDisplayName,
                 auth: auth,
-                search: search
+                search: search,
+                presets: presets
             )
         }
         
@@ -164,7 +164,7 @@ public final class HostRepositoryImpl: HostRepository {
     public func getAllHosts() -> AsyncStream<[Host]> {
         AsyncStream { continuation in
             // get the stream from data source
-            let recordsStream = localDataSource.observeAllHosts()
+            let recordsStream = local.observeAllHosts()
             
             // create task to transform records to domain entities
             let task = Task {
@@ -223,7 +223,7 @@ public final class HostRepositoryImpl: HostRepository {
                     // convert string keys to FilterOption enum and create FilterValue map
                     let filters: [FilterOption: FilterValue]
                     if let requestFilters = presetRequest.filters {
-                        filters = requestFilters.compactMapKeys { FilterOption(rawValue: $0) }
+                        filters = requestFilters.compactMapKeys { FilterOption(rawValue: $0.rawValue) }
                     } else {
                         filters = [:]
                     }
@@ -238,7 +238,6 @@ public final class HostRepositoryImpl: HostRepository {
                         filters: filters,
                         sortOption: sortOption,
                         sortDirection: sortDirection,
-                        tags: []  // presets from API don't include resolved tags
                     )
                 }
                 
@@ -262,7 +261,8 @@ public final class HostRepositoryImpl: HostRepository {
                     disabled: sourceRecord.disabled,
                     host: hostDisplayName,
                     auth: auth,
-                    search: search
+                    search: search,
+                    presets: presets
                 )
             }
             
@@ -279,7 +279,7 @@ public final class HostRepositoryImpl: HostRepository {
     }
     
     public func deleteHost(id: Int64) async throws {
-        try await localDataSource.deleteHost(id: id)
+        try await local.deleteHost(id: id)
     }
     
     // MARK: - Private Mapping Helpers

@@ -8,7 +8,7 @@
 import SwiftUI
 import Domain
 
-public struct AddHostView: View {
+struct AddHostView: View {
     @State private var vm = AddHostViewModel()
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dimensions) private var dimensions
@@ -17,8 +17,6 @@ public struct AddHostView: View {
     @State private var acceptedTerms = false
     @State private var acceptedContent = false
     @State private var acceptedRisk = false
-    
-    public init() {}
     
     public var body: some View {
         NavigationStack {

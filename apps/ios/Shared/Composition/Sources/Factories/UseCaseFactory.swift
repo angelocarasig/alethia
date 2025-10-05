@@ -31,4 +31,8 @@ extension UseCaseFactory {
     func makeGetAllhostsUseCase() -> GetAllHostsUseCase {
         GetAllHostsUseCaseImpl(repository: repositoryFactory.hostRepository)
     }
+    
+    func makeSearchWithPresetUseCase() -> SearchWithPresetUseCase {
+        SearchWithPresetUseCaseImpl(repository: repositoryFactory.searchRepository)
+    }
 }

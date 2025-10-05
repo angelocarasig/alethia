@@ -30,6 +30,8 @@ public struct Source: Sendable {
     /// The specified search config for this source
     public let search: Search
     
+    public let presets: [SearchPreset]
+    
     public init(
         id: Int64,
         slug: String,
@@ -39,7 +41,8 @@ public struct Source: Sendable {
         disabled: Bool,
         host: String,
         auth: Auth,
-        search: Search
+        search: Search,
+        presets: [SearchPreset]
     ) {
         self.id = id
         self.slug = slug
@@ -50,5 +53,6 @@ public struct Source: Sendable {
         self.host = host
         self.auth = auth
         self.search = search
+        self.presets = presets
     }
 }

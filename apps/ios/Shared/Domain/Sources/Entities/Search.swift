@@ -60,7 +60,7 @@ public enum SortOption: String, CaseIterable, Codable, Sendable {
 }
 
 /// Source-specific supported filter options
-public enum FilterOption: String, CaseIterable, Codable, Sendable {
+public enum FilterOption: String, CaseIterable, Codable, Hashable, Sendable {
     /// Content categorization filters
     case genre
     case demographic
@@ -103,7 +103,7 @@ public enum FilterOption: String, CaseIterable, Codable, Sendable {
     public var expectedType: FilterValueType {
         switch self {
         case .status, .contentRating, .originalLanguage,
-             .translatedLanguage, .author, .artist, .publisher:
+                .translatedLanguage, .author, .artist, .publisher:
             return .string
         case .genre, .includeTag, .excludeTag, .demographic:
             return .stringArray
@@ -114,7 +114,7 @@ public enum FilterOption: String, CaseIterable, Codable, Sendable {
 }
 
 /// Associated value for a given filter option
-public enum FilterValue: Codable, Sendable, Equatable {
+public enum FilterValue: Codable, Hashable, Sendable, Equatable {
     case string(String)
     case stringArray([String])
     case number(Int)
@@ -184,13 +184,12 @@ public struct SearchTag: Equatable, Codable, Sendable {
 }
 
 /// Source-specific preset for a search config
-public struct SearchPreset: Sendable {
+public struct SearchPreset: Sendable, Hashable {
     public let id: Int64
     public let name: String
     public let filters: [FilterOption: FilterValue]
     public let sortOption: SortOption
     public let sortDirection: SortDirection
-    public let tags: [SearchTag]
     
     public init(
         id: Int64,
@@ -198,14 +197,12 @@ public struct SearchPreset: Sendable {
         filters: [FilterOption: FilterValue] = [:],
         sortOption: SortOption = .relevance,
         sortDirection: SortDirection = .descending,
-        tags: [SearchTag] = []
     ) {
         self.id = id
         self.name = name
         self.filters = filters
         self.sortOption = sortOption
         self.sortDirection = sortDirection
-        self.tags = tags
     }
     
     public var isValid: Bool {

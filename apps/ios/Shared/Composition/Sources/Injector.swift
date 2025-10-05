@@ -34,3 +34,10 @@ public extension Injector {
         useCaseFactory.makeGetAllhostsUseCase()
     }
 }
+
+// MARK: Search Use-Cases
+public extension Injector {
+    static func makeSearchWithPresetUseCase() -> SearchWithPresetUseCase {
+        useCaseFactory.makeSearchWithPresetUseCase()
+    }
+}

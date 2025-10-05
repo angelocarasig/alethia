@@ -310,7 +310,7 @@ private extension SourcesScreen {
         
         var body: some View {
             NavigationLink {
-                Text(source.name)  // placeholder detail view
+                SourceHomeView(source: source)
             } label: {
                 HStack(spacing: dimensions.spacing.large) {
                     SourceIcon(url: source.icon.absoluteString, isDisabled: source.disabled)

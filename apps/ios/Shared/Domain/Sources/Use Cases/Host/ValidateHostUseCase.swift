@@ -9,5 +9,6 @@ import Foundation
 
 /// Use case for validating a host URL and fetching its manifest
 public protocol ValidateHostURLUseCase: Sendable {
+    ///  Returns a valid manifest from a URL
     func execute(url: URL) async throws -> HostManifest
 }

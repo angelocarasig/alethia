@@ -20,4 +20,12 @@ internal final class RepositoryFactory {
     lazy var hostRepository: HostRepository = {
         HostRepositoryImpl()
     }()
+    
+    lazy var libraryRepository: LibraryRepository = {
+        LibraryRepositoryImpl()
+    }()
+    
+    lazy var searchRepository: SearchRepository = {
+        SearchRepositoryImpl()
+    }()
 }

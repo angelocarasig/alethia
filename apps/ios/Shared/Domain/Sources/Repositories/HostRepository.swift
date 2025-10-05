@@ -7,8 +7,6 @@
 
 import Foundation
 
-/// Repository protocol for host-related data operations.
-/// Abstracts the data source implementation details from use cases.
 public protocol HostRepository: Sendable {
     /// Validates a host URL and fetches its manifest
     func validateHost(url: URL) async throws -> HostManifest
