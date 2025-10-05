@@ -1,5 +1,44 @@
 import { AuthSchema, LanguageSchema, SearchSchema } from '@repo/schema';
 import { z } from 'zod';
+import { SearchRequestSchema } from '../api';
+
+export const SearchPresetSchema = z.strictObject({
+  name: z.string().trim().max(50).meta({
+    description: 'The name of the search preset',
+    example: 'Latest Manga',
+  }),
+  description: z.string().trim().max(200).optional().meta({
+    description: 'A brief description of the search preset',
+    example: 'Shows the latest manga updates',
+  }),
+  request: SearchRequestSchema.meta({
+    description: 'The search request details',
+    examples: [
+      {
+        // a preset for latest manga example
+        query: '',
+        page: 1,
+        limit: 20,
+        sort: 'latest',
+      },
+      {
+        // brainrot academy manhwa for example
+        query: '',
+        page: 1,
+        limit: 20,
+        sort: 'popularity',
+        direction: 'desc',
+        filters: [
+          {
+            includeTag: ['some-slug-for-academy', 'some-slug-for-manhwa'],
+          },
+        ],
+      },
+    ],
+  }),
+});
+
+export type SearchPreset = z.infer<typeof SearchPresetSchema>;
 
 export const SourceSchema = z.strictObject({
   name: z.string().trim().min(2).max(50).meta({
@@ -43,6 +82,27 @@ export const SourceSchema = z.strictObject({
   auth: AuthSchema,
 
   search: SearchSchema,
+
+  presets: z
+    .array(SearchPresetSchema)
+    .default([])
+    .meta({
+      description:
+        'Predefined search requests that can be used to quickly access popular or common searches',
+      examples: [
+        {
+          query: 'One Piece',
+          page: 1,
+        },
+        {
+          query: '',
+          page: 1,
+          limit: 5,
+          sort: 'latest',
+          direction: 'desc',
+        },
+      ],
+    }),
 });
 
 export type Source = z.infer<typeof SourceSchema>;
@@ -88,6 +148,7 @@ export const HostSchema = z.object({
         referer: 'https://mangadex.org',
         auth: AuthSchema,
         search: SearchSchema,
+        presets: [],
       },
     ],
   }),

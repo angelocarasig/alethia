@@ -1,6 +1,8 @@
 import { Source } from '@repo/contracts';
 import { Tag } from '@repo/schema';
 
+import { PRESETS } from './presets';
+
 const SERIES_TYPES: Tag[] = [
   {
     slug: 'Manga',
@@ -235,4 +237,5 @@ export const config: Source = {
     filters: ['includeTag', 'status'],
     tags: [...SERIES_TYPES, ...TAGS],
   },
+  presets: [...PRESETS],
 } as const;

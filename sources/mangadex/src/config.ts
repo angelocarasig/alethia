@@ -1,5 +1,6 @@
 import { Source } from '@repo/contracts';
 import type { MangaStatus, ContentRating } from './types';
+import { PRESETS } from './presets';
 
 // pulled from https://api.mangadex.org/manga/tag
 const MANGADEX_TAGS = [
@@ -319,6 +320,7 @@ export const config: Source = {
     ],
     tags: [...MANGADEX_TAGS],
   },
+  presets: [...PRESETS],
 } as const;
 
 export const ENDPOINTS = {
