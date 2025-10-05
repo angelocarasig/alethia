@@ -91,7 +91,7 @@ private extension SourcesScreen {
                     HStack {
                         Image(systemName: "globe")
                             .font(.subheadline)
-                        Text("Search everywhere for '\(searchText)'")
+                        Text("Search sources for '\(searchText)'?")
                             .font(.subheadline)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)

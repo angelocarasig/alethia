@@ -235,8 +235,8 @@ private extension AddHostView {
             )
             .opacity(hasAcceptedAllTerms ? 1 : 0.5)
             
-            Text("e.g. https://api.alethia.moe")
-                .font(.footnote)
+            Text("Don't know any repositories? Check the repository at ...")
+                .font(.caption2)
                 .foregroundColor(theme.colors.foreground.opacity(0.4))
         }
     }
@@ -259,7 +259,7 @@ private extension AddHostView {
         VStack(spacing: dimensions.spacing.large) {
             Banner(
                 icon: "checkmark.circle.fill",
-                title: "New Host!",
+                title: "New Host Found",
                 subtitle: "@\(manifest.author)/\(manifest.name)".lowercased(),
                 color: theme.colors.appGreen
             )
@@ -308,7 +308,7 @@ private extension AddHostView {
     
     @ViewBuilder
     func SourcesList(_ manifest: HostManifest) -> some View {
-        VStack(alignment: .leading, spacing: dimensions.spacing.regular) {
+        VStack(alignment: .leading, spacing: dimensions.spacing.minimal) {
             HStack {
                 Text("AVAILABLE SOURCES")
                     .font(.caption)
@@ -324,6 +324,10 @@ private extension AddHostView {
                     .padding(.horizontal, dimensions.padding.regular)
                     .padding(.vertical, dimensions.padding.minimal)
                     .background(theme.colors.accent.opacity(0.1))
+                    .overlay(
+                        Circle()
+                            .strokeBorder(theme.colors.accent.opacity(0.3), lineWidth: 1.5)
+                    )
                     .clipShape(.capsule)
             }
             
@@ -346,6 +350,7 @@ private extension AddHostView {
     @ViewBuilder
     func SourceRow(_ source: SourceManifest) -> some View {
         HStack(spacing: dimensions.spacing.large) {
+            // source icon
             AsyncImage(url: source.icon) { phase in
                 switch phase {
                 case .empty:
@@ -379,60 +384,51 @@ private extension AddHostView {
                     .font(.subheadline)
                     .fontWeight(.semibold)
                 
-                // auth type
-                HStack {
-                    Image(systemName: "key.fill")
-                    Text(source.auth.type.displayText)
-                        .fontWeight(.semibold)
+                Link(destination: source.url) {
+                    Text(source.url.host() ?? "Unknown URL")
+                        .font(.caption2)
                 }
-                .font(.caption2)
-                .padding(.horizontal, dimensions.padding.regular)
-                .padding(.vertical, dimensions.padding.minimal)
-                .background(theme.colors.appOrange.opacity(0.2))
-                .overlay(
-                    RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
-                        .strokeBorder(theme.colors.appOrange.opacity(0.3), lineWidth: 1.5)
-                )
-                .cornerRadius(dimensions.cornerRadius.card)
             }
             
             Spacer()
             
-            HStack {
-                Image(systemName: "hexagon")
-                    .font(.caption)
-                Text("^[\(source.presets.count) Preset](inflect: true)")
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-            }
-            .padding(.horizontal, dimensions.padding.regular)
-            .padding(.vertical, dimensions.padding.regular)
-            .background(theme.colors.appGreen.opacity(0.2))
-            .overlay(
-                RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
-                    .strokeBorder(theme.colors.appGreen.opacity(0.3), lineWidth: 1.5)
+            Badge(
+                systemName: "key.fill",
+                text: source.auth.type.displayText,
+                color: theme.colors.appOrange
             )
-            .cornerRadius(dimensions.cornerRadius.card)
             
+            Badge(
+                systemName: "hexagon",
+                text: "\(source.presets.count) \(source.presets.count == 1 ? "Preset" : "Presets")",
+                color: theme.colors.appGreen
+            )
+            
+            // nsfw badge
             if source.nsfw {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.caption)
-                    Text("NSFW")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                }
-                .padding(.horizontal, dimensions.padding.regular)
-                .padding(.vertical, dimensions.padding.regular)
-                .background(theme.colors.appRed.opacity(0.2))
-                .overlay(
-                    RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
-                        .strokeBorder(theme.colors.appRed.opacity(0.3), lineWidth: 1.5)
-                )
-                .cornerRadius(dimensions.cornerRadius.card)
+                Badge(systemName: "exclamationmark.triangle", text: "NSFW", color: theme.colors.appRed)
             }
         }
         .padding(.vertical, dimensions.padding.regular)
+    }
+    
+    @ViewBuilder
+    func Badge(systemName: String, text: String, color: Color) -> some View {
+        HStack {
+            Image(systemName: systemName)
+                .font(.caption)
+            Text(text)
+                .font(.caption2)
+                .fontWeight(.semibold)
+        }
+        .padding(.horizontal, dimensions.padding.regular)
+        .padding(.vertical, dimensions.padding.regular)
+        .background(color.opacity(0.2))
+        .overlay(
+            RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
+                .strokeBorder(color.opacity(0.3), lineWidth: 1.5)
+        )
+        .cornerRadius(dimensions.cornerRadius.card)
     }
     
     var canTest: Bool {
