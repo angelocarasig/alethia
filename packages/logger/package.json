@@ -1,5 +1,5 @@
 {
-  "name": "@repo/contracts",
+  "name": "@repo/logger",
   "version": "0.0.0",
   "private": true,
   "main": "./src/index.ts",
@@ -8,14 +8,11 @@
     "lint": "eslint .",
     "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "@repo/schema": "workspace:*",
-    "@repo/http-client": "workspace:*",
-    "@repo/logger": "workspace:*",
-    "zod": "^4.0.17"
-  },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*"
+  },
+  "dependencies": {
+    "@sentry/cloudflare": "^10.17.0"
   }
 }

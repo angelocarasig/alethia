@@ -8,6 +8,8 @@ import {
 } from '../api';
 import { Source } from './types';
 import { HTTPClient } from '@repo/http-client';
+import { ILogger, Logger } from '@repo/logger';
+import { PERFORMANCE_THRESHOLDS } from '../util';
 
 /**
  * Abstract adapter class for integrating manga sources.
@@ -39,6 +41,7 @@ export abstract class Adapter {
   protected source: Source;
 
   protected httpClient: HTTPClient;
+  protected logger: ILogger;
 
   /**
    * Creates an instance of Adapter.
@@ -58,6 +61,14 @@ export abstract class Adapter {
 
     this.source = source;
     this.httpClient = new HTTPClient();
+    this.logger = new Logger({
+      source: source.slug,
+      enableSentry: true,
+      performanceThresholds: PERFORMANCE_THRESHOLDS,
+    }).withContext({
+      source_name: source.name,
+      source_url: source.url,
+    });
   }
 
   /**
@@ -117,7 +128,20 @@ export abstract class Adapter {
       }
     }
 
-    return this.performAuthentication(credentials);
+    const endTimer = this.logger.startTimer('authenticate');
+
+    try {
+      const result = await this.performAuthentication(credentials);
+      endTimer();
+      return result;
+    } catch (error) {
+      this.logger.error('authentication failed', error as Error, {
+        auth_type: this.source.auth.type,
+        // only log field names, never values
+        fields_provided: Object.keys(credentials),
+      });
+      throw error;
+    }
   }
 
   /**
@@ -175,10 +199,23 @@ export abstract class Adapter {
     this.validateHeaders(headers);
 
     const parsedParams = SearchRequestSchema.parse(params);
-
     const searchParams = this.buildParams(parsedParams);
 
-    return this.performSearch(searchParams, headers);
+    const endTimer = this.logger.startTimer('search');
+
+    try {
+      const result = await this.performSearch(searchParams, headers);
+      endTimer();
+      return result;
+    } catch (error) {
+      this.logger.error('search failed', error as Error, {
+        query: parsedParams.query,
+        page: parsedParams.page,
+        limit: parsedParams.limit,
+        filters: parsedParams.filters,
+      });
+      throw error;
+    }
   }
 
   /**
@@ -253,7 +290,6 @@ export abstract class Adapter {
    *
    * @private
    * @param params - Search parameters
-   * @param headers - Optional auth headers
    * @returns - Promise resolving to search results
    */
   private validateFilters(params: SearchRequest): void {

@@ -384,7 +384,6 @@ export default class WeebCentralSource extends Adapter {
     }
 
     const $ = cheerio.load(await response.text());
-    console.log($.html());
 
     return $('section.flex-1.flex.flex-col.pb-4.cursor-pointer img')
       .map((_, el) => $(el).attr('src')!)
