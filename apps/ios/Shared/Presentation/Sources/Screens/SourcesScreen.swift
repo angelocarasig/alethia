@@ -15,6 +15,7 @@ public struct SourcesScreen: View {
     @State private var selectedHost: Host? = nil
     @State private var collapsedSections: Set<String> = ["disabled"]  // Only disabled is collapsed by default
     
+    @Namespace private var sourceTransition
     @Environment(\.dimensions) private var dimensions
     @Environment(\.theme) private var theme
     
@@ -153,7 +154,7 @@ private extension SourcesScreen {
                         toggleSection("pinned")
                     } content: {
                         ForEach(pinned, id: \.id) { source in
-                            SourceRow(source: source)
+                            SourceRow(source: source, namespace: sourceTransition)
                         }
                     }
                 }
@@ -163,7 +164,7 @@ private extension SourcesScreen {
                     regularSourcesByHost(regular)
                 } else {
                     ForEach(regular, id: \.id) { source in
-                        SourceRow(source: source)
+                        SourceRow(source: source, namespace: sourceTransition)
                     }
                 }
                 
@@ -177,7 +178,7 @@ private extension SourcesScreen {
                         toggleSection("disabled")
                     } content: {
                         ForEach(disabled, id: \.id) { source in
-                            SourceRow(source: source)
+                            SourceRow(source: source, namespace: sourceTransition)
                         }
                     }
                 }
@@ -201,7 +202,7 @@ private extension SourcesScreen {
                     toggleSection(sectionKey)
                 } content: {
                     ForEach(hostSources, id: \.id) { source in
-                        SourceRow(source: source)
+                        SourceRow(source: source, namespace: sourceTransition)
                     }
                 }
             }
@@ -307,13 +308,16 @@ private extension SourcesScreen {
         @Environment(\.theme) private var theme
         
         let source: Source
+        let namespace: Namespace.ID
         
         var body: some View {
             NavigationLink {
                 SourceHomeView(source: source)
+                    .navigationTransition(.zoom(sourceID: source.id, in: namespace))
             } label: {
                 HStack(spacing: dimensions.spacing.large) {
                     SourceIcon(url: source.icon.absoluteString, isDisabled: source.disabled)
+                        .matchedTransitionSource(id: source.id, in: namespace)
                     
                     sourceInfo
                     

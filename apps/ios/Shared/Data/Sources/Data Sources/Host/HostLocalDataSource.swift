@@ -96,11 +96,16 @@ internal final class HostLocalDataSourceImpl: HostLocalDataSource {
                 for source in dto.sources {
                     let finalIconPath = finalIconsDirectory.appendingPathComponent("\(source.slug).png")
                     
+                    guard let url = URL(string: source.url) else {
+                        throw RepositoryError.sourceURLInvalid
+                    }
+                    
                     var sourceRecord = SourceRecord(
                         hostId: hostId,
                         slug: source.slug,
                         name: source.name,
                         icon: finalIconPath,
+                        url: url,
                         pinned: false,
                         disabled: false,
                         authType: source.auth.type

@@ -19,17 +19,19 @@ internal struct SourceRecord: Codable {
     var slug: String
     var name: String
     var icon: URL
+    var url: URL
     var pinned: Bool = false
     var disabled: Bool = false
     
     var authType: Domain.AuthType?
     
-    init(hostId: HostRecord.ID, slug: String, name: String, icon: URL, pinned: Bool, disabled: Bool, authType: Domain.AuthType) {
+    init(hostId: HostRecord.ID, slug: String, name: String, icon: URL, url: URL, pinned: Bool, disabled: Bool, authType: Domain.AuthType) {
         self.id = nil
         self.hostId = hostId
         self.slug = slug
         self.name = name
         self.icon = icon
+        self.url = url
         self.pinned = pinned
         self.disabled = disabled
         self.authType = authType
@@ -48,6 +50,7 @@ extension SourceRecord: FetchableRecord, MutablePersistableRecord {
         static let slug = Column(CodingKeys.slug)
         static let name = Column(CodingKeys.name)
         static let icon = Column(CodingKeys.icon)
+        static let url = Column(CodingKeys.url)
         static let pinned = Column(CodingKeys.pinned)
         static let disabled = Column(CodingKeys.disabled)
         

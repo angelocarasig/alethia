@@ -17,6 +17,11 @@ public struct Source: Sendable {
     /// Local path to the icon, which should be a .png for transparency support
     public let icon: URL
     
+    public let url: URL
+    
+    /// The host's repository URL
+    public let repository: URL
+    
     public let pinned: Bool
     
     public let disabled: Bool
@@ -37,6 +42,8 @@ public struct Source: Sendable {
         slug: String,
         name: String,
         icon: URL,
+        url: URL,
+        repository: URL,
         pinned: Bool,
         disabled: Bool,
         host: String,
@@ -48,6 +55,8 @@ public struct Source: Sendable {
         self.slug = slug
         self.name = name
         self.icon = icon
+        self.url = url
+        self.repository = repository
         self.pinned = pinned
         self.disabled = disabled
         self.host = host

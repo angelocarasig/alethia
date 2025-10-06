@@ -156,6 +156,8 @@ public final class HostRepositoryImpl: HostRepository {
                 slug: sourceRecord.slug,
                 name: sourceRecord.name,
                 icon: sourceRecord.icon,
+                url: sourceRecord.url,
+                repository: hostRecord.repository, // From the host
                 pinned: sourceRecord.pinned,
                 disabled: sourceRecord.disabled,
                 host: hostDisplayName,

@@ -40,6 +40,7 @@ extension Migrations {
                 t.column("slug", .text).notNull()
                 t.column("name", .text).notNull()
                 t.column("icon", .text).notNull()
+                t.column("url", .text).notNull()
                 t.column("pinned", .boolean).notNull().defaults(to: false)
                 t.column("disabled", .boolean).notNull().defaults(to: false)
                 t.column("authType", .text)

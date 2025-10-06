@@ -14,6 +14,23 @@ public enum Auth: Equatable, Sendable {
     case apiKey(fields: ApiKeyAuthFields)
     case bearer(fields: BearerAuthFields)
     case cookie(fields: CookieAuthFields)
+    
+    public var displayText: String {
+        switch self {
+        case .apiKey:
+            return "Token Auth"
+        case .basic:
+            return "Basic Auth"
+        case .bearer:
+            return "Bearer Auth"
+        case .cookie:
+            return "Cookie Auth"
+        case .session:
+            return "Session Auth"
+        case .none:
+            return "None"
+        }
+    }
 }
 
 public enum AuthType: String, Codable, Sendable {

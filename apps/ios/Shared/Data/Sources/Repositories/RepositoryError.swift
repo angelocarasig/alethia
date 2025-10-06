@@ -12,6 +12,7 @@ enum RepositoryError: LocalizedError {
     case mappingError(reason: String)
     case hostAlreadyExists(id: HostRecord.ID, url: URL)
     case hostNotFound
+    case sourceURLInvalid
     
     var errorDescription: String? {
         switch self {
@@ -21,6 +22,8 @@ enum RepositoryError: LocalizedError {
             return "Mapping error: \(reason)"
         case .hostAlreadyExists(_, let url):
             return "Host with url '\(url.absoluteString)' already exists."
+        case .sourceURLInvalid:
+            return "Source URL is invalid."
         case .hostNotFound:
             return "Host not found."
         }
