@@ -10,7 +10,7 @@ import GRDB
 import Tagged
 import Domain
 
-internal struct MangaRecord: Codable {
+internal struct MangaRecord: Codable, Hashable {
     typealias ID = Tagged<Self, Int64>
     private(set) var id: ID?
     
@@ -241,45 +241,46 @@ extension MangaRecord {
 /// | 1.5    | E      | X        |
 /// | 2      | F      | X        |
 /// +--------+--------+----------+
+// MARK: Manga Chapter Association with Origin + Scanlator Priority
 extension MangaRecord {
-    var chapters: QueryInterfaceRequest<ChapterRecord> {
+    func fetchChapters(from db: Database) throws -> [ChapterRecord] {
         guard let mangaId = self.id?.rawValue else {
-            return ChapterRecord.none()
+            return []
         }
         
-        // show all chapters - no deduplication, just filter by manga
+        // show all chapters - no deduplication
         if showAllChapters {
-            return ChapterRecord
+            return try ChapterRecord
                 .joining(required: ChapterRecord.origin)
                 .filter(sql: "origin.mangaId = ?", arguments: [mangaId])
                 .order(ChapterRecord.Columns.number.asc)
+                .fetchAll(db)
         }
         
         // deduplicated chapters with priority rules
-        let numberFilter = showHalfChapters
-        ? ""
-        : "AND chapter.number = CAST(chapter.number AS INTEGER)"
+        let numberFilter = showHalfChapters ? "" : "AND c.number = CAST(c.number AS INTEGER)"
         
-        return ChapterRecord
-            .select(sql: """
-                SELECT c.* FROM (
-                    SELECT chapter.*,
-                           ROW_NUMBER() OVER (
-                               PARTITION BY chapter.number 
-                               ORDER BY origin.priority ASC,
-                                        COALESCE(osp.priority, 999) ASC
-                           ) as rn
-                    FROM chapter
-                    JOIN origin ON origin.id = chapter.originId
-                    LEFT JOIN origin_scanlator_priority osp 
-                        ON osp.originId = origin.id 
-                        AND osp.scanlatorId = chapter.scanlatorId
-                    WHERE origin.mangaId = ?
-                    \(numberFilter)
-                ) c
-                WHERE c.rn = 1
-                ORDER BY c.number ASC
-                """, arguments: [mangaId])
-            .asRequest(of: ChapterRecord.self)
+        let sql = """
+            WITH ranked_chapters AS (
+                SELECT 
+                    c.*,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY c.number 
+                        ORDER BY o.priority ASC, COALESCE(osp.priority, 999) ASC
+                    ) as rank
+                FROM chapter c
+                JOIN origin o ON o.id = c.originId
+                LEFT JOIN origin_scanlator_priority osp 
+                    ON osp.originId = o.id 
+                    AND osp.scanlatorId = c.scanlatorId
+                WHERE o.mangaId = ?
+                \(numberFilter)
+            )
+            SELECT * FROM ranked_chapters
+            WHERE rank = 1
+            ORDER BY number ASC
+            """
+        
+        return try ChapterRecord.fetchAll(db, sql: sql, arguments: [mangaId])
     }
 }

@@ -110,10 +110,10 @@ public struct SourceHomeView: View {
                         
                         // status tags
                         HStack(spacing: dimensions.spacing.regular) {
-                            if true {
+                            if source.pinned {
                                 angledTag(text: "PINNED", color: theme.colors.appGreen)
                             }
-                            if true {
+                            if source.disabled {
                                 angledTag(text: "DISABLED", color: theme.colors.appRed)
                             }
                         }

@@ -10,19 +10,19 @@ import Domain
 import GRDB
 
 public final class HostRepositoryImpl: HostRepository {
-    private let remoteDataSource: HostRemoteDataSource
-    private let localDataSource: HostLocalDataSource
+    private let remote: HostRemoteDataSource
+    private let local: HostLocalDataSource
     
     public init() {
-        self.remoteDataSource = HostRemoteDataSourceImpl()
-        self.localDataSource = HostLocalDataSourceImpl()
+        self.remote = HostRemoteDataSourceImpl()
+        self.local = HostLocalDataSourceImpl()
     }
     
     public func validateHost(url: URL) async throws -> HostDTO {
-        let dto = try await remoteDataSource.fetchManifest(from: url.trailingSlash(.remove))
+        let dto = try await remote.fetchManifest(from: url.trailingSlash(.remove))
         
         // check if already exists
-        if let (_, repositoryURL) = try await localDataSource.hostExists(with: dto.repository) {
+        if let (_, repositoryURL) = try await local.hostExists(with: dto.repository) {
             throw RepositoryError.hostAlreadyExists(
                 id: HostRecord.ID(rawValue: 0), // temporary
                 url: repositoryURL
@@ -56,7 +56,7 @@ public final class HostRepositoryImpl: HostRepository {
     }
     
     public func saveHost(_ dto: HostDTO, hostURL: URL) async throws -> Host {
-        let (hostRecord, sourceRecords, configRecords, tagRecords, presetRecords) = try await localDataSource.saveHost(dto, hostURL: hostURL)
+        let (hostRecord, sourceRecords, configRecords, tagRecords, presetRecords) = try await local.saveHost(dto, hostURL: hostURL)
         
         return try mapToHost(
             hostRecord: hostRecord,
@@ -69,7 +69,7 @@ public final class HostRepositoryImpl: HostRepository {
     
     public func getAllHosts() -> AsyncStream<[Host]> {
         AsyncStream { continuation in
-            let recordsStream = localDataSource.observeAllHosts()
+            let recordsStream = local.observeAllHosts()
             
             let task = Task {
                 for await recordsData in recordsStream {
@@ -93,7 +93,7 @@ public final class HostRepositoryImpl: HostRepository {
     }
     
     public func deleteHost(id: Int64) async throws {
-        try await localDataSource.deleteHost(id: id)
+        try await local.deleteHost(id: id)
     }
     
     // MARK: - Private Mapping Methods

@@ -25,4 +25,20 @@ public struct Origin: Sendable {
     
     /// Source-specific status value
     public let status: Status
+    
+    public init(
+        id: Int64,
+        slug: String,
+        url: URL,
+        priority: Int,
+        classification: Classification,
+        status: Status
+    ) {
+        self.id = id
+        self.slug = slug
+        self.url = url
+        self.priority = priority
+        self.classification = classification
+        self.status = status
+    }
 }

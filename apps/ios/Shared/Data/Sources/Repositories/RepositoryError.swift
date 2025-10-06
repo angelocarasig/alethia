@@ -13,6 +13,7 @@ enum RepositoryError: LocalizedError {
     case hostAlreadyExists(id: HostRecord.ID, url: URL)
     case hostNotFound
     case sourceURLInvalid
+    case mangaNotFound
     
     var errorDescription: String? {
         switch self {
@@ -26,6 +27,8 @@ enum RepositoryError: LocalizedError {
             return "Source URL is invalid."
         case .hostNotFound:
             return "Host not found."
+        case .mangaNotFound:
+            return "Manga could not be found."
         }
     }
 }

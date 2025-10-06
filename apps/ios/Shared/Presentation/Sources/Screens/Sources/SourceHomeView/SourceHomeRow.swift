@@ -49,7 +49,6 @@ private final class SourceHomeRowViewModel {
 
 struct SourceHomeRow: View {
     @State private var vm: SourceHomeRowViewModel
-    @State private var navigationPath = NavigationPath()
     @Namespace private var namespace
     
     @Environment(\.dimensions) private var dimensions
@@ -127,9 +126,14 @@ struct SourceHomeRow: View {
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: Dimensions().spacing.minimal) {
-                        ForEach(vm.entries, id: \.slug) {
-                            EntryCard(entry: $0, lineLimit: 2)
-                                .frame(width: 125)
+                        ForEach(vm.entries, id: \.slug) { entry in
+                            NavigationLink {
+                                MangaDetailView(entry: entry)
+                            } label: {
+                                EntryCard(entry: entry, lineLimit: 2)
+                                    .frame(width: 125)
+                                    .id("\(preset.id)/\(entry.slug)")
+                            }
                         }
                     }
                 }

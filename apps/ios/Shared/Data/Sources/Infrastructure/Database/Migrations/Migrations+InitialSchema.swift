@@ -103,7 +103,7 @@ extension Migrations {
                 t.autoIncrementedPrimaryKey("id")
                 t.belongsTo("manga", onDelete: .cascade)
                 t.column("sourceId", .integer).references("source", onDelete: .setNull)
-                t.column("slug", .text).notNull()
+                t.column("slug", .text).notNull().indexed()
                 t.column("url", .text).notNull()
                 t.column("priority", .integer).notNull().defaults(to: 0)
                 t.column("classification", .text).notNull()

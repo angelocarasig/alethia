@@ -32,4 +32,28 @@ public struct Chapter: Sendable {
     public var finished: Bool {
         progress >= 1
     }
+    
+    public init(
+        id: Int64,
+        slug: String,
+        title: String,
+        number: Double,
+        date: Date,
+        scanlator: String,
+        language: LanguageCode,
+        url: String,
+        icon: URL?,
+        progress: Double
+    ) {
+        self.id = id
+        self.slug = slug
+        self.title = title
+        self.number = number
+        self.date = date
+        self.scanlator = scanlator
+        self.language = language
+        self.url = url
+        self.icon = icon
+        self.progress = progress
+    }
 }

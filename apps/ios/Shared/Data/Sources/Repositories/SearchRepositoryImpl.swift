@@ -31,6 +31,8 @@ public final class SearchRepositoryImpl: SearchRepository {
         // map dto to domain entities
         return responseDTO.results.map { dto in
             Entry(
+                mangaId: nil,
+                sourceId: source.id,
                 slug: dto.slug,
                 title: dto.title,
                 cover: URL(string: dto.cover ?? "")!,
@@ -53,6 +55,8 @@ public final class SearchRepositoryImpl: SearchRepository {
         // map dto to domain entities
         return responseDTO.results.map { dto in
             Entry(
+                mangaId: nil,
+                sourceId: source.id,
                 slug: dto.slug,
                 title: dto.title,
                 cover: URL(string: dto.cover ?? "")!,

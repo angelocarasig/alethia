@@ -41,3 +41,17 @@ public extension Injector {
         useCaseFactory.makeSearchWithPresetUseCase()
     }
 }
+
+// MARK: Library Use-Cases
+public extension Injector {
+    static func makeFindMatchesUseCase() -> FindMatchesUseCase {
+        useCaseFactory.makeFindMatchesUseCase()
+    }
+}
+
+// MARK: Manga Use-Cases
+public extension Injector {
+    static func makeGetMangaDetailsUseCase() -> GetMangaDetailsUseCase {
+        useCaseFactory.makeGetMangaDetailsUseCase()
+    }
+}

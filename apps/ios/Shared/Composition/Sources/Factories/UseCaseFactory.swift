@@ -31,8 +31,25 @@ extension UseCaseFactory {
     func makeGetAllhostsUseCase() -> GetAllHostsUseCase {
         GetAllHostsUseCaseImpl(repository: repositoryFactory.hostRepository)
     }
-    
+}
+
+// MARK: - Search Use Cases
+extension UseCaseFactory {
     func makeSearchWithPresetUseCase() -> SearchWithPresetUseCase {
         SearchWithPresetUseCaseImpl(repository: repositoryFactory.searchRepository)
+    }
+}
+
+// MARK: - Library Use Cases
+extension UseCaseFactory {
+    func makeFindMatchesUseCase() -> FindMatchesUseCase {
+        FindMatchesUseCaseImpl(repository: repositoryFactory.libraryRepository)
+    }
+}
+
+// MARK: - Manga Use Cases
+extension UseCaseFactory {
+    func makeGetMangaDetailsUseCase() -> GetMangaDetailsUseCase {
+        GetMangaDetailsUseCaseImpl(repository: repositoryFactory.mangaRepository)
     }
 }

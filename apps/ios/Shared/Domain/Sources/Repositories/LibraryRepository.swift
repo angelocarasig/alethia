@@ -9,5 +9,5 @@ import Foundation
 
 public protocol LibraryRepository: Sendable {
     /// From an array of Entries return a stream of enriched entries based on match values
-    func findMatches(for raw: [Entry]) -> AsyncStream<[Entry]>
+    func findMatches(for raw: [Entry]) -> AsyncStream<Result<[Entry], Error>>
 }

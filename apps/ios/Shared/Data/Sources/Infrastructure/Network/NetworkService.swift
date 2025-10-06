@@ -16,9 +16,16 @@ public final class NetworkService: Sendable {
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
             
-            let formatter = NetworkService.dateFormatter()
-            if let date = formatter.date(from: dateString) {
-                return date
+            // try multiple date formats
+            let formatters = [
+                NetworkService.isoDateFormatter(),      // 2019-08-25T10:51:55+00:00
+                NetworkService.millisecondDateFormatter() // 2019-08-25T10:51:55.123Z
+            ]
+            
+            for formatter in formatters {
+                if let date = formatter.date(from: dateString) {
+                    return date
+                }
             }
             
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date string: \(dateString)")
@@ -72,10 +79,21 @@ extension NetworkService {
         }
     }
     
-    static func dateFormatter() -> DateFormatter {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
-        dateFormatter.timeZone = TimeZone(abbreviation: "UTC")
-        return dateFormatter
+    // iso 8601 with timezone offset (2019-08-25T10:51:55+00:00)
+    static func isoDateFormatter() -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZZZZZ"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }
+    
+    // iso 8601 with milliseconds (2019-08-25T10:51:55.123Z)
+    static func millisecondDateFormatter() -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
     }
 }

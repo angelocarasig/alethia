@@ -28,4 +28,8 @@ internal final class RepositoryFactory {
     lazy var searchRepository: SearchRepository = {
         SearchRepositoryImpl()
     }()
+    
+    lazy var mangaRepository: MangaRepository = {
+        MangaRepositoryImpl()
+    }()
 }

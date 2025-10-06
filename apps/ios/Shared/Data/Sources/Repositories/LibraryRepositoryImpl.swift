@@ -12,7 +12,7 @@ public final class LibraryRepositoryImpl: LibraryRepository {
     public init() {
     }
     
-    public func findMatches(for raw: [Entry]) -> AsyncStream<[Entry]> {
+    public func findMatches(for raw: [Entry]) -> AsyncStream<Result<[Entry], Error>> {
         AsyncStream { continuation in
             // TODO: Implement find matches logic
             continuation.finish()

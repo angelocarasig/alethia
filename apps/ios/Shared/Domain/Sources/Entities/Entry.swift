@@ -8,6 +8,11 @@
 import Foundation
 
 public struct Entry: Codable, Sendable {
+    /// When null most likely
+    public let mangaId: Int64?
+    
+    public let sourceId: Int64?
+    
     public let slug: String
 
     public let title: String
@@ -20,12 +25,16 @@ public struct Entry: Codable, Sendable {
     public let unread: Int
     
     public init(
+        mangaId: Int64? = nil,
+        sourceId: Int64? = nil,
         slug: String,
         title: String,
         cover: URL,
         state: EntryState,
         unread: Int = 0
     ) {
+        self.mangaId = mangaId
+        self.sourceId = sourceId
         self.slug = slug
         self.title = title
         self.cover = cover
