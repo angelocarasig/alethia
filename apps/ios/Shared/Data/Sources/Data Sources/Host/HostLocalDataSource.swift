@@ -205,9 +205,6 @@ internal final class HostLocalDataSourceImpl: HostLocalDataSource {
     }
     
     func deleteHost(id: Int64) async throws {
-        try await database.writer.write { db in
-            try HostRecord.deleteOne(db, key: HostRecord.ID(rawValue: id))
-        }
     }
     
     private func fetchAllHostsWithData(_ db: GRDB.Database) throws -> [(HostRecord, [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])])] {
