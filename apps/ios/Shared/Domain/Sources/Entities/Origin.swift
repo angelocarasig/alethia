@@ -26,13 +26,16 @@ public struct Origin: Sendable {
     /// Source-specific status value
     public let status: Status
     
+    public let source: Source?
+    
     public init(
         id: Int64,
         slug: String,
         url: URL,
         priority: Int,
         classification: Classification,
-        status: Status
+        status: Status,
+        source: Source?
     ) {
         self.id = id
         self.slug = slug
@@ -40,5 +43,6 @@ public struct Origin: Sendable {
         self.priority = priority
         self.classification = classification
         self.status = status
+        self.source = source
     }
 }

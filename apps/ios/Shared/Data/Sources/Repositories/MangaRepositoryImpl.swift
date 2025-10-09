@@ -58,13 +58,11 @@ public final class MangaRepositoryImpl: MangaRepository {
     
     private func fetchAndSaveFromRemote(entry: Entry) async throws {
         guard let sourceId = entry.sourceId else {
-            throw RepositoryError.mappingError(reason: "Entry must have source ID for remote fetch")
+            throw RepositoryError.mappingError(reason: "entry must have source id for remote fetch")
         }
         
-        // get source and host from local data source
         let (source, host) = try await local.getSourceAndHost(sourceId: sourceId)
         
-        // fetch manga and chapters from remote concurrently
         async let mangaDTO = remote.fetchManga(
             sourceSlug: source.slug,
             entrySlug: entry.slug,
@@ -79,7 +77,6 @@ public final class MangaRepositoryImpl: MangaRepository {
         
         let (manga, chapters) = try await (mangaDTO, chaptersDTO)
         
-        // save to database - this will trigger the observation
         try await local.saveManga(
             from: manga,
             chapters: chapters,
@@ -91,18 +88,15 @@ public final class MangaRepositoryImpl: MangaRepository {
     private func mapBundlesToEntities(_ bundles: [MangaDataBundle]) throws -> [Manga] {
         return try bundles.map { bundle in
             guard let mangaId = bundle.manga.id else {
-                throw RepositoryError.mappingError(reason: "Manga ID is nil")
+                throw RepositoryError.mappingError(reason: "manga id is nil")
             }
             
-            // map authors
             let authorNames = bundle.authors.map { $0.name }
             
-            // map tags - filter for canonical only
             let tagNames = bundle.tags
                 .filter { $0.isCanonical }
                 .map { $0.displayName }
             
-            // map covers - sort by primary and id
             let coverURLs = bundle.covers
                 .sorted { lhs, rhs in
                     if lhs.isPrimary != rhs.isPrimary {
@@ -112,13 +106,15 @@ public final class MangaRepositoryImpl: MangaRepository {
                 }
                 .map { $0.localPath }
             
-            // map alternative titles
             let altTitles = bundle.alternativeTitles.map { $0.title }
             
-            // map origins
             let originEntities = try bundle.origins.map { origin in
                 guard let originId = origin.id else {
-                    throw RepositoryError.mappingError(reason: "Origin ID is nil")
+                    throw RepositoryError.mappingError(reason: "origin id is nil")
+                }
+                
+                let domainSource: Source? = try bundle.sources[originId].map { (sourceRecord, hostRecord) in
+                    try self.mapSourceRecordToDomain(sourceRecord, host: hostRecord)
                 }
                 
                 return Origin(
@@ -127,11 +123,11 @@ public final class MangaRepositoryImpl: MangaRepository {
                     url: URL(string: origin.url)!,
                     priority: origin.priority,
                     classification: origin.classification,
-                    status: origin.status
+                    status: origin.status,
+                    source: domainSource
                 )
             }
             
-            // map chapters - all metadata already provided by data source
             let chapterEntities = bundle.chapters.compactMap { enriched -> Chapter? in
                 guard let chapterId = enriched.chapter.id else { return nil }
                 
@@ -168,6 +164,62 @@ public final class MangaRepositoryImpl: MangaRepository {
                 showAllChapters: bundle.manga.showAllChapters,
                 showHalfChapters: bundle.manga.showHalfChapters
             )
+        }
+    }
+    
+    private func mapSourceRecordToDomain(_ sourceRecord: SourceRecord, host: HostRecord) throws -> Source {
+        guard let sourceId = sourceRecord.id else {
+            throw RepositoryError.mappingError(reason: "source id is nil")
+        }
+        
+        guard let hostId = host.id else {
+            throw RepositoryError.mappingError(reason: "host id is nil")
+        }
+        
+        let auth = mapAuthType(sourceRecord.authType)
+        
+        // simplified search - origin doesn't need full search details
+        let search = Search(
+            supportedSorts: [],
+            supportedFilters: [],
+            tags: [],
+            presets: []
+        )
+        
+        let hostDisplayName = "@\(host.author)/\(host.name)"
+        
+        return Source(
+            id: sourceId.rawValue,
+            slug: sourceRecord.slug,
+            name: sourceRecord.name,
+            icon: sourceRecord.icon,
+            url: sourceRecord.url,
+            repository: host.repository,
+            pinned: sourceRecord.pinned,
+            disabled: sourceRecord.disabled,
+            host: hostDisplayName,
+            auth: auth,
+            search: search,
+            presets: []
+        )
+    }
+    
+    private func mapAuthType(_ authType: AuthType?) -> Auth {
+        guard let authType = authType else { return .none }
+        
+        switch authType {
+        case .none:
+            return .none
+        case .basic:
+            return .basic(fields: BasicAuthFields(username: "", password: ""))
+        case .session:
+            return .session(fields: SessionAuthFields(username: "", password: ""))
+        case .apiKey:
+            return .apiKey(fields: ApiKeyAuthFields(apiKey: ""))
+        case .bearer:
+            return .bearer(fields: BearerAuthFields(token: ""))
+        case .cookie:
+            return .cookie(fields: CookieAuthFields(cookie: ""))
         }
     }
 }

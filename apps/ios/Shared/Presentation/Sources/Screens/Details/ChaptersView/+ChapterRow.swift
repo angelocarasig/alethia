@@ -22,7 +22,7 @@ struct ChapterRow: View {
             Spacer()
             download
         }
-        .padding(.vertical, dimensions.padding.regular)
+        .padding(.vertical, dimensions.padding.minimal)
         .opacity(chapter.finished ? 0.6 : 1.0)
     }
     
@@ -39,7 +39,7 @@ struct ChapterRow: View {
     
     @ViewBuilder
     private var info: some View {
-        VStack(alignment: .leading, spacing: dimensions.spacing.minimal) {
+        VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Text("Chapter \(chapter.number.toString())")
                 Text("•")
@@ -69,16 +69,17 @@ struct ChapterRow: View {
                         .cornerRadius(dimensions.cornerRadius.regular)
                 }
             }
-            .font(.subheadline)
+            .font(.caption)
             
             Text(chapter.title.isEmpty ? "Chapter \(chapter.number.toString())" : chapter.title)
                 .lineLimit(2)
-                .font(.headline)
+                .font(.subheadline)
                 .fontWeight(.semibold)
             
             Text(chapter.scanlator)
-                .font(.subheadline)
+                .font(.caption)
                 .foregroundColor(.secondary)
+                .lineLimit(1)
             
             if chapter.progress > 0 && chapter.progress != 1 {
                 ProgressView(value: chapter.progress)

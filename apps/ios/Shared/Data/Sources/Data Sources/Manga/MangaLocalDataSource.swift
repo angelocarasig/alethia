@@ -19,6 +19,7 @@ internal struct MangaDataBundle {
     let covers: [CoverRecord]
     let alternativeTitles: [AlternativeTitleRecord]
     let origins: [OriginRecord]
+    let sources: [OriginRecord.ID: (source: SourceRecord, host: HostRecord)]
     let chapters: [ChapterWithMetadata]
 }
 
@@ -52,32 +53,38 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
                 guard let self = self else { return [] }
                 
                 do {
-                    // find matching manga ids
                     let mangaIds = try self.findMangaIds(for: entry, in: db)
                     
                     guard !mangaIds.isEmpty else {
                         return []
                     }
                     
-                    // fetch manga records
                     let mangaRecords = try MangaRecord
                         .filter(mangaIds.contains(MangaRecord.Columns.id))
                         .fetchAll(db)
                     
-                    // build bundles by fetching relationships for each manga
                     var bundles: [MangaDataBundle] = []
                     
                     for mangaRecord in mangaRecords {
                         guard mangaRecord.id != nil else { continue }
                         
-                        // fetch all relationships for this manga
                         let authors = try mangaRecord.authors.fetchAll(db)
                         let tags = try mangaRecord.tags.fetchAll(db)
                         let covers = try mangaRecord.covers.fetchAll(db)
                         let alternativeTitles = try mangaRecord.alternativeTitles.fetchAll(db)
                         let origins = try mangaRecord.origins.fetchAll(db)
                         
-                        // fetch chapters with metadata
+                        // fetch sources and hosts for each origin
+                        var sources: [OriginRecord.ID: (source: SourceRecord, host: HostRecord)] = [:]
+                        for origin in origins {
+                            if let originId = origin.id,
+                               let sourceId = origin.sourceId,
+                               let source = try? SourceRecord.fetchOne(db, key: sourceId),
+                               let host = try? source.host.fetchOne(db) {
+                                sources[originId] = (source: source, host: host)
+                            }
+                        }
+                        
                         let chaptersWithMetadata = try self.fetchChaptersWithMetadata(
                             for: origins,
                             manga: mangaRecord,
@@ -91,6 +98,7 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
                             covers: covers,
                             alternativeTitles: alternativeTitles,
                             origins: origins,
+                            sources: sources,
                             chapters: chaptersWithMetadata
                         )
                         
@@ -100,7 +108,7 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
                     return bundles
                 } catch {
 #if DEBUG
-                    print("Error in getAllManga: \(error)")
+                    print("error in getAllManga: \(error)")
 #endif
                     return []
                 }
@@ -114,7 +122,7 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
                     }
                 } catch {
 #if DEBUG
-                    print("Observation error: \(error)")
+                    print("observation error: \(error)")
 #endif
                 }
                 continuation.finish()
@@ -129,7 +137,7 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
     func getSourceAndHost(sourceId: Int64) async throws -> (source: SourceRecord, host: HostRecord) {
         try await database.reader.read { db in
             guard let source = try SourceRecord.fetchOne(db, key: SourceRecord.ID(rawValue: sourceId)) else {
-                throw RepositoryError.mappingError(reason: "Source not found")
+                throw RepositoryError.mappingError(reason: "source not found")
             }
             
             guard let host = try source.host.fetchOne(db) else {
@@ -153,10 +161,9 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
             try mangaRecord.insert(db)
             
             guard let mangaId = mangaRecord.id else {
-                throw RepositoryError.mappingError(reason: "Failed to get manga ID after insert")
+                throw RepositoryError.mappingError(reason: "failed to get manga id after insert")
             }
             
-            // batch insert related entities
             try self.batchInsertAuthors(dto.authors, mangaId: mangaId, db: db)
             try self.batchInsertTags(dto.tags, mangaId: mangaId, db: db)
             try self.batchInsertCovers(dto.covers, mangaId: mangaId, db: db)
@@ -175,12 +182,10 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
     // MARK: - Private Helper Methods
     
     private func findMangaIds(for entry: Entry, in db: Database) throws -> [Int64] {
-        // strategy 1: direct manga id lookup
         if let mangaId = entry.mangaId {
             return [mangaId]
         }
         
-        // strategy 2: origin slug matching
         let idsBySlug = try OriginRecord
             .select(OriginRecord.Columns.mangaId)
             .filter(OriginRecord.Columns.slug == entry.slug)
@@ -192,7 +197,6 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
             return Array(Set(idsBySlug))
         }
         
-        // strategy 3: title matching
         let idsByTitle = try MangaRecord
             .select(MangaRecord.Columns.id)
             .filter(MangaRecord.Columns.title == entry.title)
@@ -218,26 +222,20 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
         
         guard !originIds.isEmpty else { return [] }
         
-        // fetch all chapters for these origins
         let chapters = try ChapterRecord
             .filter(originIds.contains(ChapterRecord.Columns.originId))
             .fetchAll(db)
         
-        // apply filtering based on manga settings
         let filteredChapters = applyChapterFilters(
             chapters: chapters,
             manga: manga,
             db: db
         )
         
-        // fetch metadata for filtered chapters
         var chaptersWithMetadata: [ChapterWithMetadata] = []
         
         for chapter in filteredChapters {
-            // fetch scanlator
             let scanlator = try chapter.scanlator.fetchOne(db)
-            
-            // fetch source icon through origin -> source
             let origin = try chapter.origin.fetchOne(db)
             let source = try origin?.source.fetchOne(db)
             
@@ -258,14 +256,12 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
         
         var filtered = chapters
         
-        // filter out decimal chapters if needed
         if !manga.showHalfChapters {
             filtered = filtered.filter { chapter in
                 chapter.number == Double(Int(chapter.number))
             }
         }
         
-        // deduplicate by chapter number, keeping the first occurrence
         let grouped = Dictionary(grouping: filtered) { $0.number }
         filtered = grouped.compactMap { (_, chapters) in
             chapters.first
@@ -329,7 +325,6 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
             
             let localCoverPath = coversDirectory.appendingPathComponent("\(index).jpg")
             
-            // download cover image - consider making this async in production
             if let coverData = try? Data(contentsOf: coverURL) {
                 try? coverData.write(to: localCoverPath)
             }
@@ -355,7 +350,6 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
     }
     
     private func insertOrigin(_ dto: MangaDTO, mangaId: MangaRecord.ID, sourceId: Int64, db: Database) throws -> OriginRecord {
-        // check for existing origins to determine priority
         let existingOrigins = try OriginRecord
             .filter(OriginRecord.Columns.mangaId == mangaId)
             .fetchAll(db)
@@ -377,10 +371,8 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
     }
     
     private func batchInsertChapters(_ chapters: [ChapterDTO], originId: OriginRecord.ID, db: Database) throws {
-        // group chapters by scanlator
         let chaptersByScanlator = Dictionary(grouping: chapters) { $0.scanlator }
         
-        // get existing priorities for this origin
         let existingPriorities = try OriginScanlatorPriorityRecord
             .filter(OriginScanlatorPriorityRecord.Columns.originId == originId)
             .fetchAll(db)
@@ -388,7 +380,6 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
         var nextPriority = existingPriorities.map(\.priority).max() ?? -1
         
         for (scanlatorName, chapterGroup) in chaptersByScanlator {
-            // get or create scanlator
             var scanlator = try ScanlatorRecord
                 .filter(ScanlatorRecord.Columns.name == scanlatorName)
                 .fetchOne(db) ?? ScanlatorRecord(name: scanlatorName)
@@ -399,7 +390,6 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
             
             guard let scanlatorId = scanlator.id else { continue }
             
-            // check if priority relationship exists
             let relationExists = existingPriorities.contains { $0.scanlatorId == scanlatorId }
             
             if !relationExists {
@@ -412,7 +402,6 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
                 try priority.insert(db)
             }
             
-            // insert chapters
             for chapterDTO in chapterGroup {
                 var chapter = ChapterRecord(
                     originId: originId,

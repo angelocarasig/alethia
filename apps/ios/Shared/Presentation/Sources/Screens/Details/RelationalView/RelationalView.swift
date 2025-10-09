@@ -9,16 +9,17 @@ import SwiftUI
 import Domain
 
 struct RelationalView: View {
+    @Environment(\.dimensions) private var dimensions
     
     let manga: Manga
     
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: dimensions.spacing.regular) {
             TrackingView(title: manga.title, authors: manga.authors)
             
             Divider()
             
-            SourcesView()
+            SourcesView(origins: manga.origins)
             
             Divider()
             
