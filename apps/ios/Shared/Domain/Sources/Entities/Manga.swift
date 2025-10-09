@@ -55,7 +55,20 @@ public struct Manga: Sendable {
         self.id = id
         self.title = title
         self.authors = authors
-        self.synopsis = synopsis
+        
+        // re-parse synopsis as markdown to ensure proper formatting
+        let plainText = String(synopsis.characters)
+        if let parsed = try? AttributedString(
+            markdown: plainText,
+            options: AttributedString.MarkdownParsingOptions(
+                interpretedSyntax: .inlineOnlyPreservingWhitespace
+            )
+        ) {
+            self.synopsis = parsed
+        } else {
+            self.synopsis = synopsis
+        }
+        
         self.alternativeTitles = alternativeTitles
         self.tags = tags
         self.covers = covers

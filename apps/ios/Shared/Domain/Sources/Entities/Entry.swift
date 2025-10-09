@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct Entry: Codable, Sendable {
+public struct Entry: Codable, Sendable, Hashable {
     /// When null most likely
     public let mangaId: Int64?
     

@@ -1,112 +1,71 @@
+////
+////  File.swift
+////  Presentation
+////
+////  Created by Angelo Carasig on 9/10/2025.
+////
 //
-//  MangaDetailView.swift
-//  Presentation
+//import Foundation
+//import Domain
 //
-//  Created by Angelo Carasig on 7/10/2025.
-//
-
-import Foundation
-import SwiftUI
-import Composition
-import Domain
-import Kingfisher
-
-@MainActor
-@Observable
-private final class MangaDetailViewModel {
-    @ObservationIgnored
-    private let getMangaDetailsUseCase: GetMangaDetailsUseCase
-    
-    private let entry: Entry
-    
-    private(set) var manga: [Manga] = []
-    private(set) var isLoading: Bool = false
-    private(set) var error: Error?
-    
-    init(entry: Entry) {
-        self.entry = entry
-        self.getMangaDetailsUseCase = Injector.makeGetMangaDetailsUseCase()
-    }
-    
-    func loadManga() {
-        Task {
-            isLoading = true
-            error = nil
-            
-            for await result in getMangaDetailsUseCase.execute(entry: entry) {
-                switch result {
-                case .success(let mangaList):
-                    manga = mangaList
-                    isLoading = false
-                case .failure(let err):
-                    error = err
-                    isLoading = false
-                }
-            }
-        }
-    }
-}
-
-struct MangaDetailView: View {
-    @State private var vm: MangaDetailViewModel
-    
-    @Environment(\.dimensions) private var dimensions
-    @Environment(\.theme) private var theme
-    
-    let entry: Entry
-    
-    init(entry: Entry) {
-        self.entry = entry
-        self.vm = MangaDetailViewModel(entry: entry)
-    }
-    
-    var body: some View {
-        Group {
-            if vm.isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error = vm.error {
-                ContentUnavailableView(
-                    "Failed to Load",
-                    systemImage: "exclamationmark.triangle",
-                    description: Text(error.localizedDescription)
-                )
-                .overlay(alignment: .bottom) {
-                    Button("Retry") {
-                        vm.loadManga()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .padding()
-                }
-            } else if let manga = vm.manga.first {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: dimensions.spacing.regular) {
-                        // title
-                        Text(manga.title)
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-                        
-                        // chapter count
-                        Text("\(manga.chapters.count) Chapters")
-                            .font(.caption)
-                            .foregroundColor(theme.colors.foreground.opacity(0.6))
-                    }
-                    .padding()
-                }
-            } else {
-                ContentUnavailableView(
-                    "No Manga Found",
-                    systemImage: "book.closed",
-                    description: Text("Could not find manga for this entry")
-                )
-            }
-        }
-        .navigationTitle(entry.title)
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            if vm.manga.isEmpty && !vm.isLoading {
-                vm.loadManga()
-            }
-        }
-    }
-}
+//extension Manga {
+//    public static var previewManga: Manga {
+//        let synopsis = try! AttributedString(
+//            markdown: "After his sister is devoured by a dragon and losing all their supplies in a failed dungeon raid, Laios and his party are determined to save his sister before she gets digested. Completely broke and having to resort to eating monsters as food, they meet a dwarf who will introduce them to the world of Dungeon Meshi - delicious cuisine made from ingredients such as the monsters of the dungeon.",
+//            options: AttributedString.MarkdownParsingOptions(
+//                interpretedSyntax: .inlineOnlyPreservingWhitespace
+//            )
+//        )
+//        
+//        let covers = [
+//            URL(string: "https://mangadex.org/covers/77bee52c-d2d6-44ad-a33a-1734c1fe696a/cover.jpg")!
+//        ]
+//        
+//        let origins = [
+//            Origin(
+//                id: 1,
+//                slug: "77bee52c-d2d6-44ad-a33a-1734c1fe696a",
+//                url: URL(string: "https://mangadex.org/title/77bee52c-d2d6-44ad-a33a-1734c1fe696a")!,
+//                priority: 0,
+//                classification: .Safe,
+//                status: .Completed
+//            )
+//        ]
+//        
+//        let chapterRange = Array(1...97)
+//        let chapters = chapterRange.map { num in
+//            Chapter(
+//                id: Int64(num),
+//                slug: "chapter-\(num)",
+//                title: num % 5 == 0 ? "Special Chapter \(num)" : "",
+//                number: Double(num),
+//                date: Date().addingTimeInterval(-Double(num) * 86400),
+//                scanlator: "Scanlator Group",
+//                language: LanguageCode("en"),
+//                url: "https://example.com/chapter/\(num)",
+//                icon: URL(string: "https://mangadex.org/img/mangadex-logo.svg"),
+//                progress: num <= 45 ? 1.0 : (num == 46 ? 0.6 : 0.0)
+//            )
+//        }
+//        
+//        return Manga(
+//            id: 1,
+//            title: "Dungeon Meshi",
+//            authors: ["Kui Ryouko"],
+//            synopsis: synopsis,
+//            alternativeTitles: ["ダンジョン飯", "Delicious in Dungeon"],
+//            tags: ["Adventure", "Comedy", "Fantasy", "Cooking", "Seinen"],
+//            covers: covers,
+//            origins: origins,
+//            chapters: chapters,
+//            inLibrary: true,
+//            addedAt: Date().addingTimeInterval(-86400 * 60),
+//            updatedAt: Date().addingTimeInterval(-86400 * 3),
+//            lastFetchedAt: Date().addingTimeInterval(-86400),
+//            lastReadAt: Date().addingTimeInterval(-86400 * 2),
+//            orientation: .rightToLeft,
+//            showAllChapters: true,
+//            showHalfChapters: false
+//        )
+//    }
+//}

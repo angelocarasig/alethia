@@ -33,6 +33,10 @@ public struct Chapter: Sendable {
         progress >= 1
     }
     
+    public var downloaded: Bool {
+        false
+    }
+    
     public init(
         id: Int64,
         slug: String,

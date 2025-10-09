@@ -68,7 +68,7 @@ private extension SourcesScreen {
     @ViewBuilder
     var mainContent: some View {
         if vm.isLoading {
-            Spinner(prompt: "Loading your sources...", size: .large)
+            Spinner(text: "Loading your sources...", size: .large)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if displayedSources.isEmpty {
             ContentUnavailableView(

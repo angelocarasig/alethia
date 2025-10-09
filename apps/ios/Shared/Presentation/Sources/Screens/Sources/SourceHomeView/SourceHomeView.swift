@@ -20,17 +20,11 @@ public struct SourceHomeView: View {
     }
     
     public var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                // geometric header with diagonal line
-                geometricHeader
-                
-                // stats bar with vertical dividers
-                statsBar
-                    .padding(.vertical, dimensions.padding.screen)
-                
-                // main content with line frames
-                mainContent
+        ScrollView(.vertical, showsIndicators: false) {
+            LazyVStack(spacing: 0) {
+                header
+                stats.padding(.vertical, dimensions.padding.screen)
+                content
                 
                 Spacer(minLength: dimensions.spacing.screen)
             }
@@ -48,7 +42,7 @@ public struct SourceHomeView: View {
         }
     }
     
-    private var geometricHeader: some View {
+    private var header: some View {
         ZStack(alignment: .topLeading) {
             // background with subtle grid pattern
             Rectangle()
@@ -190,7 +184,7 @@ public struct SourceHomeView: View {
             )
     }
     
-    private var statsBar: some View {
+    private var stats: some View {
         ZStack {
             // content
             HStack(spacing: 0) {
@@ -271,7 +265,7 @@ public struct SourceHomeView: View {
         .frame(maxWidth: .infinity)
     }
     
-    private var mainContent: some View {
+    private var content: some View {
         VStack(alignment: .leading, spacing: dimensions.spacing.screen) {
             // info section with line list
             VStack(alignment: .leading, spacing: dimensions.spacing.regular) {
@@ -295,7 +289,7 @@ public struct SourceHomeView: View {
                 }
             }
         }
-        .padding(dimensions.padding.screen)
+        .padding(dimensions.padding.regular)
     }
     
     private func sectionHeader(title: String, count: Int? = nil) -> some View {

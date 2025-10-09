@@ -23,6 +23,7 @@ private final class SourceHomeRowViewModel {
     private(set) var entries: [Entry] = []
     private(set) var isLoading: Bool = false
     private(set) var error: Error?
+    private(set) var hasAppeared: Bool = false
     
     init(source: Domain.Source, preset: SearchPreset) {
         self.source = source
@@ -44,6 +45,10 @@ private final class SourceHomeRowViewModel {
             
             isLoading = false
         }
+    }
+    
+    func markAsAppeared() {
+        hasAppeared = true
     }
 }
 
@@ -116,31 +121,33 @@ struct SourceHomeRow: View {
                     .foregroundColor(theme.colors.accent)
                     .padding()
                 }
-            } else if vm.entries.isEmpty {
+            } else if vm.entries.isEmpty && vm.hasAppeared {
                 ContentUnavailableView(
                     "No Results",
                     systemImage: "magnifyingglass",
                     description: Text("No entries found for this preset")
                 )
                 .frame(height: 180)
+            } else if !vm.hasAppeared {
+                // placeholder before appearing
+                LoadingPlaceholder()
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: Dimensions().spacing.minimal) {
                         ForEach(vm.entries, id: \.slug) { entry in
-                            NavigationLink {
-                                MangaDetailView(entry: entry)
-                            } label: {
-                                EntryCard(entry: entry, lineLimit: 2)
-                                    .frame(width: 125)
-                                    .id("\(preset.id)/\(entry.slug)")
-                            }
+                            SourceCard(
+                                id: "\(preset.id)/\(entry.slug)",
+                                entry: entry,
+                                namespace: namespace
+                            )
                         }
                     }
                 }
             }
         }
         .onAppear {
-            if vm.entries.isEmpty && !vm.isLoading {
+            if !vm.hasAppeared {
+                vm.markAsAppeared()
                 vm.search()
             }
         }
