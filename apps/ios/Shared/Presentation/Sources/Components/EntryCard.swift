@@ -38,6 +38,7 @@ internal struct EntryCard: View {
                     .placeholder {
                         theme.colors.tint.shimmer()
                     }
+                    .coverCache()
                     .resizable()
                     .fade(duration: 0.25)
                     .scaledToFill()
@@ -49,12 +50,12 @@ internal struct EntryCard: View {
             
             if showTitle {
                 Text(entry.title)
-                    .font(.subheadline)
+                    .font(.caption)
                     .fontWeight(.medium)
                     .lineLimit(lineLimit, reservesSpace: lineLimit > 1)
                     .multilineTextAlignment(.leading)
                     .truncationMode(.tail)
-                    .foregroundStyle(Color.primary)
+                    .foregroundColor(theme.colors.foreground)
             }
             
             Spacer()

@@ -52,6 +52,6 @@ struct Main: App {
     }
     
     func setupApp() {
-        ImageCacheConfiguration.shared.configure()
+        ImageCacheConfiguration.configure()
     }
 }

@@ -20,6 +20,7 @@ struct BackdropView: View {
             KFImage(backdrop)
                 .placeholder { theme.colors.tint.shimmer() }
                 .retry(maxCount: 5, interval: .seconds(2))
+                .coverCache()
                 .resizable()
                 .fade(duration: 0.25)
                 .scaledToFill()

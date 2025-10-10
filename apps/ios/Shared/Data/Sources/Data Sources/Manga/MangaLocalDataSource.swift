@@ -315,31 +315,50 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
     }
     
     private func batchInsertCovers(_ coverUrls: [String], mangaId: MangaRecord.ID, db: Database) throws {
+        // save cover metadata to database
+        for (index, coverURLString) in coverUrls.enumerated() {
+            guard let coverURL = URL(string: coverURLString) else { continue }
+            
+            // for now, we'll use the remote url as the local path
+            // kingfisher will handle caching automatically
+            var coverRecord = CoverRecord(
+                mangaId: mangaId,
+                isPrimary: index == 0,
+                localPath: coverURL,  // using remote url, kingfisher handles caching
+                remotePath: coverURL
+            )
+            try coverRecord.insert(db)
+        }
+        
+        #warning("TODO: Enable this behind a user preference flag for offline-only mode (like Spotify)")
+        // saveCoversForOfflineMode(coverUrls: coverUrls, mangaId: mangaId)
+    }
+
+    // separate function for future offline-only mode
+    private func saveCoversForOfflineMode(coverUrls: [String], mangaId: MangaRecord.ID) {
         let coversDirectory = Core.Constants.Paths.local
             .appending(path: String(mangaId.rawValue))
             .appendingPathComponent("covers", isDirectory: true)
         
-        try FileManager.default.createDirectory(
-            at: coversDirectory,
-            withIntermediateDirectories: true
-        )
-        
-        for (index, coverURLString) in coverUrls.enumerated() {
-            guard let coverURL = URL(string: coverURLString) else { continue }
-            
-            let localCoverPath = coversDirectory.appendingPathComponent("\(index).jpg")
-            
-            if let coverData = try? Data(contentsOf: coverURL) {
-                try? coverData.write(to: localCoverPath)
-            }
-            
-            var coverRecord = CoverRecord(
-                mangaId: mangaId,
-                isPrimary: index == 0,
-                localPath: localCoverPath,
-                remotePath: coverURL
+        do {
+            try FileManager.default.createDirectory(
+                at: coversDirectory,
+                withIntermediateDirectories: true
             )
-            try coverRecord.insert(db)
+            
+            for (index, coverURLString) in coverUrls.enumerated() {
+                guard let coverURL = URL(string: coverURLString) else { continue }
+                
+                let localCoverPath = coversDirectory.appendingPathComponent("\(index).jpg")
+                
+                // this would download and save locally for offline-only mode
+                if let coverData = try? Data(contentsOf: coverURL) {
+                    try? coverData.write(to: localCoverPath)
+                }
+            }
+        } catch {
+            // silently fail for offline saves
+            print("Failed to save covers for offline mode: \(error)")
         }
     }
     
