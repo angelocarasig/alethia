@@ -21,6 +21,7 @@ public struct Manga: Sendable {
     // relational
     public let origins: [Origin]
     public let chapters: [Chapter]
+    public let collections: [Collection]
     
     // config
     public let inLibrary: Bool
@@ -43,6 +44,7 @@ public struct Manga: Sendable {
         covers: [URL],
         origins: [Origin],
         chapters: [Chapter],
+        collections: [Collection],
         inLibrary: Bool,
         addedAt: Date,
         updatedAt: Date,
@@ -74,6 +76,7 @@ public struct Manga: Sendable {
         self.covers = covers
         self.origins = origins
         self.chapters = chapters
+        self.collections = collections
         self.inLibrary = inLibrary
         self.addedAt = addedAt
         self.updatedAt = updatedAt

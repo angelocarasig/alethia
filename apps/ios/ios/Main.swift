@@ -11,6 +11,10 @@ import Composition
 
 @main
 struct Main: App {
+    init() {
+        setupApp()
+    }
+    
     var body: some Scene {
         WindowGroup {
             TabView {
@@ -45,5 +49,9 @@ struct Main: App {
                     }
             }
         }
+    }
+    
+    func setupApp() {
+        ImageCacheConfiguration.shared.configure()
     }
 }

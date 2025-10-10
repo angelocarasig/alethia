@@ -21,6 +21,7 @@ internal struct MangaDataBundle {
     let origins: [OriginRecord]
     let sources: [OriginRecord.ID: (source: SourceRecord, host: HostRecord)]
     let chapters: [ChapterWithMetadata]
+    let collections: [CollectionRecord]
 }
 
 internal struct ChapterWithMetadata {
@@ -91,6 +92,8 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
                             in: db
                         )
                         
+                        let collections = try mangaRecord.collections.fetchAll(db)
+                        
                         let bundle = MangaDataBundle(
                             manga: mangaRecord,
                             authors: authors,
@@ -99,7 +102,8 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
                             alternativeTitles: alternativeTitles,
                             origins: origins,
                             sources: sources,
-                            chapters: chaptersWithMetadata
+                            chapters: chaptersWithMetadata,
+                            collections: collections
                         )
                         
                         bundles.append(bundle)

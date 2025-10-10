@@ -23,20 +23,7 @@ struct RelationalView: View {
             
             Divider()
             
-            CollectionsView()
-        }
-    }
-}
-
-struct CollectionsView: View {
-    @State var isPresented: Bool = false
-    
-    var body: some View {
-        Button("Present") {
-            isPresented.toggle()
-        }
-        .sheet(isPresented: $isPresented) {
-            Text("Hello, World!")
+            CollectionsView(title: manga.title, collections: manga.collections)
         }
     }
 }

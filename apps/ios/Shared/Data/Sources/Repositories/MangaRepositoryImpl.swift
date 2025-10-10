@@ -145,6 +145,18 @@ public final class MangaRepositoryImpl: MangaRepository {
                 )
             }
             
+            let collections = bundle.collections.compactMap { collection -> Collection? in
+                guard let collectionId = collection.id else { return nil }
+                
+                return Collection(
+                    id: collectionId.rawValue,
+                    name: collection.name,
+                    description: collection.description ?? "",
+                    createdAt: collection.createdAt,
+                    updatedAt: collection.updatedAt
+                )
+            }
+            
             return Manga(
                 id: mangaId.rawValue,
                 title: bundle.manga.title,
@@ -155,6 +167,7 @@ public final class MangaRepositoryImpl: MangaRepository {
                 covers: coverURLs,
                 origins: originEntities,
                 chapters: chapterEntities,
+                collections: collections,
                 inLibrary: bundle.manga.inLibrary,
                 addedAt: bundle.manga.addedAt,
                 updatedAt: bundle.manga.updatedAt,
@@ -172,7 +185,7 @@ public final class MangaRepositoryImpl: MangaRepository {
             throw RepositoryError.mappingError(reason: "source id is nil")
         }
         
-        guard let hostId = host.id else {
+        guard host.id != nil else {
             throw RepositoryError.mappingError(reason: "host id is nil")
         }
         

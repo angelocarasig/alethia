@@ -13,6 +13,7 @@ struct ChaptersSummaryView: View {
     @Environment(\.theme) private var theme
     
     let chapters: [Chapter]
+    let sources: Int // number of sources present
     
     @State private var sortBy: SortBy = .number
     @State private var sortOrder: SortOrder = .descending
@@ -87,9 +88,14 @@ extension ChaptersSummaryView {
                 .font(.title2)
                 .fontWeight(.bold)
             
-            Text("^[\(chapters.count) Chapter](inflect: true)")
-                .font(.subheadline)
-                .foregroundColor(theme.colors.foreground.opacity(0.6))
+            HStack(spacing: dimensions.spacing.minimal) {
+                Text("^[\(chapters.count) Chapter](inflect: true)")
+                Text("•")
+                Text("^[\(sources) Source](inflect: true)")
+            }
+            .font(.subheadline)
+            .fontWeight(.medium)
+            .foregroundColor(theme.colors.foreground.opacity(0.6))
         }
     }
 }
@@ -113,9 +119,9 @@ extension ChaptersSummaryView {
     @ViewBuilder
     private var emptyState: some View {
         ContentUnavailableView(
-            "No chapters available",
+            "No Chapters",
             systemImage: "book.closed",
-            description: Text("No chapters match the current filter")
+            description: Text("No chapters available or match the current filter")
         )
         .frame(height: 200)
     }

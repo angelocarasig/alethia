@@ -325,6 +325,7 @@ export const config: Source = {
 
 export const ENDPOINTS = {
   manga: 'https://api.mangadex.org/manga',
+  cover: 'https://api.mangadex.org/cover',
   feed: (id: string) => `https://api.mangadex.org/manga/${id}/feed`,
   at_home: (id: string) => `https://api.mangadex.org/at-home/server/${id}`,
 } as const;

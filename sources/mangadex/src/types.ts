@@ -239,6 +239,22 @@ const ChapterEntrySchema = z.object({
   relationships: z.array(RelationshipSchema).optional(),
 });
 
+// Cover entry schema
+const CoverEntrySchema = z.object({
+  id: SlugSchema,
+  type: z.literal('cover_art'),
+  attributes: z.object({
+    description: z.string(),
+    volume: z.string().nullable(),
+    fileName: z.string(),
+    locale: LanguageSchema,
+    createdAt: z.iso.datetime({ local: false, offset: true, precision: 0 }),
+    updatedAt: z.iso.datetime({ local: false, offset: true, precision: 0 }),
+    version: z.number(),
+  }),
+  relationships: z.array(RelationshipSchema).optional(),
+});
+
 // Main entry schemas
 const MangadexEntrySchema = z.object({
   id: SlugSchema,
@@ -267,6 +283,15 @@ const ChapterFeedResponseSchema = z.object({
   result: z.enum(['ok', 'error']),
   response: z.literal('collection'),
   data: z.array(ChapterEntrySchema),
+  total: z.number(),
+  limit: z.number(),
+  offset: z.number(),
+});
+
+const CoverCollectionResponseSchema = z.object({
+  result: z.enum(['ok', 'error']),
+  response: z.literal('collection'),
+  data: z.array(CoverEntrySchema),
   total: z.number(),
   limit: z.number(),
   offset: z.number(),
@@ -302,6 +327,7 @@ export type MangadexEntry = z.infer<typeof MangadexEntrySchema>;
 export type MangadexAttributes = z.infer<typeof MangadexAttributesSchema>;
 export type ChapterEntry = z.infer<typeof ChapterEntrySchema>;
 export type ChapterAttributes = z.infer<typeof ChapterAttributesSchema>;
+export type CoverEntry = z.infer<typeof CoverEntrySchema>;
 export type CoverArtRelationship = z.infer<typeof CoverArtRelationshipSchema>;
 export type AuthorRelationship = z.infer<typeof AuthorRelationshipSchema>;
 export type ArtistRelationship = z.infer<typeof ArtistRelationshipSchema>;
@@ -318,6 +344,9 @@ export type MangadexEntityResponse = z.infer<
   typeof MangadexEntityResponseSchema
 >;
 export type ChapterFeedResponse = z.infer<typeof ChapterFeedResponseSchema>;
+export type CoverCollectionResponse = z.infer<
+  typeof CoverCollectionResponseSchema
+>;
 export type AtHomeServerResponse = z.infer<typeof AtHomeServerResponseSchema>;
 export type MangadexErrorResponse = z.infer<typeof MangadexErrorResponseSchema>;
 export type PublicationDemographic = z.infer<
@@ -336,6 +365,7 @@ export {
   MangadexCollectionResponseSchema,
   MangadexEntityResponseSchema,
   ChapterFeedResponseSchema,
+  CoverCollectionResponseSchema,
   AtHomeServerResponseSchema,
   MangadexErrorResponseSchema,
   PublicationDemographicSchema,
@@ -350,5 +380,6 @@ export {
   MangaRelationshipSchema,
   ChapterEntrySchema,
   ChapterAttributesSchema,
+  CoverEntrySchema,
   RelationshipSchema,
 };

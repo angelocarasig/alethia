@@ -156,8 +156,9 @@ extension DetailsScreen {
                     HeaderView(
                         cover: manga.covers.firstOrDefault,
                         title: manga.title,
+                        alternativeTitles: manga.alternativeTitles,
                         authors: manga.authors,
-                        manga: manga
+                        covers: manga.covers
                     )
                     
                     ActionButtonsView()
@@ -185,7 +186,7 @@ extension DetailsScreen {
                         Divider()
                     }
                     
-                    ChaptersSummaryView(chapters: manga.chapters)
+                    ChaptersSummaryView(chapters: manga.chapters, sources: manga.origins.count)
                 }
                 .padding(.horizontal, dimensions.padding.regular)
                 .background(BackgroundGradientView())

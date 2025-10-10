@@ -43,6 +43,8 @@ import {
   MangadexEntityResponse,
   ChapterFeedResponse,
   AtHomeServerResponse,
+  CoverCollectionResponseSchema,
+  CoverCollectionResponse,
 } from './types';
 
 export default class MangaDexSource extends Adapter {
@@ -198,11 +200,9 @@ export default class MangaDexSource extends Adapter {
       (rel): rel is ArtistRelationship => rel.type === 'artist',
     );
 
-    const covers = relationships.filter(
-      (rel): rel is CoverArtRelationship => rel.type === 'cover_art',
-    );
+    // fetch ALL covers from the cover endpoint
+    const coversResponse = await this.fetchAllCovers(id, headers);
 
-    // combine authors and artists, removing duplicates
     const authorNames = [
       ...new Set([
         ...authors.map((a) => a.attributes?.name).filter(Boolean),
@@ -229,12 +229,7 @@ export default class MangaDexSource extends Adapter {
         attributes.tags
           ?.filter((tag) => tag.attributes?.name?.en)
           .map((tag) => tag.attributes.name.en) || [],
-      covers: covers
-        .filter((cover) => cover.attributes?.fileName)
-        .map(
-          (cover) =>
-            `${CDN_ENDPOINTS.covers}/${id}/${cover.attributes.fileName}`,
-        ),
+      covers: coversResponse,
       url: `https://mangadex.org/title/${id}`,
     });
   }
@@ -411,5 +406,29 @@ export default class MangaDexSource extends Adapter {
     };
 
     return mappings[status] || 'Unknown';
+  }
+
+  private async fetchAllCovers(
+    mangaId: string,
+    headers?: Record<string, string>,
+  ): Promise<string[]> {
+    const params = new URLSearchParams();
+    params.append('manga[]', mangaId);
+    params.append('limit', '100'); // max limit per request
+    params.append('order[volume]', 'asc');
+
+    const response = await this.httpClient.get<CoverCollectionResponse>(
+      ENDPOINTS.cover,
+      { params, headers },
+    );
+
+    const collection = CoverCollectionResponseSchema.parse(response.data);
+
+    return collection.data
+      .filter((cover) => cover.attributes.fileName)
+      .map((cover) => {
+        const fileName = cover.attributes.fileName;
+        return `${CDN_ENDPOINTS.covers}/${mangaId}/${fileName}`;
+      });
   }
 }
