@@ -60,7 +60,7 @@ struct CoversSheet: View {
                                     .resizable()
                                     .coverCache()
                                     .aspectRatio(contentMode: .fit)
-                                    .clipShape(RoundedRectangle(cornerRadius: dimensions.cornerRadius.regular))  // ADD THIS LINE
+                                    .clipShape(RoundedRectangle(cornerRadius: dimensions.cornerRadius.regular))
                                     .tag(coverURL)
                                     .containerRelativeFrame(.horizontal)
                             }

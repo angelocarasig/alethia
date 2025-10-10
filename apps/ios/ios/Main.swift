@@ -24,7 +24,7 @@ struct Main: App {
                         Text("Home")
                     }
                 
-                Text("TODO")
+                LibraryScreen()
                     .tabItem {
                         Image(systemName: "books.vertical.fill")
                         Text("Library")

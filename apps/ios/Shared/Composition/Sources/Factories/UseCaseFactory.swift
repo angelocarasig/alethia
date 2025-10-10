@@ -45,6 +45,10 @@ extension UseCaseFactory {
     func makeFindMatchesUseCase() -> FindMatchesUseCase {
         FindMatchesUseCaseImpl(repository: repositoryFactory.libraryRepository)
     }
+    
+    func makeGetLibraryMangaUseCase() -> GetLibraryMangaUseCase {
+        GetLibraryMangaUseCaseImpl(repository: repositoryFactory.libraryRepository)
+    }
 }
 
 // MARK: - Manga Use Cases

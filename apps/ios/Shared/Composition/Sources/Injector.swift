@@ -47,6 +47,10 @@ public extension Injector {
     static func makeFindMatchesUseCase() -> FindMatchesUseCase {
         useCaseFactory.makeFindMatchesUseCase()
     }
+    
+    static func makeGetLibraryMangaUseCase() -> GetLibraryMangaUseCase {
+        useCaseFactory.makeGetLibraryMangaUseCase()
+    }
 }
 
 // MARK: Manga Use-Cases

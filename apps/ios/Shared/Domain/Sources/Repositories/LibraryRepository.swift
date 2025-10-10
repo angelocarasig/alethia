@@ -5,9 +5,10 @@
 //  Created by Angelo Carasig on 5/10/2025.
 //
 
-import Foundation
-
 public protocol LibraryRepository: Sendable {
+    /// Fetches all entries in the user's library
+    func getLibraryManga(query: LibraryQuery) -> AsyncStream<Result<LibraryQueryResult, Error>>
+    
     /// From an array of Entries return a stream of enriched entries based on match values
     func findMatches(for raw: [Entry]) -> AsyncStream<Result<[Entry], Error>>
 }
