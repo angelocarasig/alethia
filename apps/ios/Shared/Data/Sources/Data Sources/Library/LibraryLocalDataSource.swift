@@ -13,7 +13,7 @@ internal protocol LibraryLocalDataSource: Sendable {
     func getLibraryEntries(query: LibraryQuery) -> AsyncStream<Result<LibraryDataBundle, Error>>
 }
 
-internal struct LibraryDataBundle {
+internal struct LibraryDataBundle: Sendable {
     let entries: [(manga: MangaRecord, cover: CoverRecord, unreadCount: Int, primaryOrigin: OriginRecord)]
     let totalCount: Int
     let hasMore: Bool
@@ -29,75 +29,66 @@ internal final class LibraryLocalDataSourceImpl: LibraryLocalDataSource {
     func getLibraryEntries(query: LibraryQuery) -> AsyncStream<Result<LibraryDataBundle, Error>> {
         AsyncStream { continuation in
             let observation = ValueObservation.tracking { [weak self] db -> LibraryDataBundle in
-                guard let self = self else {
+                guard let self else {
                     return LibraryDataBundle(entries: [], totalCount: 0, hasMore: false)
                 }
                 
-                do {
-                    // start with base query for library items
-                    var request = MangaRecord
-                        .filter(MangaRecord.Columns.inLibrary == false)
-                    
-                    // apply filters
-                    request = try self.applyFilters(request, filters: query.filters, db: db)
-                    
-                    // get total count before pagination
-                    let totalCount = try request.fetchCount(db)
-                    
-                    // apply sorting
-                    request = self.applySorting(request, sort: query.sort)
-                    
-                    // apply cursor pagination
-                    let (paginatedRequest, hasMore) = try self.applyCursor(
-                        request,
-                        cursor: query.cursor,
-                        db: db
-                    )
-                    
-                    // fetch the manga records
-                    let mangaRecords = try paginatedRequest.fetchAll(db)
-                    
-                    // build entry tuples with related data
-                    var entries: [(manga: MangaRecord, cover: CoverRecord, unreadCount: Int, primaryOrigin: OriginRecord)] = []
-                    
-                    for mangaRecord in mangaRecords {
-                        guard let mangaId = mangaRecord.id else { continue }
-                        
-                        // fetch primary cover - skip if not found
-                        guard let primaryCover = try mangaRecord.cover.fetchOne(db)
-                                ?? mangaRecord.covers.limit(1).fetchOne(db) else {
-                            continue // skip manga without any covers
-                        }
-                        
-                        // fetch primary origin - skip if not found
-                        guard let primaryOrigin = try mangaRecord.origin.fetchOne(db) else {
-                            continue // skip manga without any origins
-                        }
-                        
-                        // calculate unread count
-                        let unreadCount = try self.calculateUnreadCount(
-                            mangaId: mangaId.rawValue,
-                            db: db
-                        )
-                        
-                        entries.append((
-                            manga: mangaRecord,
-                            cover: primaryCover,
-                            unreadCount: unreadCount,
-                            primaryOrigin: primaryOrigin
-                        ))
-                    }
-                    
-                    return LibraryDataBundle(
-                        entries: entries,
-                        totalCount: totalCount,
-                        hasMore: hasMore
-                    )
-                    
-                } catch {
-                    continuation.yield(.failure(error))
-                    return LibraryDataBundle(entries: [], totalCount: 0, hasMore: false)
+                var request = MangaRecord
+                    .filter(MangaRecord.Columns.inLibrary == true || MangaRecord.Columns.inLibrary == false)
+                
+                request = try self.applyFilters(request, filters: query.filters, db: db)
+                
+                // exclude entries with null dates when sorting by those dates
+                switch query.sort.field {
+                case .lastRead:
+                    request = request.filter(MangaRecord.Columns.lastReadAt != nil)
+                case .lastUpdated:
+                    request = request.filter(MangaRecord.Columns.updatedAt != nil)
+                case .dateAdded:
+                    request = request.filter(MangaRecord.Columns.addedAt != nil)
+                default:
+                    break
                 }
+                
+                let totalCount = try request.fetchCount(db)
+                request = self.applySorting(request, sort: query.sort)
+                
+                if let afterId = query.cursor?.afterId {
+                    request = try self.applyKeysetPagination(request, afterId: afterId, sort: query.sort, db: db)
+                }
+                
+                // fetch limit+1 rows to determine if more exist
+                let limit = query.cursor?.limit ?? 50
+                let limited = request.limit(limit + 1)
+                
+                var tuples: [(manga: MangaRecord, cover: CoverRecord, unreadCount: Int, primaryOrigin: OriginRecord)] = []
+                tuples.reserveCapacity(min(limit, 64))
+                var count = 0
+                var sawExtra = false
+                
+                let cursor = try MangaRecord.fetchCursor(db, limited)
+                while let manga = try cursor.next() {
+                    count += 1
+                    if count <= limit {
+                        guard let mangaId = manga.id?.rawValue else { continue }
+                        
+                        guard let cover = try manga.cover.fetchOne(db) ?? manga.covers.limit(1).fetchOne(db) else {
+                            continue
+                        }
+                        guard let origin = try manga.origin.fetchOne(db) else {
+                            continue
+                        }
+                        
+                        let unread = try self.calculateUnreadCount(mangaId: mangaId, db: db)
+                        
+                        tuples.append((manga: manga, cover: cover, unreadCount: unread, primaryOrigin: origin))
+                    } else {
+                        sawExtra = true
+                        break
+                    }
+                }
+                
+                return LibraryDataBundle(entries: tuples, totalCount: totalCount, hasMore: sawExtra)
             }
             
             let task = Task {
@@ -117,94 +108,112 @@ internal final class LibraryLocalDataSourceImpl: LibraryLocalDataSource {
             }
         }
     }
-    
-    // MARK: - Filter Application
-    
-    private func applyFilters(
+}
+
+// MARK: - Query Building Helpers
+
+private extension LibraryLocalDataSourceImpl {
+    func applyFilters(
         _ request: QueryInterfaceRequest<MangaRecord>,
         filters: LibraryFilters,
         db: Database
     ) throws -> QueryInterfaceRequest<MangaRecord> {
         var result = request
         
-        // search filter
         if let search = filters.search, !search.isEmpty {
+            // union combines results from both title tables and deduplicates automatically
             result = result.filter(sql: """
                 id IN (
-                    SELECT rowid FROM manga_fts 
-                    WHERE manga_fts MATCH ?
+                    SELECT rowid FROM \(MangaTitleFTS5.databaseTableName)
+                    WHERE \(MangaTitleFTS5.databaseTableName) MATCH ?
+                    
+                    UNION
+                    
+                    SELECT mangaId FROM \(MangaAltTitleFTS5.databaseTableName)
+                    WHERE \(MangaAltTitleFTS5.databaseTableName) MATCH ?
                 )
-                """, arguments: [search])
+                """, arguments: [search, search])
         }
         
-        // collection filter
-        if let collectionId = filters.collectionId {
+        if let collectionId = filters.collectionId, !collectionId.isEmpty {
             result = result.filter(sql: """
                 id IN (
-                    SELECT mangaId FROM manga_collection
-                    WHERE collectionId = ?
+                    SELECT mc.mangaId
+                    FROM \(MangaCollectionRecord.databaseTableName) mc
+                    WHERE mc.collectionId = ?
                 )
                 """, arguments: [collectionId])
         }
         
-        // source filter
         if !filters.sourceIds.isEmpty {
-            result = result.filter(sql: """
-                id IN (
-                    SELECT DISTINCT mangaId FROM origin
-                    WHERE sourceId IN \(filters.sourceIds.map { String($0) }.joined(separator: ","))
+            let ids = Array(filters.sourceIds)
+            let placeholders = Array(repeating: "?", count: ids.count).joined(separator: ", ")
+            result = result.filter(
+                sql: """
+                EXISTS (
+                    SELECT 1
+                    FROM \(OriginRecord.databaseTableName) o
+                    WHERE o.mangaId = manga.id
+                      AND o.sourceId IN (\(placeholders))
                 )
-                """)
+                """,
+                arguments: StatementArguments(ids)
+            )
         }
         
-        // publication status filter
         if !filters.publicationStatus.isEmpty {
-            let statusValues = filters.publicationStatus.map { $0.rawValue }
-            result = result.filter(sql: """
-                id IN (
-                    SELECT DISTINCT o.mangaId
-                    FROM origin o
-                    WHERE o.status IN \(statusValues.map { "'\($0)'" }.joined(separator: ","))
-                    AND o.priority = (
-                        SELECT MIN(o2.priority)
-                        FROM origin o2
-                        WHERE o2.mangaId = o.mangaId
-                    )
+            let statuses = Array(filters.publicationStatus).map { $0.rawValue }
+            let placeholders = Array(repeating: "?", count: statuses.count).joined(separator: ", ")
+            result = result.filter(
+                sql: """
+                EXISTS (
+                    SELECT 1
+                    FROM \(OriginRecord.databaseTableName) o
+                    WHERE o.mangaId = manga.id
+                      AND o.status IN (\(placeholders))
                 )
-                """)
+                """,
+                arguments: StatementArguments(statuses)
+            )
         }
         
-        // date filters
-        if let addedDate = filters.addedDate {
-            result = applyDateFilter(result, dateFilter: addedDate, column: MangaRecord.Columns.addedAt)
+        if let added = filters.addedDate {
+            result = applyDateFilter(result, dateFilter: added, column: MangaRecord.Columns.addedAt)
+        }
+        if let updated = filters.updatedDate {
+            result = applyDateFilter(result, dateFilter: updated, column: MangaRecord.Columns.updatedAt)
         }
         
-        if let updatedDate = filters.updatedDate {
-            result = applyDateFilter(result, dateFilter: updatedDate, column: MangaRecord.Columns.updatedAt)
-        }
-        
-        // unread only filter
         if filters.unreadOnly {
             result = result.filter(sql: """
-                id IN (
-                    SELECT DISTINCT o.mangaId
-                    FROM origin o
-                    JOIN chapter c ON c.originId = o.id
-                    WHERE c.progress < 1.0
+                EXISTS (
+                    SELECT 1
+                    FROM \(BestChapterView.databaseTableName) bc
+                    WHERE bc.mangaId = manga.id
+                      AND bc.rank = 1
+                      AND (bc.progress IS NULL OR bc.progress < 1)
+                      AND (bc.showHalfChapters = 1 OR bc.number = CAST(bc.number AS INTEGER))
                 )
                 """)
         }
         
-        // downloaded only filter (for future implementation)
         if filters.downloadedOnly {
-            // TODO: implement when download tracking is added
-            // for now, just return the existing request
+            // placeholder for future download tracking implementation
+            result = result.filter(sql: """
+                EXISTS (
+                    SELECT 1
+                    FROM \(OriginRecord.databaseTableName) o
+                    JOIN \(ChapterRecord.databaseTableName) c ON c.originId = o.id
+                    WHERE o.mangaId = manga.id
+                      AND c.downloaded = 1
+                )
+                """)
         }
         
         return result
     }
     
-    private func applyDateFilter(
+    func applyDateFilter(
         _ request: QueryInterfaceRequest<MangaRecord>,
         dateFilter: DateFilter,
         column: Column
@@ -219,9 +228,7 @@ internal final class LibraryLocalDataSourceImpl: LibraryLocalDataSource {
         }
     }
     
-    // MARK: - Sorting
-    
-    private func applySorting(
+    func applySorting(
         _ request: QueryInterfaceRequest<MangaRecord>,
         sort: LibrarySort
     ) -> QueryInterfaceRequest<MangaRecord> {
@@ -230,110 +237,211 @@ internal final class LibraryLocalDataSourceImpl: LibraryLocalDataSource {
         switch sort.field {
         case .alphabetical:
             return isAscending
-                ? request.order(MangaRecord.Columns.title.asc)
-                : request.order(MangaRecord.Columns.title.desc)
-                
+                ? request.order(MangaRecord.Columns.title.asc, MangaRecord.Columns.id.asc)
+                : request.order(MangaRecord.Columns.title.desc, MangaRecord.Columns.id.desc)
+            
         case .lastRead:
             return isAscending
-                ? request.order(MangaRecord.Columns.lastReadAt.asc)
-                : request.order(MangaRecord.Columns.lastReadAt.desc)
-                
+                ? request.order(MangaRecord.Columns.lastReadAt.asc, MangaRecord.Columns.id.asc)
+                : request.order(MangaRecord.Columns.lastReadAt.desc, MangaRecord.Columns.id.desc)
+            
         case .lastUpdated:
             return isAscending
-                ? request.order(MangaRecord.Columns.updatedAt.asc)
-                : request.order(MangaRecord.Columns.updatedAt.desc)
-                
+                ? request.order(MangaRecord.Columns.updatedAt.asc, MangaRecord.Columns.id.asc)
+                : request.order(MangaRecord.Columns.updatedAt.desc, MangaRecord.Columns.id.desc)
+            
         case .dateAdded:
             return isAscending
-                ? request.order(MangaRecord.Columns.addedAt.asc)
-                : request.order(MangaRecord.Columns.addedAt.desc)
-                
+                ? request.order(MangaRecord.Columns.addedAt.asc, MangaRecord.Columns.id.asc)
+                : request.order(MangaRecord.Columns.addedAt.desc, MangaRecord.Columns.id.desc)
+            
         case .unreadCount:
-            // this requires a subquery, handle separately
-            return applyUnreadCountSort(request, direction: sort.direction)
+            let expr = """
+            COALESCE((
+                SELECT COUNT(1)
+                FROM \(BestChapterView.databaseTableName) bc
+                WHERE bc.mangaId = manga.id
+                  AND bc.rank = 1
+                  AND (bc.progress IS NULL OR bc.progress < 1)
+                  AND (bc.showHalfChapters = 1 OR bc.number = CAST(bc.number AS INTEGER))
+            ), 0) \(isAscending ? "ASC" : "DESC"), manga.id \(isAscending ? "ASC" : "DESC")
+            """
+            return request.order(SQL(sql: expr).sqlExpression)
             
         case .chapterCount:
-            // this requires a subquery, handle separately
-            return applyChapterCountSort(request, direction: sort.direction)
+            let expr = """
+            COALESCE((
+                SELECT COUNT(1)
+                FROM \(BestChapterView.databaseTableName) bc
+                WHERE bc.mangaId = manga.id
+                  AND bc.rank = 1
+                  AND (bc.showHalfChapters = 1 OR bc.number = CAST(bc.number AS INTEGER))
+            ), 0) \(isAscending ? "ASC" : "DESC"), manga.id \(isAscending ? "ASC" : "DESC")
+            """
+            return request.order(SQL(sql: expr).sqlExpression)
         }
     }
-    
-    private func applyUnreadCountSort(
+}
+
+// MARK: - Keyset Pagination Helpers
+
+private extension LibraryLocalDataSourceImpl {
+    func applyKeysetPagination(
         _ request: QueryInterfaceRequest<MangaRecord>,
-        direction: SortDirection
-    ) -> QueryInterfaceRequest<MangaRecord> {
-        let sql = """
-            LEFT JOIN (
-                SELECT o.mangaId, COUNT(c.id) as unreadCount
-                FROM origin o
-                JOIN chapter c ON c.originId = o.id
-                WHERE c.progress < 1.0
-                GROUP BY o.mangaId
-            ) AS unread ON manga.id = unread.mangaId
-            """
-        
-        return request
-            .annotated(with: SQL(sql: sql).sqlExpression)
-            .order(SQL(sql: direction == .ascending
-                ? "COALESCE(unread.unreadCount, 0) ASC"
-                : "COALESCE(unread.unreadCount, 0) DESC").sqlExpression)
-    }
-    
-    private func applyChapterCountSort(
-        _ request: QueryInterfaceRequest<MangaRecord>,
-        direction: SortDirection
-    ) -> QueryInterfaceRequest<MangaRecord> {
-        let sql = """
-            LEFT JOIN (
-                SELECT o.mangaId, COUNT(c.id) as chapterCount
-                FROM origin o
-                JOIN chapter c ON c.originId = o.id
-                GROUP BY o.mangaId
-            ) AS chapters ON manga.id = chapters.mangaId
-            """
-        
-        return request
-            .annotated(with: SQL(sql: sql).sqlExpression)
-            .order(SQL(sql: direction == .ascending
-                ? "COALESCE(chapters.chapterCount, 0) ASC"
-                : "COALESCE(chapters.chapterCount, 0) DESC").sqlExpression)
-    }
-    
-    // MARK: - Cursor Pagination
-    
-    private func applyCursor(
-        _ request: QueryInterfaceRequest<MangaRecord>,
-        cursor: LibraryCursor?,
+        afterId: Int64,
+        sort: LibrarySort,
         db: Database
-    ) throws -> (request: QueryInterfaceRequest<MangaRecord>, hasMore: Bool) {
-        let limit = cursor?.limit ?? 50
-        var result = request
+    ) throws -> QueryInterfaceRequest<MangaRecord> {
+        var req = request
         
-        if let afterId = cursor?.afterId {
-            result = result.filter(MangaRecord.Columns.id > afterId)
+        guard let anchor = try MangaRecord
+            .filter(MangaRecord.Columns.id == afterId)
+            .fetchOne(db)
+        else {
+            // fallback to simple id comparison if anchor not found
+            return sort.direction == .ascending
+                ? req.filter(MangaRecord.Columns.id > afterId)
+                : req.filter(MangaRecord.Columns.id < afterId)
         }
         
-        // fetch one extra to determine if there are more
-        let items = try result.limit(limit + 1).fetchAll(db)
-        let hasMore = items.count > limit
+        switch sort.field {
+        case .alphabetical:
+            let key = anchor.title
+            if sort.direction == .ascending {
+                req = req.filter(
+                    MangaRecord.Columns.title > key
+                    || (MangaRecord.Columns.title == key && MangaRecord.Columns.id > afterId)
+                )
+            } else {
+                req = req.filter(
+                    MangaRecord.Columns.title < key
+                    || (MangaRecord.Columns.title == key && MangaRecord.Columns.id < afterId)
+                )
+            }
+            
+        case .lastRead:
+            let key = anchor.lastReadAt
+            if sort.direction == .ascending {
+                req = req.filter(
+                    MangaRecord.Columns.lastReadAt > key
+                    || (MangaRecord.Columns.lastReadAt == key && MangaRecord.Columns.id > afterId)
+                )
+            } else {
+                req = req.filter(
+                    MangaRecord.Columns.lastReadAt < key
+                    || (MangaRecord.Columns.lastReadAt == key && MangaRecord.Columns.id < afterId)
+                )
+            }
+            
+        case .lastUpdated:
+            let key = anchor.updatedAt
+            if sort.direction == .ascending {
+                req = req.filter(
+                    MangaRecord.Columns.updatedAt > key
+                    || (MangaRecord.Columns.updatedAt == key && MangaRecord.Columns.id > afterId)
+                )
+            } else {
+                req = req.filter(
+                    MangaRecord.Columns.updatedAt < key
+                    || (MangaRecord.Columns.updatedAt == key && MangaRecord.Columns.id < afterId)
+                )
+            }
+            
+        case .dateAdded:
+            let key = anchor.addedAt
+            if sort.direction == .ascending {
+                req = req.filter(
+                    MangaRecord.Columns.addedAt > key
+                    || (MangaRecord.Columns.addedAt == key && MangaRecord.Columns.id > afterId)
+                )
+            } else {
+                req = req.filter(
+                    MangaRecord.Columns.addedAt < key
+                    || (MangaRecord.Columns.addedAt == key && MangaRecord.Columns.id < afterId)
+                )
+            }
+            
+        case .unreadCount:
+            let anchorUnread = try calculateUnreadCount(mangaId: afterId, db: db)
+            let sub = buildUnreadCountSubquery()
+            if sort.direction == .ascending {
+                req = req.filter(sql: "(\(sub)) > ? OR ((\(sub)) = ? AND manga.id > ?)",
+                               arguments: [anchorUnread, anchorUnread, afterId])
+            } else {
+                req = req.filter(sql: "(\(sub)) < ? OR ((\(sub)) = ? AND manga.id < ?)",
+                               arguments: [anchorUnread, anchorUnread, afterId])
+            }
+            
+        case .chapterCount:
+            let anchorChapters = try calculateChapterCount(mangaId: afterId, db: db)
+            let sub = buildChapterCountSubquery()
+            if sort.direction == .ascending {
+                req = req.filter(sql: "(\(sub)) > ? OR ((\(sub)) = ? AND manga.id > ?)",
+                               arguments: [anchorChapters, anchorChapters, afterId])
+            } else {
+                req = req.filter(sql: "(\(sub)) < ? OR ((\(sub)) = ? AND manga.id < ?)",
+                               arguments: [anchorChapters, anchorChapters, afterId])
+            }
+        }
         
-        // return the limited request (without the extra item)
-        let finalRequest = result.limit(limit)
-        
-        return (finalRequest, hasMore)
+        return req
     }
     
-    // MARK: - Helpers
+    func buildUnreadCountSubquery() -> String {
+        """
+        COALESCE((
+            SELECT COUNT(1)
+            FROM \(BestChapterView.databaseTableName) bc
+            WHERE bc.mangaId = manga.id
+              AND bc.rank = 1
+              AND (bc.progress IS NULL OR bc.progress < 1)
+              AND (bc.showHalfChapters = 1 OR bc.number = CAST(bc.number AS INTEGER))
+        ), 0)
+        """
+    }
     
-    private func calculateUnreadCount(mangaId: Int64, db: Database) throws -> Int {
-        let sql = """
-            SELECT COUNT(*)
-            FROM chapter c
-            JOIN origin o ON c.originId = o.id
-            WHERE o.mangaId = ?
-            AND c.progress < 1.0
-            """
-        
-        return try Int.fetchOne(db, sql: sql, arguments: [mangaId]) ?? 0
+    func buildChapterCountSubquery() -> String {
+        """
+        COALESCE((
+            SELECT COUNT(1)
+            FROM \(BestChapterView.databaseTableName) bc
+            WHERE bc.mangaId = manga.id
+              AND bc.rank = 1
+              AND (bc.showHalfChapters = 1 OR bc.number = CAST(bc.number AS INTEGER))
+        ), 0)
+        """
+    }
+}
+
+// MARK: - Count Calculation Helpers
+
+private extension LibraryLocalDataSourceImpl {
+    func calculateUnreadCount(mangaId: Int64, db: Database) throws -> Int {
+        try Int.fetchOne(
+            db,
+            sql: """
+                SELECT COUNT(1)
+                FROM \(BestChapterView.databaseTableName) bc
+                WHERE bc.mangaId = ?
+                  AND bc.rank = 1
+                  AND (bc.progress IS NULL OR bc.progress < 1)
+                  AND (bc.showHalfChapters = 1 OR bc.number = CAST(bc.number AS INTEGER))
+                """,
+            arguments: [mangaId]
+        ) ?? 0
+    }
+    
+    func calculateChapterCount(mangaId: Int64, db: Database) throws -> Int {
+        try Int.fetchOne(
+            db,
+            sql: """
+                SELECT COUNT(1)
+                FROM \(BestChapterView.databaseTableName) bc
+                WHERE bc.mangaId = ?
+                  AND bc.rank = 1
+                  AND (bc.showHalfChapters = 1 OR bc.number = CAST(bc.number AS INTEGER))
+                """,
+            arguments: [mangaId]
+        ) ?? 0
     }
 }
