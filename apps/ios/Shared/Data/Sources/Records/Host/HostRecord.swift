@@ -10,7 +10,7 @@ import GRDB
 import Tagged
 import Domain
 
-internal struct HostRecord: Codable {
+internal struct HostRecord: Codable, DatabaseRecord {
     typealias ID = Tagged<Self, Int64>
     private(set) var id: ID?
     
@@ -31,14 +31,15 @@ internal struct HostRecord: Codable {
     }
 }
 
-extension HostRecord: FetchableRecord, MutablePersistableRecord {
+// MARK: - DatabaseRecord
+
+extension HostRecord {
     static var databaseTableName: String {
         "host"
     }
     
     enum Columns {
         static let id = Column(CodingKeys.id)
-        
         static let name = Column(CodingKeys.name)
         static let author = Column(CodingKeys.author)
         static let url = Column(CodingKeys.url)
@@ -46,10 +47,36 @@ extension HostRecord: FetchableRecord, MutablePersistableRecord {
         static let official = Column(CodingKeys.official)
     }
     
+    static func createTable(db: Database) throws {
+        try db.create(table: databaseTableName, options: [.ifNotExists]) { t in
+            t.autoIncrementedPrimaryKey(Columns.id.name)
+            
+            t.column(Columns.name.name, .text).notNull()
+            t.column(Columns.author.name, .text).notNull()
+            t.column(Columns.url.name, .text).notNull().unique(onConflict: .fail)
+            t.column(Columns.repository.name, .text).notNull().unique(onConflict: .fail)
+            
+            t.column(Columns.official.name, .boolean).notNull().defaults(to: false)
+        }
+    }
+    
+    static func migrate(with migrator: inout GRDB.DatabaseMigrator, from version: DatabaseVersion) throws {
+        switch version {
+        case ..<DatabaseVersion(1, 0, 0):
+            // initial schema v1.0.0 - no additional indexes needed for host table
+            // url and repository columns already have unique indexes automatically
+            break
+        default:
+            break
+        }
+    }
+    
     mutating func didInsert(_ inserted: InsertionSuccess) {
         id = ID(rawValue: inserted.rowID)
     }
 }
+
+// MARK: - Associations
 
 extension HostRecord {
     static let sources = hasMany(SourceRecord.self)

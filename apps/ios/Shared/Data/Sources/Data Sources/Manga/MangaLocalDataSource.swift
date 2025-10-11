@@ -30,6 +30,78 @@ internal struct ChapterWithMetadata {
     let sourceIcon: URL?
 }
 
+// MARK: - Helper DTOs for Row Mapping
+
+private struct ChapterRow {
+    let id: Int64
+    let originId: Int64
+    let scanlatorId: Int64
+    let slug: String
+    let title: String
+    let number: Double
+    let date: Date
+    let url: String
+    let language: String
+    let progress: Double
+    let lastReadAt: Date?
+    let scanlatorName: String
+    let sourceIcon: String?
+    
+    init?(row: Row) {
+        guard let id = row[ChapterRecord.Columns.id.name] as Int64?,
+              let originId = row[ChapterRecord.Columns.originId.name] as Int64?,
+              let scanlatorId = row[ChapterRecord.Columns.scanlatorId.name] as Int64?,
+              let slug = row[ChapterRecord.Columns.slug.name] as String?,
+              let title = row[ChapterRecord.Columns.title.name] as String?,
+              let number = row[ChapterRecord.Columns.number.name] as Double?,
+              let date = row[ChapterRecord.Columns.date.name] as Date?,
+              let url = row[ChapterRecord.Columns.url.name] as String?,
+              let language = row[ChapterRecord.Columns.language.name] as String?,
+              let progress = row[ChapterRecord.Columns.progress.name] as Double?,
+              let scanlatorName = row["scanlatorName"] as String? else {
+            return nil
+        }
+        
+        self.id = id
+        self.originId = originId
+        self.scanlatorId = scanlatorId
+        self.slug = slug
+        self.title = title
+        self.number = number
+        self.date = date
+        self.url = url
+        self.language = language
+        self.progress = progress
+        self.lastReadAt = row[ChapterRecord.Columns.lastReadAt.name] as Date?
+        self.scanlatorName = scanlatorName
+        self.sourceIcon = row["sourceIcon"] as String?
+    }
+    
+    func toChapterRecord() -> ChapterRecord {
+        ChapterRecord(
+            id: ChapterRecord.ID(rawValue: id),
+            originId: OriginRecord.ID(rawValue: originId),
+            scanlatorId: ScanlatorRecord.ID(rawValue: scanlatorId),
+            slug: slug,
+            title: title,
+            number: number,
+            date: date,
+            url: URL(string: url)!,
+            language: LanguageCode(language),
+            progress: progress,
+            lastReadAt: lastReadAt
+        )
+    }
+    
+    func toChapterWithMetadata() -> ChapterWithMetadata {
+        ChapterWithMetadata(
+            chapter: toChapterRecord(),
+            scanlatorName: scanlatorName,
+            sourceIcon: sourceIcon.flatMap(URL.init(string:))
+        )
+    }
+}
+
 // MARK: - Protocol
 
 internal protocol MangaLocalDataSource: Sendable {
@@ -55,64 +127,12 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
                 
                 do {
                     let mangaIds = try self.findMangaIds(for: entry, in: db)
+                    guard !mangaIds.isEmpty else { return [] }
                     
-                    guard !mangaIds.isEmpty else {
-                        return []
-                    }
-                    
-                    let mangaRecords = try MangaRecord
-                        .filter(mangaIds.contains(MangaRecord.Columns.id))
-                        .fetchAll(db)
-                    
-                    var bundles: [MangaDataBundle] = []
-                    
-                    for mangaRecord in mangaRecords {
-                        guard mangaRecord.id != nil else { continue }
-                        
-                        let authors = try mangaRecord.authors.fetchAll(db)
-                        let tags = try mangaRecord.tags.fetchAll(db)
-                        let covers = try mangaRecord.covers.fetchAll(db)
-                        let alternativeTitles = try mangaRecord.alternativeTitles.fetchAll(db)
-                        let origins = try mangaRecord.origins.fetchAll(db)
-                        
-                        // fetch sources and hosts for each origin
-                        var sources: [OriginRecord.ID: (source: SourceRecord, host: HostRecord)] = [:]
-                        for origin in origins {
-                            if let originId = origin.id,
-                               let sourceId = origin.sourceId,
-                               let source = try? SourceRecord.fetchOne(db, key: sourceId),
-                               let host = try? source.host.fetchOne(db) {
-                                sources[originId] = (source: source, host: host)
-                            }
-                        }
-                        
-                        let chaptersWithMetadata = try self.fetchChaptersWithMetadata(
-                            for: origins,
-                            manga: mangaRecord,
-                            in: db
-                        )
-                        
-                        let collections = try mangaRecord.collections.fetchAll(db)
-                        
-                        let bundle = MangaDataBundle(
-                            manga: mangaRecord,
-                            authors: authors,
-                            tags: tags,
-                            covers: covers,
-                            alternativeTitles: alternativeTitles,
-                            origins: origins,
-                            sources: sources,
-                            chapters: chaptersWithMetadata,
-                            collections: collections
-                        )
-                        
-                        bundles.append(bundle)
-                    }
-                    
-                    return bundles
+                    return try self.fetchMangaBundles(for: mangaIds, in: db)
                 } catch {
 #if DEBUG
-                    print("error in getAllManga: \(error)")
+                    print("Error in getAllManga: \(error)")
 #endif
                     return []
                 }
@@ -126,7 +146,7 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
                     }
                 } catch {
 #if DEBUG
-                    print("observation error: \(error)")
+                    print("Observation error: \(error)")
 #endif
                 }
                 continuation.finish()
@@ -141,7 +161,7 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
     func getSourceAndHost(sourceId: Int64) async throws -> (source: SourceRecord, host: HostRecord) {
         try await database.reader.read { db in
             guard let source = try SourceRecord.fetchOne(db, key: SourceRecord.ID(rawValue: sourceId)) else {
-                throw RepositoryError.mappingError(reason: "source not found")
+                throw RepositoryError.mappingError(reason: "Source not found")
             }
             
             guard let host = try source.host.fetchOne(db) else {
@@ -154,148 +174,261 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
     
     @discardableResult
     func saveManga(from dto: MangaDTO, chapters: [ChapterDTO], entry: Entry, sourceId: Int64) async throws -> MangaRecord {
-        return try await database.writer.write { db in
-            var mangaRecord = MangaRecord(
-                title: dto.title,
-                synopsis: AttributedString(dto.synopsis)
+        try await database.writer.write { db in
+            let mangaId = try self.findOrCreateManga(dto: dto, in: db)
+            
+            try self.batchInsertRelatedData(
+                dto: dto,
+                mangaId: mangaId,
+                sourceId: sourceId,
+                chapters: chapters,
+                in: db
             )
-            mangaRecord.updatedAt = dto.updatedAt
-            mangaRecord.lastFetchedAt = Date()
             
-            try mangaRecord.insert(db)
-            
-            guard let mangaId = mangaRecord.id else {
-                throw RepositoryError.mappingError(reason: "failed to get manga id after insert")
-            }
-            
-            try self.batchInsertAuthors(dto.authors, mangaId: mangaId, db: db)
-            try self.batchInsertTags(dto.tags, mangaId: mangaId, db: db)
-            try self.batchInsertCovers(dto.covers, mangaId: mangaId, db: db)
-            try self.batchInsertAlternativeTitles(dto.alternativeTitles, mangaId: mangaId, db: db)
-            
-            let origin = try self.insertOrigin(dto, mangaId: mangaId, sourceId: sourceId, db: db)
-            
-            if let originId = origin.id {
-                try self.batchInsertChapters(chapters, originId: originId, db: db)
-            }
-            
-            return mangaRecord
+            return try MangaRecord.fetchOne(db, key: mangaId)!
         }
     }
     
-    // MARK: - Private Helper Methods
+    // MARK: - Private Manga Fetching Methods
+    
+    // sanitize input for fts5 queries to avoid syntax errors
+    private func sanitizeForFTS(_ query: String) -> String {
+        // remove fts5 special characters that act as operators
+        let specialChars = CharacterSet(charactersIn: "!\"^*()+-")
+        return query.components(separatedBy: specialChars)
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
+    }
     
     private func findMangaIds(for entry: Entry, in db: Database) throws -> [Int64] {
         if let mangaId = entry.mangaId {
             return [mangaId]
         }
         
-        let idsBySlug = try OriginRecord
-            .select(OriginRecord.Columns.mangaId)
-            .filter(OriginRecord.Columns.slug == entry.slug)
-            .distinct()
-            .asRequest(of: Int64.self)
-            .fetchAll(db)
+        // sanitize the title for fts5 to prevent syntax errors
+        let sanitizedTitle = sanitizeForFTS(entry.title)
         
-        if !idsBySlug.isEmpty {
-            return Array(Set(idsBySlug))
+        // fallback to like query if sanitized title is empty
+        guard !sanitizedTitle.isEmpty else {
+            return try findMangaIdsWithLike(for: entry, in: db)
         }
         
-        let idsByTitle = try MangaRecord
-            .select(MangaRecord.Columns.id)
-            .filter(MangaRecord.Columns.title == entry.title)
-            .asRequest(of: Int64.self)
-            .fetchAll(db)
+        let sql = """
+            SELECT DISTINCT mangaId FROM (
+                -- search by origin slug
+                SELECT mangaId FROM \(OriginRecord.databaseTableName)
+                WHERE slug = ?
+                
+                UNION
+                
+                -- search by manga title using FTS
+                SELECT rowid as mangaId FROM \(MangaTitleFTS5.databaseTableName)
+                WHERE \(MangaTitleFTS5.databaseTableName) MATCH ?
+                
+                UNION
+                
+                -- search by alternative title using FTS
+                SELECT mangaId FROM \(MangaAltTitleFTS5.databaseTableName)
+                WHERE \(MangaAltTitleFTS5.databaseTableName) MATCH ?
+            )
+            """
         
-        let idsByAltTitle = try AlternativeTitleRecord
-            .select(AlternativeTitleRecord.Columns.mangaId)
-            .filter(AlternativeTitleRecord.Columns.title == entry.title)
-            .distinct()
-            .asRequest(of: Int64.self)
-            .fetchAll(db)
-        
-        return Array(Set(idsByTitle + idsByAltTitle))
+        do {
+            return try Int64.fetchAll(db, sql: sql, arguments: [entry.slug, sanitizedTitle, sanitizedTitle])
+        } catch {
+            // if fts still fails, fallback to like query
+#if DEBUG
+            print("FTS query failed, falling back to LIKE: \(error)")
+#endif
+            return try findMangaIdsWithLike(for: entry, in: db)
+        }
     }
     
-    private func fetchChaptersWithMetadata(
-        for origins: [OriginRecord],
-        manga: MangaRecord,
-        in db: Database
-    ) throws -> [ChapterWithMetadata] {
-        let originIds = origins.compactMap(\.id)
+    // fallback method using like queries instead of fts
+    private func findMangaIdsWithLike(for entry: Entry, in db: Database) throws -> [Int64] {
+        let sql = """
+            SELECT DISTINCT mangaId FROM (
+                -- search by origin slug
+                SELECT mangaId FROM \(OriginRecord.databaseTableName)
+                WHERE slug = ?
+                
+                UNION
+                
+                -- search by manga title using LIKE
+                SELECT id as mangaId FROM \(MangaRecord.databaseTableName)
+                WHERE title = ? COLLATE NOCASE
+                
+                UNION
+                
+                -- search by alternative title using LIKE
+                SELECT mangaId FROM \(AlternativeTitleRecord.databaseTableName)
+                WHERE title = ? COLLATE NOCASE
+            )
+            """
         
-        guard !originIds.isEmpty else { return [] }
-        
-        let chapters = try ChapterRecord
-            .filter(originIds.contains(ChapterRecord.Columns.originId))
+        return try Int64.fetchAll(db, sql: sql, arguments: [entry.slug, entry.title, entry.title])
+    }
+    
+    private func fetchMangaBundles(for mangaIds: [Int64], in db: Database) throws -> [MangaDataBundle] {
+        let mangaRecords = try MangaRecord
+            .filter(mangaIds.contains(MangaRecord.Columns.id))
             .fetchAll(db)
         
-        let filteredChapters = applyChapterFilters(
-            chapters: chapters,
+        return try mangaRecords.compactMap { manga in
+            guard let mangaId = manga.id else { return nil }
+            return try fetchMangaBundle(for: manga, mangaId: mangaId, in: db)
+        }
+    }
+    
+    private func fetchMangaBundle(for manga: MangaRecord, mangaId: MangaRecord.ID, in db: Database) throws -> MangaDataBundle {
+        let authors = try manga.authors.fetchAll(db)
+        let tags = try manga.tags.fetchAll(db)
+        let covers = try manga.covers.fetchAll(db)
+        let alternativeTitles = try manga.alternativeTitles.fetchAll(db)
+        let origins = try manga.origins.fetchAll(db)
+        let collections = try manga.collections.fetchAll(db)
+        let sources = try fetchSourcesForOrigins(origins, in: db)
+        let chapters = try fetchChaptersWithMetadata(for: manga, in: db)
+        
+        return MangaDataBundle(
             manga: manga,
-            db: db
+            authors: authors,
+            tags: tags,
+            covers: covers,
+            alternativeTitles: alternativeTitles,
+            origins: origins,
+            sources: sources,
+            chapters: chapters,
+            collections: collections
         )
-        
-        var chaptersWithMetadata: [ChapterWithMetadata] = []
-        
-        for chapter in filteredChapters {
-            let scanlator = try chapter.scanlator.fetchOne(db)
-            let origin = try chapter.origin.fetchOne(db)
-            let source = try origin?.source.fetchOne(db)
-            
-            chaptersWithMetadata.append(ChapterWithMetadata(
-                chapter: chapter,
-                scanlatorName: scanlator?.name ?? "Unknown",
-                sourceIcon: source?.icon
-            ))
-        }
-        
-        return chaptersWithMetadata
     }
     
-    private func applyChapterFilters(chapters: [ChapterRecord], manga: MangaRecord, db: Database) -> [ChapterRecord] {
-        if manga.showAllChapters {
-            return chapters.sorted { $0.number < $1.number }
+    private func fetchSourcesForOrigins(_ origins: [OriginRecord], in db: Database) throws -> [OriginRecord.ID: (source: SourceRecord, host: HostRecord)] {
+        var sources: [OriginRecord.ID: (source: SourceRecord, host: HostRecord)] = [:]
+        
+        let sourceIds = origins.compactMap { $0.sourceId }
+        guard !sourceIds.isEmpty else { return sources }
+        
+        let sourceRecords = try SourceRecord
+            .filter(sourceIds.contains(SourceRecord.Columns.id))
+            .including(required: SourceRecord.host)
+            .fetchAll(db)
+        
+        for origin in origins {
+            guard let originId = origin.id,
+                  let sourceId = origin.sourceId,
+                  let source = sourceRecords.first(where: { $0.id == sourceId }),
+                  let host = try source.host.fetchOne(db) else { continue }
+            
+            sources[originId] = (source: source, host: host)
         }
         
-        var filtered = chapters
+        return sources
+    }
+    
+    private func fetchChaptersWithMetadata(for manga: MangaRecord, in db: Database) throws -> [ChapterWithMetadata] {
+        guard let mangaId = manga.id else { return [] }
         
-        if !manga.showHalfChapters {
-            filtered = filtered.filter { chapter in
-                chapter.number == Double(Int(chapter.number))
-            }
+        let sql = """
+            SELECT 
+                c.*,
+                s.name as scanlatorName,
+                src.icon as sourceIcon
+            FROM \(BestChapterView.databaseTableName) bc
+            JOIN \(ChapterRecord.databaseTableName) c ON c.id = bc.chapterId
+            JOIN \(ScanlatorRecord.databaseTableName) s ON s.id = c.scanlatorId
+            JOIN \(OriginRecord.databaseTableName) o ON o.id = c.originId
+            LEFT JOIN \(SourceRecord.databaseTableName) src ON src.id = o.sourceId
+            WHERE bc.mangaId = ?
+              AND bc.rank = 1
+              AND (\(manga.showAllChapters ? "1=1" : "bc.showHalfChapters = 1 OR bc.number = CAST(bc.number AS INTEGER)"))
+            ORDER BY bc.number ASC
+            """
+        
+        let rows = try Row.fetchAll(db, sql: sql, arguments: [mangaId.rawValue])
+        
+        return rows.compactMap { row in
+            ChapterRow(row: row)?.toChapterWithMetadata()
+        }
+    }
+    
+    // MARK: - Private Manga Saving Methods
+    
+    private func findOrCreateManga(dto: MangaDTO, in db: Database) throws -> MangaRecord.ID {
+        if let existing = try MangaRecord
+            .filter(MangaRecord.Columns.title == dto.title)
+            .fetchOne(db),
+           let id = existing.id {
+            var updated = existing
+            updated.updatedAt = dto.updatedAt
+            updated.lastFetchedAt = Date()
+            try updated.update(db)
+            return id
         }
         
-        let grouped = Dictionary(grouping: filtered) { $0.number }
-        filtered = grouped.compactMap { (_, chapters) in
-            chapters.first
+        var mangaRecord = MangaRecord(
+            title: dto.title,
+            synopsis: dto.synopsis
+        )
+        mangaRecord.updatedAt = dto.updatedAt
+        mangaRecord.lastFetchedAt = Date()
+        
+        try mangaRecord.insert(db)
+        
+        guard let mangaId = mangaRecord.id else {
+            throw RepositoryError.mappingError(reason: "Failed to get manga ID after insert")
         }
         
-        return filtered.sorted { $0.number < $1.number }
+        return mangaId
+    }
+    
+    private func batchInsertRelatedData(
+        dto: MangaDTO,
+        mangaId: MangaRecord.ID,
+        sourceId: Int64,
+        chapters: [ChapterDTO],
+        in db: Database
+    ) throws {
+        try self.batchInsertAuthors(dto.authors, mangaId: mangaId, db: db)
+        try self.batchInsertTags(dto.tags, mangaId: mangaId, db: db)
+        try self.batchInsertCovers(dto.covers, mangaId: mangaId, db: db)
+        try self.batchInsertAlternativeTitles(dto.alternativeTitles, mangaId: mangaId, db: db)
+        
+        let origin = try self.insertOrigin(dto, mangaId: mangaId, sourceId: sourceId, db: db)
+        
+        if let originId = origin.id {
+            try self.batchInsertChapters(chapters, originId: originId, db: db)
+        }
+        
     }
     
     private func batchInsertAuthors(_ authorNames: [String], mangaId: MangaRecord.ID, db: Database) throws {
         for name in authorNames {
-            var author = try AuthorRecord
-                .filter(AuthorRecord.Columns.name == name)
-                .fetchOne(db) ?? AuthorRecord(name: name)
+            let author = try AuthorRecord.filter(AuthorRecord.Columns.name == name).fetchOne(db)
+            ?? AuthorRecord(name: name)
             
-            if author.id == nil {
-                try author.insert(db)
+            var mutableAuthor = author
+            if mutableAuthor.id == nil {
+                try mutableAuthor.insert(db)
             }
             
-            if let authorId = author.id {
-                try MangaAuthorRecord(mangaId: mangaId, authorId: authorId)
-                    .insert(db, onConflict: .ignore)
+            if let authorId = mutableAuthor.id {
+                var junction = MangaAuthorRecord(
+                    mangaId: mangaId,
+                    authorId: authorId
+                )
+                try junction.insert(db, onConflict: .ignore)
             }
         }
     }
     
     private func batchInsertTags(_ tagNames: [String], mangaId: MangaRecord.ID, db: Database) throws {
         for tagName in tagNames {
-            let normalizedName = tagName.lowercased().replacingOccurrences(of: " ", with: "")
+            let normalizedName = tagName
+                .lowercased()
+                .replacingOccurrences(of: " ", with: "")
             
-            var tag = try TagRecord
+            let tag = try TagRecord
                 .filter(TagRecord.Columns.normalizedName == normalizedName)
                 .fetchOne(db) ?? TagRecord(
                     normalizedName: normalizedName,
@@ -303,62 +436,36 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
                     canonicalId: nil
                 )
             
-            if tag.id == nil {
-                try tag.insert(db)
+            var mutableTag = tag
+            if mutableTag.id == nil {
+                try mutableTag.insert(db)
             }
             
-            if let tagId = tag.id {
-                try MangaTagRecord(mangaId: mangaId, tagId: tagId)
-                    .insert(db, onConflict: .ignore)
+            if let tagId = mutableTag.id {
+                var junction = MangaTagRecord(
+                    mangaId: mangaId,
+                    tagId: tagId
+                )
+                try junction.insert(db, onConflict: .ignore)
             }
         }
     }
     
     private func batchInsertCovers(_ coverUrls: [String], mangaId: MangaRecord.ID, db: Database) throws {
-        // save cover metadata to database
+        try CoverRecord
+            .filter(CoverRecord.Columns.mangaId == mangaId)
+            .deleteAll(db)
+        
         for (index, coverURLString) in coverUrls.enumerated() {
             guard let coverURL = URL(string: coverURLString) else { continue }
             
-            // for now, we'll use the remote url as the local path
-            // kingfisher will handle caching automatically
             var coverRecord = CoverRecord(
                 mangaId: mangaId,
                 isPrimary: index == 0,
-                localPath: coverURL,  // using remote url, kingfisher handles caching
+                localPath: coverURL,
                 remotePath: coverURL
             )
             try coverRecord.insert(db)
-        }
-        
-        #warning("TODO: Enable this behind a user preference flag for offline-only mode (like Spotify)")
-        // saveCoversForOfflineMode(coverUrls: coverUrls, mangaId: mangaId)
-    }
-
-    // separate function for future offline-only mode
-    private func saveCoversForOfflineMode(coverUrls: [String], mangaId: MangaRecord.ID) {
-        let coversDirectory = Core.Constants.Paths.local
-            .appending(path: String(mangaId.rawValue))
-            .appendingPathComponent("covers", isDirectory: true)
-        
-        do {
-            try FileManager.default.createDirectory(
-                at: coversDirectory,
-                withIntermediateDirectories: true
-            )
-            
-            for (index, coverURLString) in coverUrls.enumerated() {
-                guard let coverURL = URL(string: coverURLString) else { continue }
-                
-                let localCoverPath = coversDirectory.appendingPathComponent("\(index).jpg")
-                
-                // this would download and save locally for offline-only mode
-                if let coverData = try? Data(contentsOf: coverURL) {
-                    try? coverData.write(to: localCoverPath)
-                }
-            }
-        } catch {
-            // silently fail for offline saves
-            print("Failed to save covers for offline mode: \(error)")
         }
     }
     
@@ -373,18 +480,25 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
     }
     
     private func insertOrigin(_ dto: MangaDTO, mangaId: MangaRecord.ID, sourceId: Int64, db: Database) throws -> OriginRecord {
-        let existingOrigins = try OriginRecord
+        if let existing = try OriginRecord
             .filter(OriginRecord.Columns.mangaId == mangaId)
-            .fetchAll(db)
+            .filter(OriginRecord.Columns.sourceId == sourceId)
+            .fetchOne(db) {
+            return existing
+        }
         
-        let nextPriority = (existingOrigins.map(\.priority).max() ?? -1) + 1
+        let maxPriority = try OriginRecord
+            .select(max(OriginRecord.Columns.priority))
+            .filter(OriginRecord.Columns.mangaId == mangaId)
+            .asRequest(of: Int.self)
+            .fetchOne(db)
         
         var origin = OriginRecord(
             mangaId: mangaId,
             sourceId: SourceRecord.ID(rawValue: sourceId),
             slug: dto.slug,
             url: dto.url,
-            priority: nextPriority,
+            priority: maxPriority == nil ? 0 : maxPriority! + 1,
             classification: Classification(rawValue: dto.classification) ?? .Unknown,
             status: Status(rawValue: dto.publication) ?? .Unknown
         )
@@ -400,27 +514,26 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
             .filter(OriginScanlatorPriorityRecord.Columns.originId == originId)
             .fetchAll(db)
         
-        var nextPriority = existingPriorities.map(\.priority).max() ?? -1
+        var maxPriority = existingPriorities.map(\.priority).max() ?? -1
         
         for (scanlatorName, chapterGroup) in chaptersByScanlator {
-            var scanlator = try ScanlatorRecord
+            let scanlator = try ScanlatorRecord
                 .filter(ScanlatorRecord.Columns.name == scanlatorName)
                 .fetchOne(db) ?? ScanlatorRecord(name: scanlatorName)
             
-            if scanlator.id == nil {
-                try scanlator.insert(db)
+            var mutableScanlator = scanlator
+            if mutableScanlator.id == nil {
+                try mutableScanlator.insert(db)
             }
             
-            guard let scanlatorId = scanlator.id else { continue }
+            guard let scanlatorId = mutableScanlator.id else { continue }
             
-            let relationExists = existingPriorities.contains { $0.scanlatorId == scanlatorId }
-            
-            if !relationExists {
-                nextPriority += 1
+            if !existingPriorities.contains(where: { $0.scanlatorId == scanlatorId }) {
+                maxPriority += 1
                 var priority = OriginScanlatorPriorityRecord(
                     originId: originId,
                     scanlatorId: scanlatorId,
-                    priority: nextPriority
+                    priority: maxPriority
                 )
                 try priority.insert(db)
             }

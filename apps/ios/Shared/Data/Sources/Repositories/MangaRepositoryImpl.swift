@@ -91,11 +91,11 @@ public final class MangaRepositoryImpl: MangaRepository {
                 throw RepositoryError.mappingError(reason: "manga id is nil")
             }
             
-            let authorNames = bundle.authors.map { $0.name }
+            let authorNames = bundle.authors.map(\.name)
             
             let tagNames = bundle.tags
-                .filter { $0.isCanonical }
-                .map { $0.displayName }
+                .filter(\.isCanonical)
+                .map(\.displayName)
             
             let coverURLs = bundle.covers
                 .sorted { lhs, rhs in
@@ -104,9 +104,9 @@ public final class MangaRepositoryImpl: MangaRepository {
                     }
                     return (lhs.id?.rawValue ?? 0) < (rhs.id?.rawValue ?? 0)
                 }
-                .map { $0.localPath }
+                .map(\.localPath)
             
-            let altTitles = bundle.alternativeTitles.map { $0.title }
+            let altTitles = bundle.alternativeTitles.map(\.title)
             
             let originEntities = try bundle.origins.map { origin in
                 guard let originId = origin.id else {
@@ -157,11 +157,26 @@ public final class MangaRepositoryImpl: MangaRepository {
                 )
             }
             
+            // convert synopsis to attributed string with markdown parsing
+            let attributedSynopsis: AttributedString = {
+                do {
+                    return try AttributedString(
+                        markdown: bundle.manga.synopsis,
+                        options: AttributedString.MarkdownParsingOptions(
+                            interpretedSyntax: .inlineOnlyPreservingWhitespace
+                        )
+                    )
+                } catch {
+                    // fallback to plain text if markdown parsing fails
+                    return AttributedString(bundle.manga.synopsis)
+                }
+            }()
+            
             return Manga(
                 id: mangaId.rawValue,
                 title: bundle.manga.title,
                 authors: authorNames,
-                synopsis: bundle.manga.synopsis,
+                synopsis: attributedSynopsis,
                 alternativeTitles: altTitles,
                 tags: tagNames,
                 covers: coverURLs,

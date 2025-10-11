@@ -10,12 +10,12 @@ import GRDB
 import Tagged
 import Domain
 
-internal struct MangaRecord: Codable, Hashable {
+internal struct MangaRecord: Codable, Hashable, DatabaseRecord {
     typealias ID = Tagged<Self, Int64>
     private(set) var id: ID?
     
     var title: String
-    var synopsis: AttributedString
+    var synopsis: String
     
     // config
     var inLibrary: Bool = false
@@ -27,14 +27,16 @@ internal struct MangaRecord: Codable, Hashable {
     var showAllChapters: Bool = false
     var showHalfChapters: Bool = false
     
-    init(title: String, synopsis: AttributedString) {
+    init(title: String, synopsis: String) {
         self.title = title
         self.synopsis = synopsis
     }
 }
 
-extension MangaRecord: FetchableRecord, MutablePersistableRecord {
-    public static var databaseTableName: String {
+// MARK: - DatabaseRecord
+
+extension MangaRecord {
+    static var databaseTableName: String {
         "manga"
     }
     
@@ -54,12 +56,82 @@ extension MangaRecord: FetchableRecord, MutablePersistableRecord {
         static let showHalfChapters = Column(CodingKeys.showHalfChapters)
     }
     
+    static func createTable(db: Database) throws {
+        try db.create(table: databaseTableName, options: [.ifNotExists]) { t in
+            t.autoIncrementedPrimaryKey(Columns.id.name)
+            
+            t.column(Columns.title.name, .text)
+                .notNull()
+                .collate(.localizedCaseInsensitiveCompare)
+            
+            t.column(Columns.synopsis.name, .text).notNull()
+            
+            t.column(Columns.inLibrary.name, .boolean).notNull().defaults(to: false)
+            t.column(Columns.addedAt.name, .datetime).notNull()
+            t.column(Columns.updatedAt.name, .datetime).notNull()
+            t.column(Columns.lastFetchedAt.name, .datetime).notNull()
+            t.column(Columns.lastReadAt.name, .datetime).notNull()
+            
+            t.column(Columns.orientation.name, .text).notNull()
+            t.column(Columns.showAllChapters.name, .boolean).notNull().defaults(to: false)
+            t.column(Columns.showHalfChapters.name, .boolean).notNull().defaults(to: false)
+        }
+    }
+    
+    static func migrate(with migrator: inout GRDB.DatabaseMigrator, from version: DatabaseVersion) throws {
+        switch version {
+        case ..<DatabaseVersion(1, 0, 0):
+            // no indexes needed for manga table in initial schema
+            // title has collation which provides indexing
+            break
+        default:
+            break
+        }
+    }
+    
     mutating func didInsert(_ inserted: InsertionSuccess) {
         id = ID(rawValue: inserted.rowID)
     }
 }
 
-// MARK: Manga Authors Association M-M
+// MARK: - Manga Chapters Association using BestChapterView
+
+extension MangaRecord {
+    /// Returns deduplicated chapters based on manga preferences using BestChapterView
+    var chapters: QueryInterfaceRequest<ChapterRecord> {
+        guard let mangaId = self.id else {
+            // return empty request if no id
+            return ChapterRecord.none()
+        }
+        
+        // build the SQL that joins with BestChapterView
+        let sql = """
+            SELECT c.* FROM \(ChapterRecord.databaseTableName) c
+            JOIN \(BestChapterView.databaseTableName) bc ON c.id = bc.chapterId
+            WHERE bc.mangaId = ?
+              AND bc.rank = 1
+              AND (? = 1 OR bc.showHalfChapters = 1 OR bc.number = CAST(bc.number AS INTEGER))
+            ORDER BY bc.number ASC
+            """
+        
+        return ChapterRecord.filter(sql: sql, arguments: [mangaId.rawValue, showAllChapters ? 1 : 0])
+    }
+    
+    /// Returns all chapters without deduplication (for showAllChapters mode)
+    var allChapters: QueryInterfaceRequest<ChapterRecord> {
+        guard let mangaId = self.id else {
+            return ChapterRecord.none()
+        }
+        
+        return ChapterRecord
+            .joining(required: ChapterRecord.origin)
+            .filter(sql: "\(OriginRecord.databaseTableName).mangaId = ?", arguments: [mangaId.rawValue])
+            .order(ChapterRecord.Columns.number.asc)
+    }
+}
+
+// MARK: - Manga Authors Association M-M
+
 extension MangaRecord {
     static let mangaAuthors = hasMany(MangaAuthorRecord.self)
     
@@ -69,14 +141,14 @@ extension MangaRecord {
         using: MangaAuthorRecord.author
     )
     
-    // convenience request for fetching authors
     var authors: QueryInterfaceRequest<AuthorRecord> {
         request(for: MangaRecord.authors)
             .order(AuthorRecord.Columns.name.ascNullsLast)
     }
 }
 
-// MARK: Manga Tags Association M-M
+// MARK: - Manga Tags Association M-M
+
 extension MangaRecord {
     static let mangaTags = hasMany(MangaTagRecord.self)
     
@@ -84,16 +156,16 @@ extension MangaRecord {
         TagRecord.self,
         through: mangaTags,
         using: MangaTagRecord.tag
-    ).filter(TagRecord.Columns.canonicalId == nil) // we should get only the main canonical tags
+    ).filter(TagRecord.Columns.canonicalId == nil)
     
-    // convenience request for fetching tags
     var tags: QueryInterfaceRequest<TagRecord> {
         request(for: MangaRecord.tags)
             .order(TagRecord.Columns.displayName.ascNullsLast)
     }
 }
 
-// MARK: Manga Collections Association M-M
+// MARK: - Manga Collections Association M-M
+
 extension MangaRecord {
     static let mangaCollections = hasMany(MangaCollectionRecord.self)
     
@@ -109,8 +181,8 @@ extension MangaRecord {
     }
 }
 
+// MARK: - Manga Covers Association 1-M
 
-// MARK: Manga Covers Association 1-M
 extension MangaRecord {
     static let covers = hasMany(CoverRecord.self)
     
@@ -126,7 +198,8 @@ extension MangaRecord {
     }
 }
 
-// MARK: Manga Alternative Titles Association 1-M
+// MARK: - Manga Alternative Titles Association 1-M
+
 extension MangaRecord {
     static let alternativeTitles = hasMany(AlternativeTitleRecord.self)
         .order(AlternativeTitleRecord.Columns.title)
@@ -136,7 +209,8 @@ extension MangaRecord {
     }
 }
 
-// MARK: Manga Origins Association 1-M
+// MARK: - Manga Origins Association 1-M
+
 extension MangaRecord {
     static let origins = hasMany(OriginRecord.self)
         .order(OriginRecord.Columns.priority.ascNullsLast)
@@ -150,137 +224,5 @@ extension MangaRecord {
     
     var origins: QueryInterfaceRequest<OriginRecord> {
         request(for: MangaRecord.origins)
-    }
-}
-
-// MARK: Manga Chapter Association with Origin + Scanlator Priority
-/// Fetches chapters based on manga display preferences and priority rules.
-///
-/// Display modes:
-/// - showAllChapters = true: Returns ALL chapters from ALL origins (no deduplication)
-/// - showAllChapters = false: Returns deduplicated chapters based on priority
-///   - showHalfChapters = true: Includes decimal chapters (1, 1.1, 1.2, 2)
-///   - showHalfChapters = false: Whole chapters only (1, 2, 3)
-///
-/// CASE 1: showAllChapters = true (returns everything)
-/// ═══════════════════════════════════════════════════
-/// Raw data from all origins:
-/// +--------+--------+----------+
-/// | number | origin | scanlator|
-/// +--------+--------+----------+
-/// | 1      | E      | X        |
-/// | 1      | E      | Y        |
-/// | 1      | F      | X        |
-/// | 1.5    | E      | X        |
-/// | 2      | F      | X        |
-/// +--------+--------+----------+
-/// ↓ NO TRANSFORMATION - ALL RETURNED
-///
-/// CASE 2: showAllChapters = false, showHalfChapters = false
-/// ═══════════════════════════════════════════════════════════
-/// Step 1: Filter out decimal chapters (WHERE number = CAST(number AS INTEGER))
-/// +--------+--------+----------+------+------+
-/// | number | origin | o_prior  | scan | s_pr |
-/// +--------+--------+----------+------+------+
-/// | 1      | E      | 0        | X    | 0    | ✓
-/// | 1      | E      | 0        | Y    | 1    | ✓
-/// | 1      | F      | 1        | X    | 0    | ✓
-/// | 1.5    | E      | 0        | X    | 0    | ✗ filtered
-/// | 2      | F      | 1        | X    | 0    | ✓
-/// +--------+--------+----------+------+------+
-///
-/// Step 2: Apply ROW_NUMBER() OVER (PARTITION BY number ORDER BY priorities)
-/// +--------+--------+------+------+----+
-/// | number | origin | scan | s_pr | rn |
-/// +--------+--------+------+------+----+
-/// | 1      | E      | X    | 0    | 1  |
-/// | 1      | E      | Y    | 1    | 2  |
-/// | 1      | F      | X    | 0    | 3  |
-/// | 2      | F      | X    | 0    | 1  |
-/// +--------+--------+------+------+----+
-///
-/// Step 3: Filter WHERE rn = 1 (keep best priority per chapter)
-/// +--------+--------+----------+
-/// | number | origin | scanlator|
-/// +--------+--------+----------+
-/// | 1      | E      | X        |
-/// | 2      | F      | X        |
-/// +--------+--------+----------+
-///
-/// CASE 3: showAllChapters = false, showHalfChapters = true
-/// ══════════════════════════════════════════════════════════
-/// Step 1: Keep all chapters (no decimal filtering)
-/// +--------+--------+----------+------+------+
-/// | number | origin | o_prior  | scan | s_pr |
-/// +--------+--------+----------+------+------+
-/// | 1      | E      | 0        | X    | 0    |
-/// | 1      | E      | 0        | Y    | 1    |
-/// | 1      | F      | 1        | X    | 0    |
-/// | 1.5    | E      | 0        | X    | 0    | ← kept
-/// | 1.5    | F      | 1        | Y    | 1    | ← kept
-/// | 2      | F      | 1        | X    | 0    |
-/// +--------+--------+----------+------+------+
-///
-/// Step 2: Apply ROW_NUMBER() OVER (PARTITION BY number ORDER BY priorities)
-/// +--------+--------+------+------+----+
-/// | number | origin | scan | s_pr | rn |
-/// +--------+--------+------+------+----+
-/// | 1      | E      | X    | 0    | 1  |
-/// | 1      | E      | Y    | 1    | 2  |
-/// | 1      | F      | X    | 0    | 3  |
-/// | 1.5    | E      | X    | 0    | 1  |
-/// | 1.5    | F      | Y    | 1    | 2  |
-/// | 2      | F      | X    | 0    | 1  |
-/// +--------+--------+------+------+----+
-///
-/// Step 3: Filter WHERE rn = 1 (keep best priority per chapter)
-/// +--------+--------+----------+
-/// | number | origin | scanlator|
-/// +--------+--------+----------+
-/// | 1      | E      | X        |
-/// | 1.5    | E      | X        |
-/// | 2      | F      | X        |
-/// +--------+--------+----------+
-// MARK: Manga Chapter Association with Origin + Scanlator Priority
-extension MangaRecord {
-    func fetchChapters(from db: Database) throws -> [ChapterRecord] {
-        guard let mangaId = self.id?.rawValue else {
-            return []
-        }
-        
-        // show all chapters - no deduplication
-        if showAllChapters {
-            return try ChapterRecord
-                .joining(required: ChapterRecord.origin)
-                .filter(sql: "origin.mangaId = ?", arguments: [mangaId])
-                .order(ChapterRecord.Columns.number.asc)
-                .fetchAll(db)
-        }
-        
-        // deduplicated chapters with priority rules
-        let numberFilter = showHalfChapters ? "" : "AND c.number = CAST(c.number AS INTEGER)"
-        
-        let sql = """
-            WITH ranked_chapters AS (
-                SELECT 
-                    c.*,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY c.number 
-                        ORDER BY o.priority ASC, COALESCE(osp.priority, 999) ASC
-                    ) as rank
-                FROM chapter c
-                JOIN origin o ON o.id = c.originId
-                LEFT JOIN origin_scanlator_priority osp 
-                    ON osp.originId = o.id 
-                    AND osp.scanlatorId = c.scanlatorId
-                WHERE o.mangaId = ?
-                \(numberFilter)
-            )
-            SELECT * FROM ranked_chapters
-            WHERE rank = 1
-            ORDER BY number ASC
-            """
-        
-        return try ChapterRecord.fetchAll(db, sql: sql, arguments: [mangaId])
     }
 }

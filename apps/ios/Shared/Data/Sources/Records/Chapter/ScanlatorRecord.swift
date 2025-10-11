@@ -10,28 +10,49 @@ import GRDB
 import Tagged
 import Domain
 
-internal struct ScanlatorRecord: Codable {
+internal struct ScanlatorRecord: Codable, DatabaseRecord {
     typealias ID = Tagged<Self, Int64>
     private(set) var id: ID?
     
     var name: String
 }
 
-extension ScanlatorRecord: FetchableRecord, MutablePersistableRecord {
+// MARK: - DatabaseRecord
+
+extension ScanlatorRecord {
     static var databaseTableName: String {
         "scanlator"
     }
     
     enum Columns {
         static let id = Column(CodingKeys.id)
-        
         static let name = Column(CodingKeys.name)
+    }
+    
+    static func createTable(db: Database) throws {
+        try db.create(table: databaseTableName, options: [.ifNotExists]) { t in
+            t.autoIncrementedPrimaryKey(Columns.id.name)
+            
+            t.column(Columns.name.name, .text).notNull().unique()
+        }
+    }
+    
+    static func migrate(with migrator: inout GRDB.DatabaseMigrator, from version: DatabaseVersion) throws {
+        switch version {
+        case ..<DatabaseVersion(1, 0, 0):
+            // unique constraint on name already creates an index
+            break
+        default:
+            break
+        }
     }
     
     mutating func didInsert(_ inserted: InsertionSuccess) {
         id = ID(rawValue: inserted.rowID)
     }
 }
+
+// MARK: - Associations
 
 extension ScanlatorRecord {
     static let chapters = hasMany(ChapterRecord.self)

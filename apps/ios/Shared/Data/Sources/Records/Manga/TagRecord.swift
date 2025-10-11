@@ -8,7 +8,7 @@
 import GRDB
 import Tagged
 
-internal struct TagRecord: Codable {
+internal struct TagRecord: Codable, DatabaseRecord {
     typealias ID = Tagged<Self, Int64>
     private(set) var id: ID?
     
@@ -25,7 +25,9 @@ internal struct TagRecord: Codable {
     }
 }
 
-extension TagRecord: FetchableRecord, MutablePersistableRecord {
+// MARK: - DatabaseRecord
+
+extension TagRecord {
     static var databaseTableName: String {
         "tag"
     }
@@ -38,10 +40,39 @@ extension TagRecord: FetchableRecord, MutablePersistableRecord {
         static let canonicalId = Column(CodingKeys.canonicalId)
     }
     
+    static func createTable(db: Database) throws {
+        try db.create(table: databaseTableName, options: [.ifNotExists]) { t in
+            t.autoIncrementedPrimaryKey(Columns.id.name)
+            
+            t.column(Columns.normalizedName.name, .text)
+                .notNull()
+                .collate(.localizedCaseInsensitiveCompare)
+            
+            t.column(Columns.displayName.name, .text)
+                .notNull()
+                .collate(.caseInsensitiveCompare)
+            
+            t.column(Columns.canonicalId.name, .integer)
+                .references(databaseTableName, onDelete: .setNull)
+        }
+    }
+    
+    static func migrate(with migrator: inout GRDB.DatabaseMigrator, from version: DatabaseVersion) throws {
+        switch version {
+        case ..<DatabaseVersion(1, 0, 0):
+            // no additional indexes needed in initial schema
+            break
+        default:
+            break
+        }
+    }
+    
     mutating func didInsert(_ inserted: InsertionSuccess) {
         id = ID(rawValue: inserted.rowID)
     }
 }
+
+// MARK: - Associations
 
 extension TagRecord {
     // alias -> canonical tag (many-to-one)
@@ -87,6 +118,8 @@ extension TagRecord {
     }
 }
 
+// MARK: - Query Extensions
+
 extension DerivableRequest<TagRecord> {
     func canonical() -> Self {
         filter(TagRecord.Columns.canonicalId == nil)
@@ -96,4 +129,3 @@ extension DerivableRequest<TagRecord> {
         filter(TagRecord.Columns.normalizedName == searchTerm)
     }
 }
-

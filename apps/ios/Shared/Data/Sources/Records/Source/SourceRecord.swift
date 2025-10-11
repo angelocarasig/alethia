@@ -10,7 +10,7 @@ import GRDB
 import Tagged
 import Domain
 
-internal struct SourceRecord: Codable {
+internal struct SourceRecord: Codable, DatabaseRecord {
     typealias ID = Tagged<Self, Int64>
     private(set) var id: ID?
     
@@ -38,7 +38,9 @@ internal struct SourceRecord: Codable {
     }
 }
 
-extension SourceRecord: FetchableRecord, MutablePersistableRecord {
+// MARK: - DatabaseRecord
+
+extension SourceRecord {
     static var databaseTableName: String {
         "source"
     }
@@ -57,10 +59,46 @@ extension SourceRecord: FetchableRecord, MutablePersistableRecord {
         static let authType = Column(CodingKeys.authType)
     }
     
+    static func createTable(db: Database) throws {
+        try db.create(table: databaseTableName, options: [.ifNotExists]) { t in
+            t.autoIncrementedPrimaryKey(Columns.id.name)
+            
+            t.belongsTo(HostRecord.databaseTableName, onDelete: .cascade)
+            
+            t.column(Columns.slug.name, .text).notNull()
+            t.column(Columns.name.name, .text).notNull()
+            t.column(Columns.icon.name, .text).notNull()
+            t.column(Columns.url.name, .text).notNull()
+            
+            t.column(Columns.pinned.name, .boolean).notNull().defaults(to: false)
+            t.column(Columns.disabled.name, .boolean).notNull().defaults(to: false)
+            
+            t.column(Columns.authType.name, .text)
+        }
+    }
+    
+    static func migrate(with migrator: inout GRDB.DatabaseMigrator, from version: DatabaseVersion) throws {
+        switch version {
+        case ..<DatabaseVersion(1, 0, 0):
+            let migrationName = DatabaseVersion(1, 0, 0).createMigrationName(description: "source initial indexes")
+            migrator.registerMigration(migrationName) { db in
+                // foreign key index
+                try db.create(index: "idx_source_hostId", on: databaseTableName, columns: [Columns.hostId.name])
+                
+                // slug index for api lookups
+                try db.create(index: "idx_source_slug", on: databaseTableName, columns: [Columns.slug.name])
+            }
+        default:
+            break
+        }
+    }
+    
     mutating func didInsert(_ inserted: InsertionSuccess) {
         id = ID(rawValue: inserted.rowID)
     }
 }
+
+// MARK: - Associations
 
 extension SourceRecord {
     static let host = belongsTo(HostRecord.self)
@@ -78,7 +116,8 @@ extension SourceRecord {
     }
 }
 
-// MARK: Search Associations
+// MARK: - Search Associations
+
 extension SourceRecord {
     static let searchConfig = hasOne(SearchConfigRecord.self)
     static let searchTags = hasMany(SearchTagRecord.self)
