@@ -33,6 +33,7 @@ internal final class LibraryLocalDataSourceImpl: LibraryLocalDataSource {
                     return LibraryDataBundle(entries: [], totalCount: 0, hasMore: false)
                 }
                 
+                #warning("Remove when adding to library is available")
                 var request = MangaRecord
                     .filter(MangaRecord.Columns.inLibrary == true || MangaRecord.Columns.inLibrary == false)
                 
@@ -120,19 +121,25 @@ private extension LibraryLocalDataSourceImpl {
     ) throws -> QueryInterfaceRequest<MangaRecord> {
         var result = request
         
-        if let search = filters.search, !search.isEmpty {
-            // union combines results from both title tables and deduplicates automatically
+        if let raw = filters.search, !raw.isEmpty {
+            let pattern = FTS5Pattern(matchingAllPrefixesIn: raw)
+            
+            // If the input can’t produce a valid pattern, return no rows
+            guard let pattern else {
+                return result.filter(sql: "0")
+            }
+            
             result = result.filter(sql: """
                 id IN (
-                    SELECT rowid FROM \(MangaTitleFTS5.databaseTableName)
+                    SELECT rowid
+                    FROM \(MangaTitleFTS5.databaseTableName)
                     WHERE \(MangaTitleFTS5.databaseTableName) MATCH ?
-                    
                     UNION
-                    
-                    SELECT mangaId FROM \(MangaAltTitleFTS5.databaseTableName)
+                    SELECT mangaId
+                    FROM \(MangaAltTitleFTS5.databaseTableName)
                     WHERE \(MangaAltTitleFTS5.databaseTableName) MATCH ?
                 )
-                """, arguments: [search, search])
+                """, arguments: [pattern, pattern])
         }
         
         if let collectionId = filters.collectionId, !collectionId.isEmpty {
@@ -237,23 +244,23 @@ private extension LibraryLocalDataSourceImpl {
         switch sort.field {
         case .alphabetical:
             return isAscending
-                ? request.order(MangaRecord.Columns.title.asc, MangaRecord.Columns.id.asc)
-                : request.order(MangaRecord.Columns.title.desc, MangaRecord.Columns.id.desc)
+            ? request.order(MangaRecord.Columns.title.asc, MangaRecord.Columns.id.asc)
+            : request.order(MangaRecord.Columns.title.desc, MangaRecord.Columns.id.desc)
             
         case .lastRead:
             return isAscending
-                ? request.order(MangaRecord.Columns.lastReadAt.asc, MangaRecord.Columns.id.asc)
-                : request.order(MangaRecord.Columns.lastReadAt.desc, MangaRecord.Columns.id.desc)
+            ? request.order(MangaRecord.Columns.lastReadAt.asc, MangaRecord.Columns.id.asc)
+            : request.order(MangaRecord.Columns.lastReadAt.desc, MangaRecord.Columns.id.desc)
             
         case .lastUpdated:
             return isAscending
-                ? request.order(MangaRecord.Columns.updatedAt.asc, MangaRecord.Columns.id.asc)
-                : request.order(MangaRecord.Columns.updatedAt.desc, MangaRecord.Columns.id.desc)
+            ? request.order(MangaRecord.Columns.updatedAt.asc, MangaRecord.Columns.id.asc)
+            : request.order(MangaRecord.Columns.updatedAt.desc, MangaRecord.Columns.id.desc)
             
         case .dateAdded:
             return isAscending
-                ? request.order(MangaRecord.Columns.addedAt.asc, MangaRecord.Columns.id.asc)
-                : request.order(MangaRecord.Columns.addedAt.desc, MangaRecord.Columns.id.desc)
+            ? request.order(MangaRecord.Columns.addedAt.asc, MangaRecord.Columns.id.asc)
+            : request.order(MangaRecord.Columns.addedAt.desc, MangaRecord.Columns.id.desc)
             
         case .unreadCount:
             let expr = """
@@ -300,8 +307,8 @@ private extension LibraryLocalDataSourceImpl {
         else {
             // fallback to simple id comparison if anchor not found
             return sort.direction == .ascending
-                ? req.filter(MangaRecord.Columns.id > afterId)
-                : req.filter(MangaRecord.Columns.id < afterId)
+            ? req.filter(MangaRecord.Columns.id > afterId)
+            : req.filter(MangaRecord.Columns.id < afterId)
         }
         
         switch sort.field {
@@ -366,10 +373,10 @@ private extension LibraryLocalDataSourceImpl {
             let sub = buildUnreadCountSubquery()
             if sort.direction == .ascending {
                 req = req.filter(sql: "(\(sub)) > ? OR ((\(sub)) = ? AND manga.id > ?)",
-                               arguments: [anchorUnread, anchorUnread, afterId])
+                                 arguments: [anchorUnread, anchorUnread, afterId])
             } else {
                 req = req.filter(sql: "(\(sub)) < ? OR ((\(sub)) = ? AND manga.id < ?)",
-                               arguments: [anchorUnread, anchorUnread, afterId])
+                                 arguments: [anchorUnread, anchorUnread, afterId])
             }
             
         case .chapterCount:
@@ -377,10 +384,10 @@ private extension LibraryLocalDataSourceImpl {
             let sub = buildChapterCountSubquery()
             if sort.direction == .ascending {
                 req = req.filter(sql: "(\(sub)) > ? OR ((\(sub)) = ? AND manga.id > ?)",
-                               arguments: [anchorChapters, anchorChapters, afterId])
+                                 arguments: [anchorChapters, anchorChapters, afterId])
             } else {
                 req = req.filter(sql: "(\(sub)) < ? OR ((\(sub)) = ? AND manga.id < ?)",
-                               arguments: [anchorChapters, anchorChapters, afterId])
+                                 arguments: [anchorChapters, anchorChapters, afterId])
             }
         }
         
