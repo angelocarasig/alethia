@@ -72,7 +72,7 @@ internal struct Theme {
     
     enum Animations {
         static let original: Animation = .default
-        static let spring: Animation = .spring(response: 0.3, dampingFraction: 0.8)
+        static let spring: Animation = .spring(response: 0.5, dampingFraction: 0.8)
         static let expand: Animation = .spring(response: 0.4, dampingFraction: 0.75)
     }
     

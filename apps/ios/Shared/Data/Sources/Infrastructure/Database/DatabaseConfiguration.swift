@@ -77,9 +77,9 @@ public final class DatabaseConfiguration: @unchecked Sendable {
         
         #if DEBUG
         config.publicStatementArguments = true
-        config.prepareDatabase { db in
-            db.trace { print($0) }
-        }
+//        config.prepareDatabase { db in
+//            db.trace { print($0) }
+//        }
         #endif
         
         return config

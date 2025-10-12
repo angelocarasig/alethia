@@ -2,158 +2,164 @@
 //  LibraryScreen.swift
 //  Presentation
 //
-//  Created by Assistant on 11/10/2025.
+//  Created by Angelo Carasig on 11/10/2025.
 //
 
 import SwiftUI
 import Domain
 import Composition
 
+// MARK: - Main View
+
 public struct LibraryScreen: View {
     @State private var vm = LibraryViewModel()
     @State private var showingFilters = false
+    @State private var scrollPosition = ScrollPosition()
     
     @Namespace private var namespace
     @Environment(\.dimensions) private var dimensions
     @Environment(\.theme) private var theme
     
-    private var columns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: dimensions.spacing.large), count: 3)
-    }
+    private let gridColumnCount = 3
     
     public init() {}
     
     public var body: some View {
         NavigationStack {
-            mainContent
-                .navigationTitle("Library")
-                .navigationBarTitleDisplayMode(.large)
-                .toolbar {
-                    toolbarContent
-                }
-                .sheet(isPresented: $showingFilters) {
-                    LibraryFiltersSheet()
-                        .environment(vm)
-                }
-                .onAppear {
-                    vm.startObserving()
-                }
-                .onDisappear {
-                    vm.stopObserving()
-                }
+            ZStack(alignment: .bottomTrailing) {
+                content
+                    .scrollPosition($scrollPosition)
+                    .refreshable { await vm.refresh() }
+                
+                scrollToTop
+            }
+            .navigationTitle("Library")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar { filters }
+            .sheet(isPresented: $showingFilters) {
+                LibraryFiltersSheet()
+                    .environment(vm)
+            }
+            .task { vm.startObserving() }
         }
         .environment(vm)
     }
-    
+}
+
+// MARK: - Content Sections
+private extension LibraryScreen {
     @ViewBuilder
-    private var mainContent: some View {
-        if vm.loading && vm.entries.isEmpty {
-            Spinner(text: "Loading library...", size: .large)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let error = vm.error, vm.entries.isEmpty {
-            errorView(error)
-        } else if vm.entries.isEmpty {
-            emptyStateView
-        } else {
-            libraryContent
+    var content: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: dimensions.spacing.screen) {
+                search
+                collections
+                entries
+            }
+            .padding(.vertical, dimensions.padding.screen)
         }
     }
     
-    private var libraryContent: some View {
-        ScrollView {
-            VStack(spacing: dimensions.spacing.screen) {
-                searchSection
-                collectionsSection
-                
-                LazyVGrid(columns: columns, spacing: dimensions.spacing.minimal) {
-                    ForEach(vm.entries, id: \.slug) { entry in
-                        SourceCard(id: entry.slug, entry: entry, namespace: namespace)
-                        .onAppear {
-                            // trigger pagination when last items appear
-                            if entry == vm.entries.last {
-                                vm.loadMore()
-                            }
-                        }
-                    }
+    @ViewBuilder
+    var search: some View {
+        VStack(spacing: dimensions.spacing.regular) {
+            Searchbar(
+                searchText: $vm.searchText,
+                placeholder: "Search library...",
+                onXTapped: vm.clearSearchText
+            )
+            .padding(.horizontal, dimensions.padding.screen)
+            
+            if shouldShowRecentSearches {
+                RecentSearches(
+                    searches: vm.recentSearches,
+                    onSelect: { vm.searchText = $0 }
+                )
+            }
+        }
+        .animation(theme.animations.spring, value: vm.searchText)
+    }
+    
+    @ViewBuilder
+    var collections: some View {
+        if shouldShowCollections {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: dimensions.spacing.regular) {
+                    CollectionChip(
+                        label: "All",
+                        count: vm.totalCount,
+                        isSelected: vm.selectedCollection == nil,
+                        action: selectAllCollections
+                    )
                     
-                    // loading more indicator
-                    if vm.loadingMore {
-                        ForEach(0..<3, id: \.self) { _ in
-                            RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
-                                .fill(theme.colors.tint)
-                                .aspectRatio(11/16, contentMode: .fit)
-                                .shimmer()
-                        }
+                    ForEach(MockData.collections) { collection in
+                        CollectionChip(
+                            label: collection.name,
+                            count: collection.count,
+                            isSelected: vm.selectedCollection == collection.id,
+                            action: { selectCollection(collection.id) }
+                        )
                     }
                 }
                 .padding(.horizontal, dimensions.padding.screen)
-                
-                // show total count
-                if !vm.entries.isEmpty {
-                    Text("\(vm.totalCount) items total")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.vertical, dimensions.padding.regular)
-                }
             }
-            .padding(.vertical)
-        }
-        .refreshable {
-            await withCheckedContinuation { continuation in
-                vm.refresh()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                    continuation.resume()
-                }
-            }
-        }
-    }
-    
-    private var searchSection: some View {
-        Searchbar(
-            searchText: Binding(
-                get: { vm.searchText },
-                set: { newValue in
-                    vm.searchText = newValue
-                    vm.startObserving() // live search
-                }
-            ),
-            placeholder: "Search library..."
-        )
-        .padding(.horizontal, dimensions.padding.screen)
-    }
-    
-    private var collectionsSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: dimensions.spacing.regular) {
-                CollectionChip(
-                    label: "All",
-                    count: vm.totalCount,
-                    isSelected: vm.selectedCollection == nil,
-                    action: {
-                        vm.selectedCollection = nil
-                        vm.startObserving()
-                    }
-                )
-                
-                // TODO: replace with real collections when implemented
-                ForEach(MockData.collections) { collection in
-                    CollectionChip(
-                        label: collection.name,
-                        count: collection.count,
-                        isSelected: vm.selectedCollection == collection.id,
-                        action: {
-                            vm.selectedCollection = collection.id
-                            vm.startObserving()
-                        }
-                    )
-                }
-            }
-            .padding(.horizontal, dimensions.padding.screen)
         }
     }
     
     @ViewBuilder
-    private func errorView(_ error: Error) -> some View {
+    var entries: some View {
+        if isInitialLoading {
+            LoadingGrid(columns: gridColumns)
+        } else if hasError {
+            error
+        } else if isLoadingAfterQuery {
+            LoadingGrid(columns: gridColumns)
+        } else if isEmpty {
+            empty
+        } else {
+            grid
+            
+            HStack(spacing: dimensions.spacing.regular) {
+                Text("\(vm.totalCount)")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .contentTransition(.numericText())
+                
+                Text("items in library")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.vertical, dimensions.padding.regular)
+            .transition(.push(from: .bottom).combined(with: .opacity))
+            .animation(theme.animations.spring, value: vm.totalCount)
+        }
+    }
+    
+    @ViewBuilder
+    var grid: some View {
+        LazyVGrid(columns: gridColumns, spacing: dimensions.spacing.minimal) {
+            ForEach(vm.entries, id: \.slug) { entry in
+                NavigationLink {
+                    DetailsScreen(entry: entry)
+                        .navigationTransition(.zoom(sourceID: entry.slug, in: namespace))
+                } label: {
+                    EntryCard(entry: entry, lineLimit: 2)
+                        .id(entry.slug)
+                        .matchedTransitionSource(id: entry.slug, in: namespace)
+                }
+                .onAppear { loadMoreIfNeeded(for: entry) }
+            }
+            
+            if vm.loadingMore {
+                LoadingIndicators()
+            }
+        }
+        .padding(.horizontal, dimensions.padding.screen)
+        .animation(theme.animations.spring, value: vm.entriesVersion)
+    }
+    
+    @ViewBuilder
+    var error: some View {
         ContentUnavailableView {
             Label("An Error Occurred", systemImage: "exclamationmark.triangle.fill")
         } description: {
@@ -162,79 +168,199 @@ public struct LibraryScreen: View {
                     .font(.headline)
                     .fontWeight(.regular)
                 
-                Text(error.localizedDescription)
-                    .fontDesign(.monospaced)
-                    .font(.subheadline)
-                    .fontWeight(.regular)
-                    .foregroundStyle(.secondary)
+                if let error = vm.error {
+                    Text(error.localizedDescription)
+                        .fontDesign(.monospaced)
+                        .font(.subheadline)
+                        .fontWeight(.regular)
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(.top, dimensions.padding.regular)
         } actions: {
-            Button("Retry") {
-                vm.startObserving()
+            Button("Retry") { vm.startObserving() }
+                .buttonStyle(.borderedProminent)
+        }
+        .padding(.top, dimensions.padding.screen)
+    }
+    
+    @ViewBuilder
+    var empty: some View {
+        ContentUnavailableView {
+            Label(
+                vm.hasActiveFilters ? "No Results" : "Your library is empty",
+                systemImage: vm.hasActiveFilters ? "magnifyingglass" : "books.vertical"
+            )
+        } description: {
+            Text(vm.emptyStateMessage)
+        } actions: {
+            if vm.hasActiveFilters {
+                Button("Clear Filters") { vm.resetFilters() }
+                    .buttonStyle(.borderedProminent)
             }
         }
+        .padding(.top, dimensions.padding.screen)
+        .transition(.opacity.combined(with: .scale))
     }
     
-    private var emptyStateView: some View {
-        ContentUnavailableView(
-            "Your library is empty",
-            systemImage: "books.vertical",
-            description: Text(vm.emptyStateMessage)
-        )
+    @ViewBuilder
+    var scrollToTop: some View {
+        if shouldShowScrollToTop {
+            Button(action: scrollToTopAction) {
+                Image(systemName: "arrow.up")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(theme.colors.accent)
+                    .clipShape(.circle)
+                    .shadow(radius: 4)
+            }
+            .padding(dimensions.padding.screen)
+            .transition(.scale.combined(with: .opacity))
+        }
     }
-    
+}
+
+// MARK: - Toolbar
+private extension LibraryScreen {
     @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
+    var filters: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            Button {
-                showingFilters = true
-            } label: {
-                Image(systemName: "line.3.horizontal.decrease")
-                    .foregroundStyle(.primary)
-                    .if(vm.hasActiveFilters) { view in
-                        view.overlay(alignment: .topTrailing) {
-                            Circle()
-                                .fill(theme.colors.appRed)
-                                .frame(width: 8, height: 8)
-                                .offset(x: 2, y: -2)
-                        }
+            Button(action: { showingFilters = true }) {
+                ZStack {
+                    Image(systemName: "line.3.horizontal.decrease")
+                    
+                    if vm.hasActiveFilters {
+                        Circle()
+                            .fill(theme.colors.appRed)
+                            .frame(width: 8, height: 8)
+                            .offset(x: 8, y: -8)
                     }
+                }
+                .animation(theme.animations.spring, value: vm.activeFilterCount)
             }
         }
     }
 }
 
-// MARK: - Supporting Views
+// MARK: - Computed
+private extension LibraryScreen {
+    var gridColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(), spacing: dimensions.spacing.minimal),
+            count: gridColumnCount
+        )
+    }
+    
+    var isInitialLoading: Bool {
+        vm.loading && vm.entries.isEmpty && !vm.hasInitiallyLoaded
+    }
+    
+    var hasError: Bool {
+        vm.error != nil && vm.entries.isEmpty
+    }
+    
+    var isEmpty: Bool {
+        vm.entries.isEmpty && !vm.loading && !vm.isRefreshing
+    }
+    
+    var isLoadingAfterQuery: Bool {
+        vm.entries.isEmpty && vm.loading && vm.hasInitiallyLoaded
+    }
+    
+    var shouldShowCollections: Bool {
+        !isInitialLoading
+    }
+    
+    var shouldShowRecentSearches: Bool {
+        vm.searchText.isEmpty && !vm.recentSearches.isEmpty
+    }
+    
+    var shouldShowScrollToTop: Bool {
+        vm.showScrollToTop && !vm.entries.isEmpty
+    }
+}
 
-private struct UnreadBadge: View {
+// MARK: - Actions
+private extension LibraryScreen {
+    func selectAllCollections() {
+        vm.selectedCollection = nil
+        vm.applyFilters()
+    }
+    
+    func selectCollection(_ id: String) {
+        vm.selectedCollection = id
+        vm.applyFilters()
+    }
+    
+    func loadMoreIfNeeded(for entry: Entry) {
+        if vm.shouldLoadMoreWhenAppearing(entry) {
+            vm.loadMore()
+        }
+    }
+    
+    func scrollToTopAction() {
+        withAnimation(theme.animations.spring) {
+            scrollPosition.scrollTo(edge: .top)
+        }
+    }
+}
+
+// MARK: - Supporting Components
+
+private struct RecentSearches: View {
+    let searches: [String]
+    let onSelect: (String) -> Void
+    
     @Environment(\.dimensions) private var dimensions
     @Environment(\.theme) private var theme
     
-    let count: Int
-    
     var body: some View {
-        Text("\(count)")
-            .font(.caption2.bold())
-            .foregroundStyle(.white)
-            .padding(.horizontal, dimensions.padding.minimal * 1.5)
-            .padding(.vertical, dimensions.padding.minimal / 2)
-            .background(theme.colors.appRed)
-            .clipShape(Capsule())
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: dimensions.spacing.minimal) {
+                ForEach(searches, id: \.self) { search in
+                    Button {
+                        withAnimation { onSelect(search) }
+                    } label: {
+                        Label(search, systemImage: "clock.arrow.circlepath")
+                            .font(.caption)
+                            .labelStyle(RecentSearchLabelStyle())
+                            .padding(.horizontal, dimensions.padding.regular)
+                            .padding(.vertical, dimensions.padding.minimal)
+                            .background(theme.colors.tint)
+                            .clipShape(.capsule)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, dimensions.padding.screen)
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+}
+
+private struct RecentSearchLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) {
+            configuration.icon
+                .font(.caption2)
+            configuration.title
+                .lineLimit(1)
+        }
     }
 }
 
 private struct CollectionChip: View {
-    @Environment(\.dimensions) private var dimensions
-    @Environment(\.theme) private var theme
-    
     let label: String
     let count: Int
     let isSelected: Bool
     let action: () -> Void
     
+    @Environment(\.dimensions) private var dimensions
+    @Environment(\.theme) private var theme
+    
     var body: some View {
-        Button(action: action) {
+        Button(action: { withAnimation { action() } }) {
             HStack(spacing: dimensions.spacing.minimal) {
                 Text(label)
                     .font(.subheadline)
@@ -243,20 +369,124 @@ private struct CollectionChip: View {
                     .font(.caption)
                     .padding(.horizontal, dimensions.padding.minimal * 1.5)
                     .padding(.vertical, dimensions.padding.minimal / 2)
-                    .background(isSelected ? Color.white.opacity(0.2) : theme.colors.foreground.opacity(0.1))
-                    .clipShape(Capsule())
+                    .background(badgeBg)
+                    .clipShape(.capsule)
+                    .contentTransition(.numericText())
             }
-            .foregroundStyle(isSelected ? .white : theme.colors.foreground)
+            .foregroundStyle(fg)
             .padding(.horizontal, dimensions.padding.regular * 1.75)
             .padding(.vertical, dimensions.padding.regular)
-            .background(isSelected ? theme.colors.accent : theme.colors.tint)
-            .clipShape(Capsule())
+            .background(bg)
+            .clipShape(.capsule)
+            .scaleEffect(isSelected ? 1.05 : 1.0)
         }
         .buttonStyle(.plain)
     }
+    
+    private var fg: Color {
+        isSelected ? .white : theme.colors.foreground
+    }
+    
+    private var bg: Color {
+        isSelected ? theme.colors.accent : theme.colors.tint
+    }
+    
+    private var badgeBg: Color {
+        isSelected
+            ? Color.white.opacity(0.2)
+            : theme.colors.foreground.opacity(0.1)
+    }
 }
 
-// MARK: - Mock Data (temporary)
+private struct LoadingGrid: View {
+    let columns: [GridItem]
+    
+    @Environment(\.dimensions) private var dimensions
+    @Environment(\.theme) private var theme
+    
+    private let skeletonChipCount = 4
+    private let skeletonGridItemCount = 12
+    
+    var body: some View {
+        VStack(spacing: dimensions.spacing.screen) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: dimensions.spacing.regular) {
+                    ForEach(0..<skeletonChipCount, id: \.self) { _ in
+                        Capsule()
+                            .fill(theme.colors.tint)
+                            .frame(width: 100, height: 36)
+                            .shimmer()
+                    }
+                }
+                .padding(.horizontal, dimensions.padding.screen)
+            }
+            
+            LazyVGrid(columns: columns, spacing: dimensions.spacing.minimal) {
+                ForEach(0..<skeletonGridItemCount, id: \.self) { _ in
+                    GridItemSkeleton()
+                }
+            }
+            .padding(.horizontal, dimensions.padding.screen)
+        }
+    }
+}
+
+private struct GridItemSkeleton: View {
+    @Environment(\.dimensions) private var dimensions
+    @Environment(\.theme) private var theme
+    
+    private let coverAspectRatio: CGFloat = 11/16
+    private let textHeight: CGFloat = 12
+    private let shortTextWidth: CGFloat = 60
+    private let textCornerRadius: CGFloat = 4
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: dimensions.spacing.minimal) {
+            RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
+                .fill(theme.colors.tint)
+                .aspectRatio(coverAspectRatio, contentMode: .fit)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                RoundedRectangle(cornerRadius: textCornerRadius)
+                    .fill(theme.colors.tint)
+                    .frame(height: textHeight)
+                
+                RoundedRectangle(cornerRadius: textCornerRadius)
+                    .fill(theme.colors.tint)
+                    .frame(width: shortTextWidth, height: textHeight)
+            }
+        }
+        .padding(.horizontal, dimensions.padding.minimal)
+        .shimmer()
+    }
+}
+
+private struct LoadingIndicators: View {
+    @Environment(\.dimensions) private var dimensions
+    @Environment(\.theme) private var theme
+    
+    private let indicatorCount = 3
+    private let coverAspectRatio: CGFloat = 11/16
+    private let animationDelayIncrement = 0.05
+    
+    var body: some View {
+        ForEach(0..<indicatorCount, id: \.self) { index in
+            RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
+                .fill(theme.colors.tint)
+                .aspectRatio(coverAspectRatio, contentMode: .fit)
+                .shimmer()
+                .transition(
+                    .opacity
+                        .combined(with: .scale(scale: 0.9))
+                        .animation(
+                            theme.animations.spring.delay(Double(index) * animationDelayIncrement)
+                        )
+                )
+        }
+    }
+}
+
+// MARK: - Mock Data
 
 private struct MockCollection: Identifiable {
     let id = UUID().uuidString
@@ -264,7 +494,7 @@ private struct MockCollection: Identifiable {
     let count: Int
 }
 
-private struct MockData {
+private enum MockData {
     static let collections = [
         MockCollection(name: "Favorites", count: 12),
         MockCollection(name: "Currently Reading", count: 8),

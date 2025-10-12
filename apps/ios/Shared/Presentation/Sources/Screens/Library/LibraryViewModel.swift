@@ -2,34 +2,48 @@
 //  LibraryViewModel.swift
 //  Presentation
 //
-//  Created by Assistant on 11/10/2025.
+//  Created by Angelo Carasig on 11/10/2025.
 //
 
 import SwiftUI
 import Domain
 import Composition
+import Combine
+
 
 @MainActor
 @Observable
+/// - When the screen appears, it starts a fresh data stream and shows an initial loading state on the first load.
+/// - While fetching new data, the current content stays visible; each new request cancels any in‑flight work to avoid overlap.
+/// - Typing in search waits briefly before fetching to avoid excessive requests, but clearing the search reloads immediately to prevent flicker.
+/// - Changing filters or sorting saves preferences and triggers a new fetch to reflect the updated criteria.
+/// - Scrolling near the end requests the next page and smoothly appends more items for an infinite‑scroll experience.
+/// - Pull‑to‑refresh re‑queries the data without clearing what’s on screen until fresh results arrive.
 public final class LibraryViewModel {
-    // MARK: - Dependencies
     @ObservationIgnored
     private let getLibraryMangaUseCase: GetLibraryMangaUseCase
     
-    // MARK: - State
     private(set) var entries: [Entry] = []
-    private(set) var loading: Bool = false
-    private(set) var loadingMore: Bool = false
+    private(set) var loading = false
+    private(set) var loadingMore = false
     private(set) var error: Error?
-    private(set) var totalCount: Int = 0
-    private(set) var hasMore: Bool = false
+    private(set) var totalCount = 0
+    private(set) var hasMore = false
+    private(set) var isRefreshing = false
+    private(set) var entriesVersion = 0
+    private(set) var hasInitiallyLoaded = false
     
     private var observationTask: Task<Void, Never>?
     private var lastCursor: LibraryCursor?
+    private var searchDebounceTask: Task<Void, Never>?
     
-    // MARK: - Filters & Sort
-    var searchText = ""
-    var selectedCollection: String? = nil
+    var searchText = "" {
+        didSet {
+            guard oldValue != searchText else { return }
+            debounceSearch()
+        }
+    }
+    var selectedCollection: String?
     var sortField: LibrarySortField = .alphabetical
     var sortDirection: Domain.SortDirection = .ascending
     var selectedSources: Set<Int64> = []
@@ -39,81 +53,142 @@ public final class LibraryViewModel {
     var showUnreadOnly = false
     var showDownloadedOnly = false
     
-    // MARK: - Initialization
+    @ObservationIgnored
+    private(set) var recentSearches: [String] = []
+    private let maxRecentSearches = 5
+    
+    private let debounceDelay: UInt64 = 300_000_000
+    private let loadMoreThreshold = 5
+    private let scrollToTopThreshold = 20
     
     init() {
         self.getLibraryMangaUseCase = Injector.makeGetLibraryMangaUseCase()
         loadSavedPreferences()
     }
-    
-    // MARK: - Public Methods
-    
+}
+
+extension LibraryViewModel {
     func startObserving() {
         observationTask?.cancel()
-        entries.removeAll()
-        lastCursor = nil
+        
+        // Begin a new load
         loading = true
         error = nil
+        
+        if !hasInitiallyLoaded {
+            // Initial load: clear and prepare pagination
+            resetPaginationState()
+        } else {
+            // Subsequent query: keep current entries visible (no cache used),
+            // but disable pagination on old data while new query is loading.
+            lastCursor = nil
+            hasMore = false
+            loadingMore = false
+        }
         
         let query = buildQuery()
         
         observationTask = Task { @MainActor in
             for await result in getLibraryMangaUseCase.execute(query: query) {
-                if Task.isCancelled { break }
-                
-                switch result {
-                case .success(let queryResult):
-                    self.entries = queryResult.entries
-                    self.totalCount = queryResult.totalCount ?? 0
-                    self.hasMore = queryResult.hasMore
-                    self.lastCursor = queryResult.nextCursor
-                    self.loading = false
-                    self.error = nil
-                    
-                case .failure(let err):
-                    self.error = err
-                    self.loading = false
-                }
+                guard !Task.isCancelled else { break }
+                handleQueryResult(result)
             }
         }
     }
     
-    func loadMore() {
-        guard !loadingMore, hasMore, let cursor = lastCursor else { return }
-        
-        loadingMore = true
-        let query = buildQuery(cursor: cursor)
-        
-        Task { @MainActor in
-            for await result in getLibraryMangaUseCase.execute(query: query) {
-                if Task.isCancelled { break }
-                
-                switch result {
-                case .success(let queryResult):
-                    self.entries.append(contentsOf: queryResult.entries)
-                    self.hasMore = queryResult.hasMore
-                    self.lastCursor = queryResult.nextCursor
-                    self.loadingMore = false
-                    
-                case .failure:
-                    self.loadingMore = false
-                }
-                
-                break // only take first result for pagination
-            }
-        }
-    }
-    
-    func refresh() {
+    func refresh() async {
+        isRefreshing = true
         startObserving()
+        try? await Task.sleep(nanoseconds: 1_000_000_000)
     }
     
     func stopObserving() {
         observationTask?.cancel()
+        searchDebounceTask?.cancel()
         observationTask = nil
+        searchDebounceTask = nil
+    }
+}
+
+// MARK: - Pagination
+extension LibraryViewModel {
+    func loadMore() {
+        guard canLoadMore else { return }
+        
+        loadingMore = true
+        let query = buildQuery(cursor: lastCursor)
+        
+        Task { @MainActor in
+            for await result in getLibraryMangaUseCase.execute(query: query) {
+                guard !Task.isCancelled else { break }
+                handlePaginationResult(result)
+                break
+            }
+        }
     }
     
+    func shouldLoadMoreWhenAppearing(_ entry: Entry) -> Bool {
+        guard let index = entries.firstIndex(where: { $0.slug == entry.slug }) else {
+            return false
+        }
+        return index >= entries.count - loadMoreThreshold && hasMore && !loadingMore
+    }
+    
+    private var canLoadMore: Bool {
+        !loadingMore && hasMore && lastCursor != nil && !isRefreshing
+    }
+}
+
+// MARK: - Filters & Sort (Actions)
+extension LibraryViewModel {
     func resetFilters() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            clearAllFilters()
+        }
+        savePreferences()
+        startObserving()
+    }
+    
+    func applyFilters() {
+        savePreferences()
+        startObserving()
+    }
+    
+    func toggleSortDirection() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            sortDirection = sortDirection == .ascending ? .descending : .ascending
+        }
+        applyFilters()
+    }
+    
+    func setSortField(_ field: LibrarySortField) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            if sortField == field {
+                toggleSortDirection()
+            } else {
+                sortField = field
+                sortDirection = .ascending
+            }
+        }
+        applyFilters()
+    }
+    
+    func clearSearchText() {
+        let previousText = searchText
+        
+        // Cancel any pending search so we don't show a stale update
+        searchDebounceTask?.cancel()
+        searchText = ""
+        
+        // Kick off a fresh load immediately for the empty query
+        startObserving()
+        
+        if !previousText.isEmpty && !recentSearches.contains(previousText) {
+            addToRecentSearches(previousText)
+        }
+    }
+    
+    private func clearAllFilters() {
         searchText = ""
         selectedCollection = nil
         sortField = .alphabetical
@@ -124,17 +199,11 @@ public final class LibraryViewModel {
         updatedDateFilter = nil
         showUnreadOnly = false
         showDownloadedOnly = false
-        savePreferences()
-        startObserving() // reload with cleared filters
     }
-    
-    func applyFilters() {
-        savePreferences()
-        startObserving() // reload with new filters
-    }
-    
-    // MARK: - Computed Properties
-    
+}
+
+// MARK: - Computed Properties
+extension LibraryViewModel {
     var hasActiveFilters: Bool {
         !searchText.isEmpty ||
         selectedCollection != nil ||
@@ -147,16 +216,16 @@ public final class LibraryViewModel {
     }
     
     var activeFilterCount: Int {
-        var count = 0
-        if !searchText.isEmpty { count += 1 }
-        if selectedCollection != nil { count += 1 }
-        if !selectedSources.isEmpty { count += 1 }
-        if !publicationStatus.isEmpty { count += 1 }
-        if addedDateFilter != nil { count += 1 }
-        if updatedDateFilter != nil { count += 1 }
-        if showUnreadOnly { count += 1 }
-        if showDownloadedOnly { count += 1 }
-        return count
+        [
+            !searchText.isEmpty,
+            selectedCollection != nil,
+            !selectedSources.isEmpty,
+            !publicationStatus.isEmpty,
+            addedDateFilter != nil,
+            updatedDateFilter != nil,
+            showUnreadOnly,
+            showDownloadedOnly
+        ].filter { $0 }.count
     }
     
     var emptyStateMessage: String {
@@ -171,14 +240,38 @@ public final class LibraryViewModel {
         }
     }
     
-    // MARK: - Private Methods
+    var showScrollToTop: Bool {
+        entries.count > scrollToTopThreshold
+    }
+}
+
+// MARK: - Search Handling
+extension LibraryViewModel {
+    private func shouldPerformSearch(query: String) -> Bool {
+        query.isEmpty || query.count >= 3
+    }
     
-    private func buildQuery(cursor: LibraryCursor? = nil) -> LibraryQuery {
-        let sort = LibrarySort(
-            field: sortField,
-            direction: sortDirection
-        )
+    private func debounceSearch() {
+        searchDebounceTask?.cancel()
         
+        // If the query becomes empty, refresh immediately
+        if searchText.isEmpty {
+            startObserving()
+            return
+        }
+        
+        searchDebounceTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: debounceDelay)
+            guard !Task.isCancelled, shouldPerformSearch(query: searchText) else { return }
+            startObserving()
+        }
+    }
+}
+
+// MARK: - Query
+extension LibraryViewModel {
+    private func buildQuery(cursor: LibraryCursor? = nil) -> LibraryQuery {
+        let sort = LibrarySort(field: sortField, direction: sortDirection)
         let filters = LibraryFilters(
             search: searchText.isEmpty ? nil : searchText,
             collectionId: selectedCollection,
@@ -190,11 +283,76 @@ public final class LibraryViewModel {
             downloadedOnly: showDownloadedOnly
         )
         
-        return LibraryQuery(
-            sort: sort,
-            filters: filters,
-            cursor: cursor
-        )
+        return LibraryQuery(sort: sort, filters: filters, cursor: cursor)
+    }
+    
+    private func resetPaginationState() {
+        entries.removeAll()
+        lastCursor = nil
+        hasMore = false
+        loadingMore = false
+    }
+}
+
+// MARK: - Result Handling
+extension LibraryViewModel {
+    private func handleQueryResult(_ result: Result<LibraryQueryResult, Error>) {
+        switch result {
+        case .success(let queryResult):
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                updateStateWithQueryResult(queryResult)
+            }
+        case .failure(let err):
+            error = err
+            loading = false
+            isRefreshing = false
+        }
+    }
+    
+    private func updateStateWithQueryResult(_ queryResult: LibraryQueryResult) {
+        entries = queryResult.entries
+        totalCount = queryResult.totalCount ?? 0
+        hasMore = queryResult.hasMore
+        lastCursor = queryResult.nextCursor
+        loading = false
+        isRefreshing = false
+        error = nil
+        entriesVersion += 1
+        hasInitiallyLoaded = true
+    }
+    
+    private func handlePaginationResult(_ result: Result<LibraryQueryResult, Error>) {
+        switch result {
+        case .success(let queryResult):
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                appendEntriesWithStaggeredAnimation(queryResult.entries)
+                hasMore = queryResult.hasMore
+                lastCursor = queryResult.nextCursor
+                loadingMore = false
+            }
+        case .failure:
+            loadingMore = false
+        }
+    }
+    
+    private func appendEntriesWithStaggeredAnimation(_ newEntries: [Entry]) {
+        for (index, entry) in newEntries.enumerated() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.02) {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    self.entries.append(entry)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Preferences & Recent Searches
+extension LibraryViewModel {
+    private func addToRecentSearches(_ search: String) {
+        recentSearches.insert(search, at: 0)
+        if recentSearches.count > maxRecentSearches {
+            recentSearches.removeLast()
+        }
     }
     
     private func loadSavedPreferences() {
@@ -210,6 +368,10 @@ public final class LibraryViewModel {
         
         showUnreadOnly = UserDefaults.standard.bool(forKey: "library.showUnreadOnly")
         showDownloadedOnly = UserDefaults.standard.bool(forKey: "library.showDownloadedOnly")
+        
+        if let savedSearches = UserDefaults.standard.stringArray(forKey: "library.recentSearches") {
+            recentSearches = Array(savedSearches.prefix(maxRecentSearches))
+        }
     }
     
     private func savePreferences() {
@@ -217,5 +379,6 @@ public final class LibraryViewModel {
         UserDefaults.standard.set(sortDirection.rawValue, forKey: "library.sortDirection")
         UserDefaults.standard.set(showUnreadOnly, forKey: "library.showUnreadOnly")
         UserDefaults.standard.set(showDownloadedOnly, forKey: "library.showDownloadedOnly")
+        UserDefaults.standard.set(recentSearches, forKey: "library.recentSearches")
     }
 }
