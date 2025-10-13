@@ -15,9 +15,22 @@ for (const source of adapters) {
   app.post(`/${config.slug}/search`, async (c) => {
     const body = await c.req.json();
     const parsed = SearchRequestSchema.parse(body);
-    const results = await source.search(parsed);
 
-    return c.json(results);
+    const headers: Record<string, string> = {};
+    c.req.raw.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+
+    try {
+      const results = await source.search(parsed, headers);
+      return c.json(results);
+    } catch (error) {
+      console.error('Search error:', error);
+      return c.json(
+        { error: error instanceof Error ? error.message : 'Unknown error' },
+        500,
+      );
+    }
   });
 
   app.get(`/${config.slug}/:mangaSlug`, async (c) => {

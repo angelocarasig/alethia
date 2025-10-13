@@ -42,6 +42,9 @@ importers:
       '@source/mangadex':
         specifier: workspace:*
         version: link:../../sources/mangadex
+      '@source/mangapark':
+        specifier: workspace:*
+        version: link:../../sources/mangapark
       '@source/weebcentral':
         specifier: workspace:*
         version: link:../../sources/weebcentral
@@ -267,6 +270,28 @@ importers:
       '@repo/schema':
         specifier: workspace:*
         version: link:../../packages/schema
+      zod:
+        specifier: ^4.0.17
+        version: 4.0.17
+    devDependencies:
+      '@repo/eslint-config':
+        specifier: workspace:*
+        version: link:../../packages/eslint-config
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+
+  sources/mangapark:
+    dependencies:
+      '@repo/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@repo/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
+      cheerio:
+        specifier: ^1.1.2
+        version: 1.1.2
       zod:
         specifier: ^4.0.17
         version: 4.0.17

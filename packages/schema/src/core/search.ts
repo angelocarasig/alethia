@@ -28,6 +28,7 @@ export const FilterOptionSchema = z.enum([
   'excludeTag',
   'demographic',
   'publisher',
+  'minChapters',
 ]);
 
 export const SearchSchema = z.object({

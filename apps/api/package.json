@@ -12,6 +12,7 @@
     "@repo/logger": "workspace:*",
     "@source/mangadex": "workspace:*",
     "@source/weebcentral": "workspace:*",
+    "@source/mangapark": "workspace:*",
     "@sentry/cloudflare": "^10.17.0",
     "hono": "^4.9.7"
   },
