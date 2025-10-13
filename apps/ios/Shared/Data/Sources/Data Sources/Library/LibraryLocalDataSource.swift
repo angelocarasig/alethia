@@ -9,6 +9,22 @@ import Foundation
 import Domain
 import GRDB
 
+/// date filter apply to the query interface request
+private extension DateFilter {
+    func apply<T>(to request: QueryInterfaceRequest<T>, column: Column) -> QueryInterfaceRequest<T> {
+        switch type {
+        case .none:
+            return request
+        case .before(let date):
+            return request.filter(column < date)
+        case .after(let date):
+            return request.filter(column > date)
+        case .between(let start, let end):
+            return request.filter(column >= start && column <= end)
+        }
+    }
+}
+
 internal protocol LibraryLocalDataSource: Sendable {
     func getLibraryEntries(query: LibraryQuery) -> AsyncStream<Result<LibraryDataBundle, Error>>
 }
@@ -168,8 +184,8 @@ private extension LibraryLocalDataSourceImpl {
             )
         }
         
-        if !filters.publicationStatus.isEmpty {
-            let statuses = Array(filters.publicationStatus).map { $0.rawValue }
+        if !filters.statuses.isEmpty {
+            let statuses = Array(filters.statuses).map { $0.rawValue }
             let placeholders = Array(repeating: "?", count: statuses.count).joined(separator: ", ")
             result = result.filter(
                 sql: """
@@ -184,11 +200,28 @@ private extension LibraryLocalDataSourceImpl {
             )
         }
         
-        if let added = filters.addedDate {
-            result = applyDateFilter(result, dateFilter: added, column: MangaRecord.Columns.addedAt)
+        if !filters.classifications.isEmpty {
+            let classifications = filters.classifications.map { $0.rawValue }
+            let placeholders = Array(repeating: "?", count: classifications.count).joined(separator: ", ")
+            result = result.filter(
+                sql: """
+                EXISTS (
+                    SELECT 1
+                    FROM \(OriginRecord.databaseTableName) o
+                    WHERE o.mangaId = manga.id
+                      AND o.classification IN (\(placeholders))
+                )
+                """,
+                arguments: StatementArguments(classifications)
+            )
         }
-        if let updated = filters.updatedDate {
-            result = applyDateFilter(result, dateFilter: updated, column: MangaRecord.Columns.updatedAt)
+        
+        if filters.addedDate.isActive {
+            result = filters.addedDate.apply(to: result, column: MangaRecord.Columns.addedAt)
+        }
+        
+        if filters.updatedDate.isActive {
+            result = filters.updatedDate.apply(to: result, column: MangaRecord.Columns.updatedAt)
         }
         
         if filters.unreadOnly {
@@ -220,49 +253,39 @@ private extension LibraryLocalDataSourceImpl {
         return result
     }
     
-    func applyDateFilter(
-        _ request: QueryInterfaceRequest<MangaRecord>,
-        dateFilter: DateFilter,
-        column: Column
-    ) -> QueryInterfaceRequest<MangaRecord> {
-        switch dateFilter.type {
-        case .before(let date):
-            return request.filter(column < date)
-        case .after(let date):
-            return request.filter(column > date)
-        case .between(let start, let end):
-            return request.filter(column >= start && column <= end)
-        }
-    }
-    
     func applySorting(
         _ request: QueryInterfaceRequest<MangaRecord>,
         sort: LibrarySort
     ) -> QueryInterfaceRequest<MangaRecord> {
-        let isAscending = sort.direction == .ascending
+        let isDescending = sort.direction == .descending
         
         switch sort.field {
         case .alphabetical:
-            return isAscending
+            // descending = A-Z (natural alphabetical order)
+            return isDescending
             ? request.order(MangaRecord.Columns.title.asc, MangaRecord.Columns.id.asc)
             : request.order(MangaRecord.Columns.title.desc, MangaRecord.Columns.id.desc)
             
         case .lastRead:
-            return isAscending
-            ? request.order(MangaRecord.Columns.lastReadAt.asc, MangaRecord.Columns.id.asc)
-            : request.order(MangaRecord.Columns.lastReadAt.desc, MangaRecord.Columns.id.desc)
+            // descending = newest first
+            return isDescending
+            ? request.order(MangaRecord.Columns.lastReadAt.desc, MangaRecord.Columns.id.desc)
+            : request.order(MangaRecord.Columns.lastReadAt.asc, MangaRecord.Columns.id.asc)
             
         case .lastUpdated:
-            return isAscending
-            ? request.order(MangaRecord.Columns.updatedAt.asc, MangaRecord.Columns.id.asc)
-            : request.order(MangaRecord.Columns.updatedAt.desc, MangaRecord.Columns.id.desc)
+            // descending = newest first
+            return isDescending
+            ? request.order(MangaRecord.Columns.updatedAt.desc, MangaRecord.Columns.id.desc)
+            : request.order(MangaRecord.Columns.updatedAt.asc, MangaRecord.Columns.id.asc)
             
         case .dateAdded:
-            return isAscending
-            ? request.order(MangaRecord.Columns.addedAt.asc, MangaRecord.Columns.id.asc)
-            : request.order(MangaRecord.Columns.addedAt.desc, MangaRecord.Columns.id.desc)
+            // descending = newest first
+            return isDescending
+            ? request.order(MangaRecord.Columns.addedAt.desc, MangaRecord.Columns.id.desc)
+            : request.order(MangaRecord.Columns.addedAt.asc, MangaRecord.Columns.id.asc)
             
         case .unreadCount:
+            // descending = most unread first
             let expr = """
             COALESCE((
                 SELECT COUNT(1)
@@ -271,11 +294,12 @@ private extension LibraryLocalDataSourceImpl {
                   AND bc.rank = 1
                   AND (bc.progress IS NULL OR bc.progress < 1)
                   AND (bc.showHalfChapters = 1 OR bc.number = CAST(bc.number AS INTEGER))
-            ), 0) \(isAscending ? "ASC" : "DESC"), manga.id \(isAscending ? "ASC" : "DESC")
+            ), 0) \(isDescending ? "DESC" : "ASC"), manga.id \(isDescending ? "DESC" : "ASC")
             """
             return request.order(SQL(sql: expr).sqlExpression)
             
         case .chapterCount:
+            // descending = most chapters first
             let expr = """
             COALESCE((
                 SELECT COUNT(1)
@@ -283,7 +307,7 @@ private extension LibraryLocalDataSourceImpl {
                 WHERE bc.mangaId = manga.id
                   AND bc.rank = 1
                   AND (bc.showHalfChapters = 1 OR bc.number = CAST(bc.number AS INTEGER))
-            ), 0) \(isAscending ? "ASC" : "DESC"), manga.id \(isAscending ? "ASC" : "DESC")
+            ), 0) \(isDescending ? "DESC" : "ASC"), manga.id \(isDescending ? "DESC" : "ASC")
             """
             return request.order(SQL(sql: expr).sqlExpression)
         }

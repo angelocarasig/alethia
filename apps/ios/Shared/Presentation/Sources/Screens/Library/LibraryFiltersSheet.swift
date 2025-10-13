@@ -2,7 +2,7 @@
 //  LibraryFiltersSheet.swift
 //  Presentation
 //
-//  Created by Assistant on 11/10/2025.
+//  Created by Angelo Carasig on 13/10/2025.
 //
 
 import SwiftUI
@@ -15,147 +15,446 @@ struct LibraryFiltersSheet: View {
     @Environment(\.dimensions) private var dimensions
     @Environment(\.theme) private var theme
     
-    @State private var showDatePicker = false
-    @State private var selectedDateFilter: DateFilterType = .addedDate
-    @State private var datePickerDate = Date()
-    
-    enum DateFilterType {
-        case addedDate
-        case updatedDate
-    }
+    @State private var isSortExpanded = true
+    @State private var isDatesExpanded = true
+    @State private var isMetadataExpanded = true
+    @State private var isQuickExpanded = true
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: dimensions.spacing.toolbar * 1.5) {
-                    if vm.hasActiveFilters {
-                        activeFiltersSection
-                            .transition(.move(edge: .top).combined(with: .opacity))
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Active")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .padding(.bottom, dimensions.padding.regular)
+                    
+                    activeFiltersView
+                    
+                    Divider()
+                        .padding(.vertical, dimensions.padding.screen)
+                    
+                    VStack(spacing: 0) {
+                        sortSection
+                        
                         Divider()
+                            .padding(.vertical, dimensions.padding.screen)
+                        
+                        datesSection
+                        
+                        Divider()
+                            .padding(.vertical, dimensions.padding.screen)
+                        
+                        metadataSection
+                        
+                        Divider()
+                            .padding(.vertical, dimensions.padding.screen)
+                        
+                        quickFiltersSection
                     }
-                    
-                    sortSection
-                    Divider()
-                    
-                    dateFilterSection(
-                        title: "Added Date",
-                        icon: "calendar.badge.plus",
-                        currentFilter: vm.addedDateFilter,
-                        filterType: .addedDate
-                    )
-                    Divider()
-                    
-                    dateFilterSection(
-                        title: "Updated Date",
-                        icon: "calendar.badge.clock",
-                        currentFilter: vm.updatedDateFilter,
-                        filterType: .updatedDate
-                    )
-                    Divider()
-                    
-                    publicationStatusSection
-                    Divider()
-                    
-                    sourcesSection
-                    Divider()
-                    
-                    toggleSection
-                    
-                    filterPresetsSection
-                    
-                    Spacer(minLength: dimensions.spacing.screen)
                 }
-                .padding(dimensions.padding.screen)
+                .padding()
             }
-            .navigationTitle("Filters & Sort")
+            .navigationTitle("Sorting and Filtering")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                toolbarContent
-            }
-            .sheet(isPresented: $showDatePicker) {
-                datePicker
+                ToolbarItem(placement: .cancellationAction) {
+                    Text("Reset")
+                        .foregroundColor(vm.hasActiveFilters ? theme.colors.accent : .secondary)
+                        .tappable {
+                            withAnimation(theme.animations.expand) {
+                                vm.resetFilters()
+                            }
+                        }
+                        .disabled(!vm.hasActiveFilters)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Text("Close")
+                        .foregroundColor(theme.colors.accent)
+                        .tappable { dismiss() }
+                }
             }
         }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
+    }
+}
+
+// MARK: - Active Filters Display
+private extension LibraryFiltersSheet {
+    @ViewBuilder
+    var activeFiltersView: some View {
+        VStack(alignment: .leading, spacing: dimensions.spacing.regular) {
+            HStack(spacing: dimensions.spacing.regular) {
+                Text("Sorting By").foregroundColor(.secondary)
+                badge(vm.sortField.displayName, color: theme.colors.accent)
+                Text("•").foregroundColor(.secondary).fontWeight(.medium)
+                badge(vm.sortDirection.displayName, color: theme.colors.accent)
+            }
+            .font(.subheadline)
+            .padding(.bottom, dimensions.padding.regular)
+            
+            HStack(spacing: dimensions.spacing.regular) {
+                HStack(spacing: dimensions.spacing.minimal) {
+                    Text("Active Filters").foregroundColor(.secondary)
+                    if vm.activeFilterCount > 0 {
+                        Text("\(vm.activeFilterCount)")
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .padding(.horizontal, dimensions.padding.regular)
+                            .padding(.vertical, dimensions.padding.minimal)
+                            .background(theme.colors.appPurple.opacity(0.9))
+                            .foregroundColor(.white)
+                            .clipShape(.capsule)
+                    }
+                }
+                
+                if !vm.hasActiveFilters {
+                    badge("None", color: theme.colors.tint)
+                }
+                
+                HFlow(spacing: dimensions.spacing.minimal) {
+                    ForEach(buildChips(), id: \.id) { chip in
+                        Text(chip.name)
+                            .lineLimit(1)
+                            .fontWeight(.medium)
+                            .padding(.horizontal, dimensions.padding.regular)
+                            .padding(.vertical, dimensions.padding.minimal)
+                            .background(chip.color)
+                            .foregroundColor(.white)
+                            .cornerRadius(dimensions.cornerRadius.button)
+                            .contentShape(.capsule)
+                            .tappable {
+                                withAnimation(theme.animations.expand) {
+                                    chip.remove()
+                                }
+                            }
+                    }
+                }
+            }
+            .font(.subheadline)
+        }
     }
     
-    // MARK: - Sections
+    @ViewBuilder
+    func badge(_ text: String, color: Color) -> some View {
+        Text(text)
+            .fontWeight(.medium)
+            .padding(.horizontal, dimensions.padding.regular)
+            .padding(.vertical, dimensions.padding.minimal)
+            .background(color)
+            .foregroundColor(theme.colors.foreground)
+            .cornerRadius(dimensions.cornerRadius.button)
+    }
     
-    private var activeFiltersSection: some View {
+    func buildChips() -> [FilterChip] {
+        var chips: [FilterChip] = []
+        
+        if !vm.searchText.isEmpty {
+            chips.append(FilterChip(
+                id: "search",
+                name: vm.searchText,
+                color: theme.colors.accent,
+                remove: { vm.clearSearchText() }
+            ))
+        }
+        
+        if vm.showUnreadOnly {
+            chips.append(FilterChip(
+                id: "unread",
+                name: "Unread",
+                color: theme.colors.appBlue,
+                remove: { vm.showUnreadOnly = false; vm.applyFilters() }
+            ))
+        }
+        
+        if vm.showDownloadedOnly {
+            chips.append(FilterChip(
+                id: "downloaded",
+                name: "Downloaded",
+                color: theme.colors.appGreen,
+                remove: { vm.showDownloadedOnly = false; vm.applyFilters() }
+            ))
+        }
+        
+        chips.append(contentsOf: vm.statuses.map { status in
+            FilterChip(
+                id: "status-\(status.rawValue)",
+                name: status.rawValue,
+                color: status.themeColor(using: theme),
+                remove: { vm.statuses.remove(status); vm.applyFilters() }
+            )
+        })
+        
+        chips.append(contentsOf: vm.classifications.map { classification in
+            FilterChip(
+                id: "classification-\(classification.rawValue)",
+                name: classification.rawValue,
+                color: classification.themeColor(using: theme),
+                remove: { vm.classifications.remove(classification); vm.applyFilters() }
+            )
+        })
+        
+        if vm.addedDateFilter.isActive {
+            chips.append(FilterChip(
+                id: "added-date",
+                name: "Added: \(vm.addedDateFilter.displayText)",
+                color: theme.colors.accent,
+                remove: { vm.addedDateFilter = .none(); vm.applyFilters() }
+            ))
+        }
+        
+        if vm.updatedDateFilter.isActive {
+            chips.append(FilterChip(
+                id: "updated-date",
+                name: "Updated: \(vm.updatedDateFilter.displayText)",
+                color: theme.colors.accent,
+                remove: { vm.updatedDateFilter = .none(); vm.applyFilters() }
+            ))
+        }
+        
+        return chips
+    }
+}
+
+// MARK: - Section Header
+private extension LibraryFiltersSheet {
+    @ViewBuilder
+    func sectionHeader(title: String, icon: String, isExpanded: Binding<Bool>) -> some View {
+        Button {
+            withAnimation(theme.animations.expand) {
+                isExpanded.wrappedValue.toggle()
+            }
+        } label: {
+            HStack(spacing: dimensions.spacing.regular) {
+                Image(systemName: icon)
+                    .foregroundStyle(theme.colors.accent)
+                Text(title)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(theme.colors.foreground)
+                Spacer()
+                Image(systemName: "chevron.up")
+                    .rotationEffect(.degrees(isExpanded.wrappedValue ? 0 : 180))
+                    .foregroundStyle(.secondary)
+            }
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Sort Section
+private extension LibraryFiltersSheet {
+    @ViewBuilder
+    var sortSection: some View {
+        VStack(alignment: .leading, spacing: dimensions.spacing.large) {
+            sectionHeader(title: "Sort By", icon: "arrow.up.arrow.down.circle", isExpanded: $isSortExpanded)
+            
+            if isSortExpanded {
+                ForEach(LibrarySortField.allCases, id: \.self) { field in
+                    sortOption(field)
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    func sortOption(_ field: LibrarySortField) -> some View {
+        let isActive = vm.sortField == field
+        
+        HStack {
+            Text(field.displayName)
+                .font(.subheadline)
+                .fontWeight(.medium)
+            Spacer()
+            if isActive {
+                Image(systemName: "arrow.up")
+                    .rotationEffect(.degrees(vm.sortDirection == .ascending ? 0 : 180))
+                    .animation(.easeInOut, value: vm.sortDirection)
+            }
+        }
+        .padding()
+        .foregroundColor(theme.colors.foreground)
+        .background(isActive ? theme.colors.appBlue : theme.colors.tint)
+        .cornerRadius(dimensions.cornerRadius.button)
+        .contentShape(.rect)
+        .tappable {
+            withAnimation(theme.animations.expand) {
+                if isActive {
+                    vm.sortDirection = vm.sortDirection == .ascending ? .descending : .ascending
+                } else {
+                    vm.sortField = field
+                    vm.sortDirection = .descending
+                }
+                vm.applyFilters()
+            }
+        }
+    }
+}
+
+// MARK: - Dates Section
+private extension LibraryFiltersSheet {
+    @ViewBuilder
+    var datesSection: some View {
+        VStack(alignment: .leading, spacing: dimensions.spacing.large) {
+            sectionHeader(title: "Dates", icon: "calendar", isExpanded: $isDatesExpanded)
+            
+            if isDatesExpanded {
+                VStack(spacing: dimensions.spacing.large) {
+                    dateFilterView(
+                        title: "Added At",
+                        filter: Binding(
+                            get: { vm.addedDateFilter },
+                            set: { vm.addedDateFilter = $0; vm.applyFilters() }
+                        )
+                    )
+                    
+                    Divider()
+                    
+                    dateFilterView(
+                        title: "Last Updated",
+                        filter: Binding(
+                            get: { vm.updatedDateFilter },
+                            set: { vm.updatedDateFilter = $0; vm.applyFilters() }
+                        )
+                    )
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    func dateFilterView(title: String, filter: Binding<DateFilter>) -> some View {
         VStack(alignment: .leading, spacing: dimensions.spacing.large) {
             HStack {
-                Label {
-                    HStack(spacing: dimensions.spacing.minimal) {
-                        Text("\(vm.activeFilterCount)")
-                            .fontWeight(.bold)
-                            .contentTransition(.numericText())
-                        Text("Active Filters")
-                    }
-                } icon: {
-                    Image(systemName: "line.3.horizontal.decrease.circle.fill")
-                }
-                .font(.headline)
-                .foregroundColor(theme.colors.accent)
-                
+                Text(title).font(.headline).fontWeight(.semibold)
                 Spacer()
-                
-                Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        vm.resetFilters()
-                    }
-                } label: {
-                    HStack(spacing: dimensions.spacing.minimal) {
-                        Image(systemName: "xmark.circle")
-                            .font(.caption)
-                        Text("Clear All")
-                    }
-                }
-                .font(.subheadline)
-                .foregroundStyle(theme.colors.appRed)
+                Text("Clear")
+                    .foregroundStyle(filter.wrappedValue.isActive ? theme.colors.accent : .secondary)
+                    .tappable { filter.wrappedValue = .none() }
+                    .disabled(!filter.wrappedValue.isActive)
             }
             
-            HFlow(spacing: dimensions.spacing.regular) {
-                ForEach(buildActiveFilterChips(), id: \.id) { chip in
-                    ActiveFilterChip(
-                        icon: chip.icon,
-                        label: chip.label,
-                        color: chip.color
-                    ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            chip.onRemove()
-                        }
-                    }
-                    .transition(.scale.combined(with: .opacity))
+            HStack(spacing: dimensions.spacing.regular) {
+                dateFilterOption("None", isSelected: isNone(filter.wrappedValue)) {
+                    filter.wrappedValue = .none()
+                }
+                dateFilterOption("Before", isSelected: isBefore(filter.wrappedValue)) {
+                    filter.wrappedValue = .before(Date())
+                }
+                dateFilterOption("After", isSelected: isAfter(filter.wrappedValue)) {
+                    filter.wrappedValue = .after(Date())
+                }
+                dateFilterOption("Between", isSelected: isBetween(filter.wrappedValue)) {
+                    filter.wrappedValue = .between(start: Date(), end: Date())
                 }
             }
-            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: vm.activeFilterCount)
+            
+            Group {
+                switch filter.wrappedValue.type {
+                case .none:
+                    Text("No Date Filter Applied").foregroundStyle(.secondary)
+                case .before(let date):
+                    DatePicker("Before Date", selection: dateBinding(for: date, filter: filter, update: { .before($0) }), displayedComponents: [.date])
+                case .after(let date):
+                    DatePicker("After Date", selection: dateBinding(for: date, filter: filter, update: { .after($0) }), displayedComponents: [.date])
+                case .between(let start, let end):
+                    VStack(spacing: dimensions.spacing.regular) {
+                        DatePicker("Start Date", selection: dateBinding(for: start, filter: filter, update: { .between(start: $0, end: end) }), displayedComponents: [.date])
+                        DatePicker("End Date", selection: dateBinding(for: end, filter: filter, update: { .between(start: start, end: $0) }), displayedComponents: [.date])
+                    }
+                }
+            }
+            .font(.subheadline)
+            .fontWeight(.semibold)
         }
     }
     
-    private var sortSection: some View {
-        VStack(alignment: .leading, spacing: dimensions.spacing.large) {
-            Label("Sort", systemImage: "arrow.up.arrow.down")
-                .font(.headline)
+    @ViewBuilder
+    func dateFilterOption(_ label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Text(label)
+            .font(.subheadline)
+            .fontWeight(.medium)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, dimensions.padding.regular)
+            .background(isSelected ? theme.colors.accent : theme.colors.tint)
+            .foregroundColor(isSelected ? .white : theme.colors.foreground)
+            .cornerRadius(dimensions.cornerRadius.regular)
+            .contentShape(.rect)
+            .tappable(action: action)
+    }
+    
+    func isNone(_ filter: DateFilter) -> Bool {
+        if case .none = filter.type { return true }
+        return false
+    }
+    
+    func isBefore(_ filter: DateFilter) -> Bool {
+        if case .before = filter.type { return true }
+        return false
+    }
+    
+    func isAfter(_ filter: DateFilter) -> Bool {
+        if case .after = filter.type { return true }
+        return false
+    }
+    
+    func isBetween(_ filter: DateFilter) -> Bool {
+        if case .between = filter.type { return true }
+        return false
+    }
+    
+    func dateBinding(for date: Date, filter: Binding<DateFilter>, update: @escaping (Date) -> DateFilter) -> Binding<Date> {
+        Binding(
+            get: { date },
+            set: { filter.wrappedValue = update($0) }
+        )
+    }
+}
+
+// MARK: - Metadata Section
+private extension LibraryFiltersSheet {
+    @ViewBuilder
+    var metadataSection: some View {
+        VStack(spacing: dimensions.spacing.large) {
+            sectionHeader(title: "Metadata", icon: "info.circle", isExpanded: $isMetadataExpanded)
             
-            VStack(spacing: dimensions.spacing.regular) {
-                ForEach(LibrarySortField.allCases, id: \.self) { field in
-                    SortOptionRow(
-                        field: field,
-                        isSelected: vm.sortField == field,
-                        direction: vm.sortField == field ? vm.sortDirection : .ascending,
-                        onTap: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                if vm.sortField == field {
-                                    // toggle direction if same field
-                                    vm.sortDirection = vm.sortDirection == .ascending ? .descending : .ascending
-                                } else {
-                                    // change field and reset to ascending
-                                    vm.sortField = field
-                                    vm.sortDirection = .ascending
-                                }
-                                vm.applyFilters()
+            if isMetadataExpanded {
+                VStack(spacing: dimensions.spacing.large) {
+                    metadataGrid(
+                        title: "STATUS",
+                        items: Status.allCases,
+                        selected: vm.statuses,
+                        icon: statusIcon,
+                        onToggle: { status in
+                            if vm.statuses.contains(status) {
+                                vm.statuses.remove(status)
+                            } else {
+                                vm.statuses.insert(status)
                             }
+                            vm.applyFilters()
+                        },
+                        onClear: {
+                            vm.statuses.removeAll()
+                            vm.applyFilters()
+                        }
+                    )
+                    
+                    metadataGrid(
+                        title: "CLASSIFICATION",
+                        items: Classification.allCases,
+                        selected: vm.classifications,
+                        icon: classificationIcon,
+                        onToggle: { classification in
+                            if vm.classifications.contains(classification) {
+                                vm.classifications.remove(classification)
+                            } else {
+                                vm.classifications.insert(classification)
+                            }
+                            vm.applyFilters()
+                        },
+                        onClear: {
+                            vm.classifications.removeAll()
+                            vm.applyFilters()
                         }
                     )
                 }
@@ -164,295 +463,53 @@ struct LibraryFiltersSheet: View {
     }
     
     @ViewBuilder
-    private func dateFilterSection(
+    func metadataGrid<T: Hashable & RawRepresentable>(
         title: String,
-        icon: String,
-        currentFilter: DateFilter?,
-        filterType: DateFilterType
-    ) -> some View {
-        VStack(alignment: .leading, spacing: dimensions.spacing.large) {
-            HStack {
-                Label(title, systemImage: icon)
-                    .font(.headline)
-                
-                Spacer()
-                
-                if currentFilter != nil {
-                    Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            switch filterType {
-                            case .addedDate:
-                                vm.addedDateFilter = nil
-                            case .updatedDate:
-                                vm.updatedDateFilter = nil
-                            }
-                            vm.applyFilters()
-                        }
-                    } label: {
-                        Text("Clear")
-                            .font(.subheadline)
-                            .foregroundStyle(theme.colors.appRed)
-                    }
-                }
-            }
-            
-            HStack(spacing: dimensions.spacing.regular) {
-                DatePresetButton(label: "Today", systemImage: "sun.max") {
-                    setDateFilter(filterType: filterType, date: Date(), isAfter: true)
-                }
-                
-                DatePresetButton(label: "This Week", systemImage: "calendar.day.timeline.left") {
-                    let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-                    setDateFilter(filterType: filterType, date: weekAgo, isAfter: true)
-                }
-                
-                DatePresetButton(label: "This Month", systemImage: "calendar") {
-                    let monthAgo = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
-                    setDateFilter(filterType: filterType, date: monthAgo, isAfter: true)
-                }
-                
-                DatePresetButton(label: "Custom", systemImage: "calendar.badge.plus") {
-                    selectedDateFilter = filterType
-                    showDatePicker = true
-                }
-            }
-            
-            if let filter = currentFilter {
-                CurrentDateFilter(filter: filter)
-            }
-        }
-    }
-    
-    private var publicationStatusSection: some View {
-        VStack(alignment: .leading, spacing: dimensions.spacing.large) {
-            HStack {
-                Label("Publication Status", systemImage: "book.closed")
-                    .font(.headline)
-                
-                Spacer()
-                
-                if !vm.publicationStatus.isEmpty {
-                    Text("\(vm.publicationStatus.count)")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .padding(.horizontal, dimensions.padding.regular)
-                        .padding(.vertical, dimensions.padding.minimal)
-                        .background(theme.colors.accent)
-                        .foregroundStyle(.white)
-                        .clipShape(.capsule)
-                        .contentTransition(.numericText())
-                }
-            }
-            
-            HFlow(spacing: dimensions.spacing.regular) {
-                ForEach(Status.allCases, id: \.self) { status in
-                    FilterChip(
-                        label: status.rawValue,
-                        icon: iconForStatus(status),
-                        isSelected: vm.publicationStatus.contains(status),
-                        color: status.themeColor(using: theme),
-                        action: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                if vm.publicationStatus.contains(status) {
-                                    vm.publicationStatus.remove(status)
-                                } else {
-                                    vm.publicationStatus.insert(status)
-                                }
-                                vm.applyFilters()
-                            }
-                        }
-                    )
-                    .transition(.scale.combined(with: .opacity))
-                }
-            }
-        }
-    }
-    
-    private var sourcesSection: some View {
-        VStack(alignment: .leading, spacing: dimensions.spacing.large) {
-            HStack {
-                Label("Sources", systemImage: "server.rack")
-                    .font(.headline)
-                
-                Spacer()
-                
-                if !vm.selectedSources.isEmpty {
-                    Text("\(vm.selectedSources.count)")
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .padding(.horizontal, dimensions.padding.regular)
-                        .padding(.vertical, dimensions.padding.minimal)
-                        .background(theme.colors.accent)
-                        .foregroundStyle(.white)
-                        .clipShape(.capsule)
-                        .contentTransition(.numericText())
-                }
-            }
-            
-            Text("Source filtering will be implemented")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            // TODO: fetch actual sources from database with search
-        }
-    }
-    
-    private var toggleSection: some View {
-        VStack(spacing: dimensions.spacing.toolbar) {
-            ToggleRow(
-                isOn: Binding(
-                    get: { vm.showUnreadOnly },
-                    set: { newValue in
-                        vm.showUnreadOnly = newValue
-                        vm.applyFilters()
-                    }
-                ),
-                icon: "circle.badge.fill",
-                title: "Unread Only",
-                subtitle: "Show only manga with unread chapters"
-            )
-            
-            ToggleRow(
-                isOn: Binding(
-                    get: { vm.showDownloadedOnly },
-                    set: { newValue in
-                        vm.showDownloadedOnly = newValue
-                        vm.applyFilters()
-                    }
-                ),
-                icon: "arrow.down.circle.fill",
-                title: "Downloaded Only",
-                subtitle: "Show only manga with downloaded chapters"
-            )
-        }
-    }
-    
-    private var filterPresetsSection: some View {
-        VStack(alignment: .leading, spacing: dimensions.spacing.large) {
-            Label("Quick Presets", systemImage: "star")
-                .font(.headline)
-            
-            VStack(spacing: dimensions.spacing.regular) {
-                PresetButton(
-                    title: "Currently Reading",
-                    description: "Unread manga updated in the last month",
-                    icon: "book",
-                    color: theme.colors.appBlue
-                ) {
-                    applyPreset(
-                        showUnreadOnly: true,
-                        updatedDate: .after(Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date())
-                    )
-                    dismiss()
-                }
-                
-                PresetButton(
-                    title: "New Additions",
-                    description: "Added in the last week",
-                    icon: "sparkles",
-                    color: theme.colors.appGreen
-                ) {
-                    applyPreset(
-                        addedDate: .after(Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date())
-                    )
-                    dismiss()
-                }
-                
-                PresetButton(
-                    title: "Completed Series",
-                    description: "All completed manga",
-                    icon: "checkmark.seal",
-                    color: theme.colors.appPurple
-                ) {
-                    applyPreset(
-                        publicationStatus: [.Completed]
-                    )
-                    dismiss()
-                }
-            }
-        }
-    }
-    
-    private var datePicker: some View {
-        NavigationStack {
-            DatePicker(
-                "Select Date",
-                selection: $datePickerDate,
-                displayedComponents: .date
-            )
-            .datePickerStyle(.graphical)
-            .padding()
-            .navigationTitle("Select Date")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        showDatePicker = false
-                    }
-                }
-                
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Apply") {
-                        setDateFilter(
-                            filterType: selectedDateFilter,
-                            date: datePickerDate,
-                            isAfter: true
-                        )
-                        showDatePicker = false
-                    }
-                }
-            }
-        }
-        .presentationDetents([.medium])
-    }
-    
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    vm.resetFilters()
-                }
-            } label: {
-                Text("Reset")
-                    .foregroundStyle(theme.colors.appRed)
-            }
-        }
+        items: [T],
+        selected: Set<T>,
+        icon: @escaping (T) -> String,
+        onToggle: @escaping (T) -> Void,
+        onClear: @escaping () -> Void
+    ) -> some View where T.RawValue == String {
+        let columns = [GridItem(.flexible(), spacing: dimensions.spacing.regular), GridItem(.flexible(), spacing: dimensions.spacing.regular)]
         
-        ToolbarItem(placement: .topBarTrailing) {
-            Button("Done") {
-                dismiss()
+        VStack(spacing: dimensions.spacing.regular) {
+            HStack {
+                Text(title).font(.caption).fontWeight(.semibold).foregroundColor(.secondary)
+                Spacer()
+                Text("Clear")
+                    .foregroundStyle(!selected.isEmpty ? theme.colors.accent : .secondary)
+                    .tappable {
+                        withAnimation {
+                            onClear()
+                        }
+                    }
+                    .disabled(selected.isEmpty)
             }
-            .fontWeight(.semibold)
+            
+            LazyVGrid(columns: columns, spacing: dimensions.spacing.large) {
+                ForEach(items, id: \.self) { item in
+                    let isSelected = selected.contains(item)
+                    HStack(spacing: dimensions.spacing.regular) {
+                        Image(systemName: icon(item)).symbolRenderingMode(.hierarchical)
+                        Text(item.rawValue).font(.headline).fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                    .padding(dimensions.padding.screen)
+                    .background(isSelected ? theme.colors.accent : theme.colors.tint.opacity(0.5))
+                    .cornerRadius(dimensions.cornerRadius.regular)
+                    .contentShape(.rect)
+                    .tappable {
+                        withAnimation(theme.animations.expand) {
+                            onToggle(item)
+                        }
+                    }
+                }
+            }
         }
     }
     
-    // MARK: - Helper Methods
-    
-    private func setDateFilter(filterType: DateFilterType, date: Date, isAfter: Bool) {
-        let filter = isAfter ? DateFilter.after(date) : DateFilter.before(date)
-        switch filterType {
-        case .addedDate:
-            vm.addedDateFilter = filter
-        case .updatedDate:
-            vm.updatedDateFilter = filter
-        }
-        vm.applyFilters()
-    }
-    
-    private func applyPreset(
-        showUnreadOnly: Bool = false,
-        publicationStatus: Set<Status> = [],
-        addedDate: DateFilter? = nil,
-        updatedDate: DateFilter? = nil
-    ) {
-        vm.showUnreadOnly = showUnreadOnly
-        vm.publicationStatus = publicationStatus
-        vm.addedDateFilter = addedDate
-        vm.updatedDateFilter = updatedDate
-        vm.applyFilters()
-    }
-    
-    private func iconForStatus(_ status: Status) -> String {
+    func statusIcon(_ status: Status) -> String {
         switch status {
         case .Unknown: return "questionmark.circle"
         case .Ongoing: return "arrow.forward.circle"
@@ -462,385 +519,68 @@ struct LibraryFiltersSheet: View {
         }
     }
     
-    private func buildActiveFilterChips() -> [FilterChipData] {
-        var chips: [FilterChipData] = []
-        
-        if !vm.searchText.isEmpty {
-            chips.append(FilterChipData(
-                id: "search",
-                icon: "magnifyingglass",
-                label: "Search: \(vm.searchText)",
-                color: theme.colors.accent,
-                onRemove: {
-                    vm.searchText = ""
-                    vm.applyFilters()
-                }
-            ))
+    func classificationIcon(_ classification: Classification) -> String {
+        switch classification {
+        case .Unknown: return "tag"
+        case .Safe: return "checkmark.seal"
+        case .Suggestive: return "flame"
+        case .Explicit: return "xmark.seal"
         }
-        
-        if vm.showUnreadOnly {
-            chips.append(FilterChipData(
-                id: "unread",
-                icon: "circle.badge",
-                label: "Unread Only",
-                color: theme.colors.appBlue,
-                onRemove: {
-                    vm.showUnreadOnly = false
-                    vm.applyFilters()
-                }
-            ))
-        }
-        
-        if vm.showDownloadedOnly {
-            chips.append(FilterChipData(
-                id: "downloaded",
-                icon: "arrow.down.circle",
-                label: "Downloaded",
-                color: theme.colors.appGreen,
-                onRemove: {
-                    vm.showDownloadedOnly = false
-                    vm.applyFilters()
-                }
-            ))
-        }
-        
-        for status in vm.publicationStatus {
-            chips.append(FilterChipData(
-                id: "status-\(status.rawValue)",
-                icon: iconForStatus(status),
-                label: status.rawValue,
-                color: status.themeColor(using: theme),
-                onRemove: {
-                    vm.publicationStatus.remove(status)
-                    vm.applyFilters()
-                }
-            ))
-        }
-        
-        if vm.addedDateFilter != nil {
-            chips.append(FilterChipData(
-                id: "added-date",
-                icon: "calendar.badge.plus",
-                label: "Added Date",
-                color: theme.colors.accent,
-                onRemove: {
-                    vm.addedDateFilter = nil
-                    vm.applyFilters()
-                }
-            ))
-        }
-        
-        if vm.updatedDateFilter != nil {
-            chips.append(FilterChipData(
-                id: "updated-date",
-                icon: "calendar.badge.clock",
-                label: "Updated Date",
-                color: theme.colors.accent,
-                onRemove: {
-                    vm.updatedDateFilter = nil
-                    vm.applyFilters()
-                }
-            ))
-        }
-        
-        return chips
-    }
-    
-    struct FilterChipData {
-        let id: String
-        let icon: String
-        let label: String
-        let color: Color
-        let onRemove: () -> Void
     }
 }
 
-// MARK: - Supporting Views (remain the same)
-
-private struct SortOptionRow: View {
-    @Environment(\.dimensions) private var dimensions
-    @Environment(\.theme) private var theme
-    
-    let field: LibrarySortField
-    let isSelected: Bool
-    let direction: Domain.SortDirection
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            HStack {
-                Image(systemName: field.icon)
-                    .foregroundStyle(isSelected ? theme.colors.accent : .secondary)
-                    .frame(width: dimensions.icon.pill.width)
-                    .contentTransition(.symbolEffect)
-                
-                Text(field.displayName)
-                    .font(.subheadline)
-                    .fontWeight(isSelected ? .medium : .regular)
-                
-                Spacer()
-                
-                if isSelected {
-                    Image(systemName: direction == .ascending ? "chevron.up" : "chevron.down")
-                        .font(.caption)
-                        .foregroundStyle(theme.colors.accent)
-                        .transition(.scale.combined(with: .opacity))
-                        .contentTransition(.symbolEffect)
-                }
-            }
-            .foregroundStyle(isSelected ? theme.colors.foreground : .secondary)
-            .padding(.horizontal, dimensions.padding.screen)
-            .padding(.vertical, dimensions.padding.regular + dimensions.padding.minimal / 2)
-            .background(isSelected ? theme.colors.accent.opacity(0.1) : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: dimensions.cornerRadius.regular))
-            .overlay(
-                RoundedRectangle(cornerRadius: dimensions.cornerRadius.regular)
-                    .strokeBorder(isSelected ? theme.colors.accent.opacity(0.3) : Color.clear, lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct FilterChip: View {
-    @Environment(\.dimensions) private var dimensions
-    @Environment(\.theme) private var theme
-    
-    let label: String
-    let icon: String?
-    let isSelected: Bool
-    let color: Color
-    let action: () -> Void
-    
-    init(label: String, icon: String? = nil, isSelected: Bool, color: Color? = nil, action: @escaping () -> Void) {
-        self.label = label
-        self.icon = icon
-        self.isSelected = isSelected
-        self.color = color ?? Color.accentColor
-        self.action = action
-    }
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: dimensions.spacing.minimal) {
-                if let icon = icon {
-                    Image(systemName: icon)
-                        .font(.caption)
-                }
-                Text(label)
-                    .font(.subheadline)
-            }
-            .foregroundStyle(isSelected ? .white : theme.colors.foreground)
-            .padding(.horizontal, dimensions.padding.screen)
-            .padding(.vertical, dimensions.padding.minimal * 1.5)
-            .background(isSelected ? color : theme.colors.tint)
-            .clipShape(.capsule)
-            .overlay(
-                Capsule()
-                    .strokeBorder(isSelected ? Color.clear : color.opacity(0.3), lineWidth: 1)
-            )
-            .scaleEffect(isSelected ? 1.05 : 1.0)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct ActiveFilterChip: View {
-    @Environment(\.dimensions) private var dimensions
-    @Environment(\.theme) private var theme
-    
-    let icon: String?
-    let label: String
-    let color: Color
-    let onRemove: () -> Void
-    
-    init(icon: String? = nil, label: String, color: Color? = nil, onRemove: @escaping () -> Void) {
-        self.icon = icon
-        self.label = label
-        self.color = color ?? Color.accentColor
-        self.onRemove = onRemove
-    }
-    
-    var body: some View {
-        HStack(spacing: dimensions.spacing.minimal) {
-            if let icon = icon {
-                Image(systemName: icon)
-                    .font(.caption)
-            }
+// MARK: - Quick Filters Section
+private extension LibraryFiltersSheet {
+    @ViewBuilder
+    var quickFiltersSection: some View {
+        VStack(alignment: .leading, spacing: dimensions.spacing.large) {
+            sectionHeader(title: "Quick Filters", icon: "bolt.circle", isExpanded: $isQuickExpanded)
             
-            Text(label)
-                .font(.caption)
-                .lineLimit(1)
-            
-            Button(action: onRemove) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.caption)
+            if isQuickExpanded {
+                VStack(spacing: dimensions.spacing.regular) {
+                    quickToggle(
+                        title: "Unread Only",
+                        icon: "book.circle.fill",
+                        isOn: Binding(
+                            get: { vm.showUnreadOnly },
+                            set: { vm.showUnreadOnly = $0; vm.applyFilters() }
+                        )
+                    )
+                    
+                    quickToggle(
+                        title: "Downloaded Only",
+                        icon: "arrow.down.circle.fill",
+                        isOn: Binding(
+                            get: { vm.showDownloadedOnly },
+                            set: { vm.showDownloadedOnly = $0; vm.applyFilters() }
+                        )
+                    )
+                }
             }
-            .buttonStyle(.plain)
         }
-        .foregroundStyle(.white)
-        .padding(.horizontal, dimensions.padding.regular)
-        .padding(.vertical, dimensions.padding.minimal)
-        .background(color.opacity(0.8))
-        .clipShape(.capsule)
     }
-}
-
-private struct DatePresetButton: View {
-    @Environment(\.dimensions) private var dimensions
-    @Environment(\.theme) private var theme
     
-    let label: String
-    let systemImage: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: dimensions.spacing.minimal) {
-                Image(systemName: systemImage)
-                    .font(.body)
-                Text(label)
-                    .font(.caption2)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, dimensions.padding.regular)
-            .background(theme.colors.tint)
-            .clipShape(RoundedRectangle(cornerRadius: dimensions.cornerRadius.regular))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct CurrentDateFilter: View {
-    @Environment(\.dimensions) private var dimensions
-    @Environment(\.theme) private var theme
-    
-    let filter: DateFilter
-    
-    var body: some View {
+    @ViewBuilder
+    func quickToggle(title: String, icon: String, isOn: Binding<Bool>) -> some View {
         HStack {
-            Image(systemName: "calendar.badge.checkmark")
-                .font(.caption)
-                .foregroundStyle(theme.colors.appGreen)
-            
-            Text(filterDescription)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            
+            Image(systemName: icon)
+                .foregroundStyle(isOn.wrappedValue ? theme.colors.accent : .secondary)
+            Text(title).font(.subheadline).fontWeight(.medium)
             Spacer()
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .tint(theme.colors.accent)
         }
-        .padding(dimensions.padding.regular)
-        .background(theme.colors.tint.opacity(0.5))
-        .clipShape(RoundedRectangle(cornerRadius: dimensions.cornerRadius.regular))
-    }
-    
-    private var filterDescription: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        
-        switch filter.type {
-        case .before(let date):
-            return "Before \(formatter.string(from: date))"
-        case .after(let date):
-            return "After \(formatter.string(from: date))"
-        case .between(let start, let end):
-            return "\(formatter.string(from: start)) - \(formatter.string(from: end))"
-        }
+        .padding()
+        .background(isOn.wrappedValue ? theme.colors.accent.opacity(0.1) : theme.colors.tint)
+        .cornerRadius(dimensions.cornerRadius.button)
     }
 }
 
-private struct ToggleRow: View {
-    @Environment(\.dimensions) private var dimensions
-    @Environment(\.theme) private var theme
-    
-    @Binding var isOn: Bool
-    let icon: String
-    let title: String
-    let subtitle: String?
-    
-    init(isOn: Binding<Bool>, icon: String, title: String, subtitle: String? = nil) {
-        self._isOn = isOn
-        self.icon = icon
-        self.title = title
-        self.subtitle = subtitle
-    }
-    
-    var body: some View {
-        Toggle(isOn: $isOn) {
-            HStack(spacing: dimensions.spacing.regular) {
-                Image(systemName: icon)
-                    .font(.body)
-                    .foregroundStyle(isOn ? theme.colors.accent : .secondary)
-                    .contentTransition(.symbolEffect)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    
-                    if let subtitle = subtitle {
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
-        .tint(theme.colors.accent)
-    }
-}
-
-private struct PresetButton: View {
-    @Environment(\.dimensions) private var dimensions
-    @Environment(\.theme) private var theme
-    
-    let title: String
-    let description: String
-    let icon: String
+// MARK: - Models
+private struct FilterChip: Identifiable {
+    let id: String
+    let name: String
     let color: Color
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: dimensions.spacing.regular) {
-                Image(systemName: icon)
-                    .font(.headline)
-                    .foregroundStyle(color)
-                    .frame(width: 30)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundStyle(theme.colors.foreground)
-                    
-                    Text(description)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(dimensions.padding.screen)
-            .background(color.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: dimensions.cornerRadius.button))
-            .overlay(
-                RoundedRectangle(cornerRadius: dimensions.cornerRadius.button)
-                    .strokeBorder(color.opacity(0.2), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Extensions
-
-extension Status: @retroactive CaseIterable {
-    public static var allCases: [Status] {
-        [.Unknown, .Ongoing, .Completed, .Hiatus, .Cancelled]
-    }
+    let remove: () -> Void
 }

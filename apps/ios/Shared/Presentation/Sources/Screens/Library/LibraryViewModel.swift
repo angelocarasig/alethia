@@ -18,7 +18,7 @@ import Combine
 /// - Typing in search waits briefly before fetching to avoid excessive requests, but clearing the search reloads immediately to prevent flicker.
 /// - Changing filters or sorting saves preferences and triggers a new fetch to reflect the updated criteria.
 /// - Scrolling near the end requests the next page and smoothly appends more items for an infinite‑scroll experience.
-/// - Pull‑to‑refresh re‑queries the data without clearing what’s on screen until fresh results arrive.
+/// - Pull‑to‑refresh re‑queries the data without clearing what's on screen until fresh results arrive.
 public final class LibraryViewModel {
     @ObservationIgnored
     private let getLibraryMangaUseCase: GetLibraryMangaUseCase
@@ -47,9 +47,10 @@ public final class LibraryViewModel {
     var sortField: LibrarySortField = .alphabetical
     var sortDirection: Domain.SortDirection = .ascending
     var selectedSources: Set<Int64> = []
-    var publicationStatus: Set<Status> = []
-    var addedDateFilter: DateFilter?
-    var updatedDateFilter: DateFilter?
+    var statuses: Set<Status> = []
+    var classifications: Set<Classification> = []
+    var addedDateFilter: DateFilter = DateFilter(type: .none)
+    var updatedDateFilter: DateFilter = DateFilter(type: .none)
     var showUnreadOnly = false
     var showDownloadedOnly = false
     
@@ -194,9 +195,10 @@ extension LibraryViewModel {
         sortField = .alphabetical
         sortDirection = .ascending
         selectedSources.removeAll()
-        publicationStatus.removeAll()
-        addedDateFilter = nil
-        updatedDateFilter = nil
+        statuses.removeAll()
+        classifications.removeAll()
+        addedDateFilter = DateFilter(type: .none)
+        updatedDateFilter = DateFilter(type: .none)
         showUnreadOnly = false
         showDownloadedOnly = false
     }
@@ -208,9 +210,10 @@ extension LibraryViewModel {
         !searchText.isEmpty ||
         selectedCollection != nil ||
         !selectedSources.isEmpty ||
-        !publicationStatus.isEmpty ||
-        addedDateFilter != nil ||
-        updatedDateFilter != nil ||
+        !statuses.isEmpty ||
+        !classifications.isEmpty ||
+        addedDateFilter.isActive ||
+        updatedDateFilter.isActive ||
         showUnreadOnly ||
         showDownloadedOnly
     }
@@ -220,9 +223,10 @@ extension LibraryViewModel {
             !searchText.isEmpty,
             selectedCollection != nil,
             !selectedSources.isEmpty,
-            !publicationStatus.isEmpty,
-            addedDateFilter != nil,
-            updatedDateFilter != nil,
+            !statuses.isEmpty,
+            !classifications.isEmpty,
+            addedDateFilter.isActive,
+            updatedDateFilter.isActive,
             showUnreadOnly,
             showDownloadedOnly
         ].filter { $0 }.count
@@ -276,7 +280,8 @@ extension LibraryViewModel {
             search: searchText.isEmpty ? nil : searchText,
             collectionId: selectedCollection,
             sourceIds: selectedSources,
-            publicationStatus: publicationStatus,
+            statuses: statuses,
+            classifications: classifications,
             addedDate: addedDateFilter,
             updatedDate: updatedDateFilter,
             unreadOnly: showUnreadOnly,
@@ -325,23 +330,13 @@ extension LibraryViewModel {
         switch result {
         case .success(let queryResult):
             withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                appendEntriesWithStaggeredAnimation(queryResult.entries)
+                self.entries.append(contentsOf: queryResult.entries)
                 hasMore = queryResult.hasMore
                 lastCursor = queryResult.nextCursor
                 loadingMore = false
             }
         case .failure:
             loadingMore = false
-        }
-    }
-    
-    private func appendEntriesWithStaggeredAnimation(_ newEntries: [Entry]) {
-        for (index, entry) in newEntries.enumerated() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.02) {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                    self.entries.append(entry)
-                }
-            }
         }
     }
 }

@@ -5,7 +5,7 @@
 //  Created by Angelo Carasig on 27/9/2025.
 //
 
-public enum Status: String, Codable, Sendable {
+public enum Status: String, Codable, Sendable, CaseIterable {
     case Unknown
     case Ongoing
     case Completed

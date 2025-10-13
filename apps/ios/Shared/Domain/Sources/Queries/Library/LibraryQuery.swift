@@ -2,12 +2,10 @@
 //  LibraryQuery.swift
 //  Domain
 //
-//  Created by Assistant on 11/10/2025.
+//  Created by Angelo Carasig on 11/10/2025.
 //
 
 import Foundation
-
-// MARK: - Main Query Structure
 
 public struct LibraryQuery: Sendable, Equatable {
     public let sort: LibrarySort
@@ -77,9 +75,10 @@ public struct LibraryFilters: Sendable, Equatable {
     public let search: String?
     public let collectionId: String?
     public let sourceIds: Set<Int64>
-    public let publicationStatus: Set<Status>
-    public let addedDate: DateFilter?
-    public let updatedDate: DateFilter?
+    public let statuses: Set<Status>
+    public let classifications: Set<Classification>
+    public let addedDate: DateFilter
+    public let updatedDate: DateFilter
     public let unreadOnly: Bool
     public let downloadedOnly: Bool
     
@@ -87,9 +86,10 @@ public struct LibraryFilters: Sendable, Equatable {
         search: String? = nil,
         collectionId: String? = nil,
         sourceIds: Set<Int64> = [],
-        publicationStatus: Set<Status> = [],
-        addedDate: DateFilter? = nil,
-        updatedDate: DateFilter? = nil,
+        statuses: Set<Status> = [],
+        classifications: Set<Classification> = [],
+        addedDate: DateFilter = DateFilter(type: .none),
+        updatedDate: DateFilter = DateFilter(type: .none),
         unreadOnly: Bool = false,
         downloadedOnly: Bool = false
     ) {
@@ -97,7 +97,8 @@ public struct LibraryFilters: Sendable, Equatable {
         self.search = search?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty()
         self.collectionId = collectionId
         self.sourceIds = sourceIds
-        self.publicationStatus = publicationStatus
+        self.statuses = statuses
+        self.classifications = classifications
         self.addedDate = addedDate
         self.updatedDate = updatedDate
         self.unreadOnly = unreadOnly
@@ -108,9 +109,10 @@ public struct LibraryFilters: Sendable, Equatable {
         search == nil &&
         collectionId == nil &&
         sourceIds.isEmpty &&
-        publicationStatus.isEmpty &&
-        addedDate == nil &&
-        updatedDate == nil &&
+        statuses.isEmpty &&
+        classifications.isEmpty &&
+        !addedDate.isActive &&
+        !updatedDate.isActive &&
         !unreadOnly &&
         !downloadedOnly
     }
@@ -120,9 +122,10 @@ public struct LibraryFilters: Sendable, Equatable {
         if search != nil { count += 1 }
         if collectionId != nil { count += 1 }
         if !sourceIds.isEmpty { count += 1 }
-        if !publicationStatus.isEmpty { count += 1 }
-        if addedDate != nil { count += 1 }
-        if updatedDate != nil { count += 1 }
+        if !statuses.isEmpty { count += 1 }
+        if !classifications.isEmpty { count += 1}
+        if addedDate.isActive { count += 1 }
+        if updatedDate.isActive { count += 1 }
         if unreadOnly { count += 1 }
         if downloadedOnly { count += 1 }
         return count
@@ -131,8 +134,9 @@ public struct LibraryFilters: Sendable, Equatable {
 
 // MARK: - Date Filter
 
-public struct DateFilter: Sendable, Equatable {
-    public enum FilterType: Sendable, Equatable {
+public struct DateFilter: Sendable, Equatable, Hashable {
+    public enum FilterType: Sendable, Equatable, Hashable {
+        case none
         case before(Date)
         case after(Date)
         case between(start: Date, end: Date)
@@ -145,6 +149,10 @@ public struct DateFilter: Sendable, Equatable {
     }
     
     // convenience constructors
+    public static func none() -> DateFilter {
+        DateFilter(type: .none)
+    }
+    
     public static func before(_ date: Date) -> DateFilter {
         DateFilter(type: .before(date))
     }
@@ -155,6 +163,30 @@ public struct DateFilter: Sendable, Equatable {
     
     public static func between(start: Date, end: Date) -> DateFilter {
         DateFilter(type: .between(start: start, end: end))
+    }
+    
+    // helper computed properties
+    public var isActive: Bool {
+        switch type {
+        case .none: return false
+        default: return true
+        }
+    }
+    
+    public var displayText: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        
+        switch type {
+        case .none:
+            return "None"
+        case .before(let date):
+            return "Before \(formatter.string(from: date))"
+        case .after(let date):
+            return "After \(formatter.string(from: date))"
+        case .between(let start, let end):
+            return "\(formatter.string(from: start)) - \(formatter.string(from: end))"
+        }
     }
 }
 
