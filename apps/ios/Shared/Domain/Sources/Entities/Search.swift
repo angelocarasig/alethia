@@ -72,6 +72,7 @@ public extension Search.Options {
         case originalLanguage = "originalLanguage"
         case translatedLanguage = "translatedLanguage"
         case contentRating = "contentRating"
+        case minChapters = "minChapters"
         
         public var displayName: String {
             switch self {
@@ -82,6 +83,7 @@ public extension Search.Options {
             case .originalLanguage: return "Original Language"
             case .translatedLanguage: return "Translated Language"
             case .contentRating: return "Content Rating"
+            case .minChapters: return "Minimum Chapter Count"
             }
         }
     }
