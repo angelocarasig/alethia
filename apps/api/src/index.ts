@@ -10,6 +10,8 @@ export default Sentry.withSentry(
     release: env.CF_VERSION_METADATA?.id,
     tracesSampleRate: 1.0,
     environment: env.ENVIRONMENT || 'production',
+    sendDefaultPii: true,
+    enableLogs: true,
   }),
   app,
 );
