@@ -158,12 +158,30 @@ export default class MangaDexSource extends Adapter {
     params: URLSearchParams,
     headers?: Record<string, string>,
   ): Promise<SearchResponse> {
-    const response = await this.httpClient.get<MangadexCollectionResponse>(
-      ENDPOINTS.manga,
-      { params, headers },
-    );
+    const url = `${ENDPOINTS.manga}?${params.toString()}`;
 
-    const collection = MangadexCollectionResponseSchema.parse(response.data);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+        Accept: 'application/json',
+        ...headers,
+      },
+    });
+
+    if (!response.ok) {
+      console.error(
+        `[mangadex] search failed with status ${response.status}:`,
+        response.statusText,
+      );
+      throw new Error(`http error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('[mangadex] search response received');
+
+    const collection = MangadexCollectionResponseSchema.parse(data);
 
     const limit = Number(params.get('limit'));
     const offset = Number(params.get('offset'));
