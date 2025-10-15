@@ -1,5 +1,6 @@
 import { Source } from '@repo/contracts';
 import { Tag } from '@repo/schema';
+import { PRESETS } from './presets';
 
 const GENRES_FORMAT: Tag[] = [
   { slug: 'artbook', name: 'Artbook', nsfw: false },
@@ -182,7 +183,7 @@ export const config: Source = {
       ...GENRES_TAGS,
     ],
   },
-  presets: [],
+  presets: [...PRESETS],
 };
 
 export const ENDPOINTS = {
