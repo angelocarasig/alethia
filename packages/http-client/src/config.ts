@@ -8,7 +8,7 @@ export const DEFAULT_HEADERS = {
 } as const;
 
 export const DEFAULT_USER_AGENT =
-  'Mozilla/5.0 (compatible; Alethia/1.0; +https://github.com/angelocarasig/alethia)';
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
 
 export const DEFAULT_REQUEST_OPTIONS: RequestOptions = {
   headers: DEFAULT_HEADERS,
