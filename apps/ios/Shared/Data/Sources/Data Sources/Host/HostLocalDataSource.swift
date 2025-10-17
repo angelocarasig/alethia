@@ -26,13 +26,19 @@ internal final class HostLocalDataSourceImpl: HostLocalDataSource {
     }
     
     func hostExists(with repositoryURL: String) async throws -> (HostRecord.ID, URL)? {
-        try await database.reader.read { db in
-            try HostRecord
-                .filter(HostRecord.Columns.repository == repositoryURL)
-                .fetchOne(db)
-                .flatMap { record in
-                    record.id.map { id in (id, record.repository) }
-                }
+        do {
+            return try await database.reader.read { db in
+                try HostRecord
+                    .filter(HostRecord.Columns.repository == repositoryURL)
+                    .fetchOne(db)
+                    .flatMap { record in
+                        record.id.map { id in (id, record.repository) }
+                    }
+            }
+        } catch let dbError as DatabaseError {
+            throw StorageError.from(grdbError: dbError, context: "hostExists")
+        } catch {
+            throw StorageError.queryFailed(sql: "hostExists", error: error)
         }
     }
     
@@ -73,7 +79,7 @@ internal final class HostLocalDataSourceImpl: HostLocalDataSource {
                 try hostRecord.insert(db)
                 
                 guard let hostId = hostRecord.id else {
-                    throw RepositoryError.mappingError(reason: "Failed to get host ID after insert")
+                    throw StorageError.recordNotFound(table: "host", id: "after insert")
                 }
                 
                 // rename temp directory
@@ -97,7 +103,7 @@ internal final class HostLocalDataSourceImpl: HostLocalDataSource {
                     let finalIconPath = finalIconsDirectory.appendingPathComponent("\(source.slug).png")
                     
                     guard let url = URL(string: source.url) else {
-                        throw RepositoryError.sourceURLInvalid
+                        throw StorageError.queryFailed(sql: "saveHost", error: NSError(domain: "InvalidURL", code: 0))
                     }
                     
                     var sourceRecord = SourceRecord(
@@ -114,12 +120,12 @@ internal final class HostLocalDataSourceImpl: HostLocalDataSource {
                     try sourceRecord.insert(db)
                     
                     guard let sourceId = sourceRecord.id else {
-                        throw RepositoryError.mappingError(reason: "Failed to get source ID after insert")
+                        throw StorageError.recordNotFound(table: "source", id: "after insert")
                     }
                     
                     savedSources.append(sourceRecord)
                     
-                    // save search config - using proper initializer
+                    // save search config
                     var searchConfig = SearchConfigRecord(
                         sourceId: sourceId,
                         supportedSorts: source.search.sort,
@@ -164,17 +170,38 @@ internal final class HostLocalDataSourceImpl: HostLocalDataSource {
             
             return result
             
-        } catch {
+        } catch let dbError as DatabaseError {
+            // cleanup on error
+            if FileManager.default.fileExists(atPath: hostDirectory.path) {
+                try? FileManager.default.removeItem(at: hostDirectory)
+            }
+            throw StorageError.from(grdbError: dbError, context: "saveHost")
+        } catch let error as StorageError {
+            // cleanup on error
             if FileManager.default.fileExists(atPath: hostDirectory.path) {
                 try? FileManager.default.removeItem(at: hostDirectory)
             }
             throw error
+        } catch {
+            // cleanup on error
+            if FileManager.default.fileExists(atPath: hostDirectory.path) {
+                try? FileManager.default.removeItem(at: hostDirectory)
+            }
+            throw StorageError.queryFailed(sql: "saveHost", error: error)
         }
     }
     
     func fetchAllHosts() async throws -> [(HostRecord, [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])])] {
-        try await database.reader.read { db in
-            try fetchAllHostsWithData(db)
+        do {
+            return try await database.reader.read { db in
+                try fetchAllHostsWithData(db)
+            }
+        } catch let dbError as DatabaseError {
+            throw StorageError.from(grdbError: dbError, context: "fetchAllHosts")
+        } catch let error as StorageError {
+            throw error
+        } catch {
+            throw StorageError.queryFailed(sql: "fetchAllHosts", error: error)
         }
     }
     
@@ -205,48 +232,65 @@ internal final class HostLocalDataSourceImpl: HostLocalDataSource {
     }
     
     func deleteHost(id: Int64) async throws {
+        do {
+            let _ = try await database.writer.write { db in
+                try HostRecord
+                    .filter(HostRecord.Columns.id == id)
+                    .deleteAll(db)
+            }
+        } catch let dbError as DatabaseError {
+            throw StorageError.from(grdbError: dbError, context: "deleteHost")
+        } catch {
+            throw StorageError.queryFailed(sql: "deleteHost", error: error)
+        }
     }
     
     private func fetchAllHostsWithData(_ db: GRDB.Database) throws -> [(HostRecord, [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])])] {
-        let hosts = try HostRecord
-            .order(HostRecord.Columns.name)
-            .fetchAll(db)
-        
-        var results: [(HostRecord, [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])])] = []
-        
-        for host in hosts {
-            guard let hostId = host.id else { continue }
-            
-            let sources = try SourceRecord
-                .filter(SourceRecord.Columns.hostId == hostId)
-                .order(SourceRecord.Columns.name)
+        do {
+            let hosts = try HostRecord
+                .order(HostRecord.Columns.name)
                 .fetchAll(db)
             
-            var sourcesWithData: [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])] = []
+            var results: [(HostRecord, [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])])] = []
             
-            for source in sources {
-                guard let sourceId = source.id else { continue }
+            for host in hosts {
+                guard let hostId = host.id else { continue }
                 
-                let searchConfig = try SearchConfigRecord
-                    .filter(SearchConfigRecord.Columns.sourceId == sourceId)
-                    .fetchOne(db)
-                
-                let searchTags = try SearchTagRecord
-                    .filter(SearchTagRecord.Columns.sourceId == sourceId)
-                    .order(SearchTagRecord.Columns.name)
+                let sources = try SourceRecord
+                    .filter(SourceRecord.Columns.hostId == hostId)
+                    .order(SourceRecord.Columns.name)
                     .fetchAll(db)
                 
-                let searchPresets = try SearchPresetRecord
-                    .filter(SearchPresetRecord.Columns.sourceId == sourceId)
-                    .order(SearchPresetRecord.Columns.name)
-                    .fetchAll(db)
+                var sourcesWithData: [(SourceRecord, SearchConfigRecord?, [SearchTagRecord], [SearchPresetRecord])] = []
                 
-                sourcesWithData.append((source, searchConfig, searchTags, searchPresets))
+                for source in sources {
+                    guard let sourceId = source.id else { continue }
+                    
+                    let searchConfig = try SearchConfigRecord
+                        .filter(SearchConfigRecord.Columns.sourceId == sourceId)
+                        .fetchOne(db)
+                    
+                    let searchTags = try SearchTagRecord
+                        .filter(SearchTagRecord.Columns.sourceId == sourceId)
+                        .order(SearchTagRecord.Columns.name)
+                        .fetchAll(db)
+                    
+                    let searchPresets = try SearchPresetRecord
+                        .filter(SearchPresetRecord.Columns.sourceId == sourceId)
+                        .order(SearchPresetRecord.Columns.name)
+                        .fetchAll(db)
+                    
+                    sourcesWithData.append((source, searchConfig, searchTags, searchPresets))
+                }
+                
+                results.append((host, sourcesWithData))
             }
             
-            results.append((host, sourcesWithData))
+            return results
+        } catch let dbError as DatabaseError {
+            throw StorageError.from(grdbError: dbError, context: "fetchAllHostsWithData")
+        } catch {
+            throw StorageError.queryFailed(sql: "fetchAllHostsWithData", error: error)
         }
-        
-        return results
     }
 }

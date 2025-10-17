@@ -6,8 +6,11 @@
 //
 
 import Foundation
+import Domain
 
-enum NetworkError: LocalizedError {
+/// internal network-specific errors
+/// these are mapped to DataAccessError at repository boundaries
+internal enum NetworkError: LocalizedError {
     case invalidURL(url: String)
     case noInternetConnection
     case invalidResponse(statusCode: Int, response: URLResponse?)
@@ -21,7 +24,7 @@ enum NetworkError: LocalizedError {
             return "Invalid URL format: \(url)"
             
         case .noInternetConnection:
-            return "No internet connection available. Please check your network settings."
+            return "No internet connection available"
             
         case .invalidResponse(let statusCode, _):
             return "Invalid server response (HTTP \(statusCode))"
@@ -33,7 +36,30 @@ enum NetworkError: LocalizedError {
             return underlyingError.localizedDescription
             
         case .timeout:
-            return "Request timed out. Please try again."
+            return "Request timed out"
+        }
+    }
+    
+    /// maps internal network error to public domain error
+    func toDomainError() -> DataAccessError {
+        switch self {
+        case .invalidURL(let url):
+            return .networkFailure(reason: "Invalid URL: \(url)", underlying: self)
+            
+        case .noInternetConnection:
+            return .networkFailure(reason: "No internet connection", underlying: self)
+            
+        case .invalidResponse(let statusCode, _):
+            return .invalidResponse(statusCode: statusCode)
+            
+        case .decodingError(let type, let error):
+            return .networkFailure(reason: "Failed to decode \(type)", underlying: error)
+            
+        case .requestFailed(let underlyingError):
+            return .networkFailure(reason: underlyingError.localizedDescription, underlying: underlyingError)
+            
+        case .timeout:
+            return .timeout(operation: "network request")
         }
     }
 }

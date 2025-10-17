@@ -16,9 +16,9 @@ public final class SaveHostUseCaseImpl: SaveHostUseCase {
     }
     
     public func execute(_ dto: HostDTO, hostURL: URL) async throws -> Host {
-        // business rule: validate manifest has at least one source
+        // validate host has at least one source
         guard !dto.sources.isEmpty else {
-            throw UseCaseError.noSourcesInManifest
+            throw BusinessError.noSourcesInHost
         }
         
         return try await repository.saveHost(dto, hostURL: hostURL)

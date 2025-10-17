@@ -26,7 +26,13 @@ internal final class MangaRemoteDataSourceImpl: MangaRemoteDataSource {
             .appendingPathComponent(sourceSlug)
             .appendingPathComponent(entrySlug)
         
-        return try await networkService.request(url: url)
+        do {
+            return try await networkService.request(url: url)
+        } catch let error as NetworkError {
+            throw error
+        } catch {
+            throw NetworkError.requestFailed(underlyingError: error as? URLError ?? URLError(.unknown))
+        }
     }
     
     func fetchChapters(sourceSlug: String, entrySlug: String, hostURL: URL) async throws -> [ChapterDTO] {
@@ -36,6 +42,12 @@ internal final class MangaRemoteDataSourceImpl: MangaRemoteDataSource {
             .appendingPathComponent(entrySlug)
             .appendingPathComponent("chapters")
         
-        return try await networkService.request(url: url)
+        do {
+            return try await networkService.request(url: url)
+        } catch let error as NetworkError {
+            throw error
+        } catch {
+            throw NetworkError.requestFailed(underlyingError: error as? URLError ?? URLError(.unknown))
+        }
     }
 }

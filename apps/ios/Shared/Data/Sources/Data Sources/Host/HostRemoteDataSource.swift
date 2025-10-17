@@ -20,6 +20,12 @@ internal final class HostRemoteDataSourceImpl: HostRemoteDataSource {
     }
     
     func fetchManifest(from url: URL) async throws -> HostDTO {
-        return try await networkService.request(url: url)
+        do {
+            return try await networkService.request(url: url)
+        } catch let error as NetworkError {
+            throw error
+        } catch {
+            throw NetworkError.requestFailed(underlyingError: error as? URLError ?? URLError(.unknown))
+        }
     }
 }

@@ -21,12 +21,10 @@ internal final class SearchRemoteDataSourceImpl: SearchRemoteDataSource {
     }
     
     func searchWithPreset(sourceSlug: String, host: URL, preset: SearchPreset) async throws -> SearchResponseDTO {
-        // construct search endpoint url
         let searchURL = host
             .appendingPathComponent(sourceSlug)
             .appendingPathComponent("search")
         
-        // build request dto from preset
         let requestDTO = SearchRequestDTO(
             query: "",
             page: 1,
@@ -36,47 +34,26 @@ internal final class SearchRemoteDataSourceImpl: SearchRemoteDataSource {
             filters: preset.filters
         )
         
-        // encode request body
-        let encoder = JSONEncoder()
-        let bodyData = try encoder.encode(requestDTO)
-        
-        // create request
-        var request = URLRequest(url: searchURL)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = bodyData
-        
-        // make request
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try networkService.handleResponse(response)
-        
-        // decode response
-        let decoder = JSONDecoder()
-        return try decoder.decode(SearchResponseDTO.self, from: data)
+        do {
+            return try await networkService.requestWithBody(url: searchURL, body: requestDTO)
+        } catch let error as NetworkError {
+            throw error
+        } catch {
+            throw NetworkError.requestFailed(underlyingError: error as? URLError ?? URLError(.unknown))
+        }
     }
     
     func search(sourceSlug: String, host: URL, request: SearchRequestDTO) async throws -> SearchResponseDTO {
-        // construct search endpoint url
         let searchURL = host
             .appendingPathComponent(sourceSlug)
             .appendingPathComponent("search")
         
-        // encode request body
-        let encoder = JSONEncoder()
-        let bodyData = try encoder.encode(request)
-        
-        // create http request
-        var httpRequest = URLRequest(url: searchURL)
-        httpRequest.httpMethod = "POST"
-        httpRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        httpRequest.httpBody = bodyData
-        
-        // make request
-        let (data, response) = try await URLSession.shared.data(for: httpRequest)
-        try networkService.handleResponse(response)
-        
-        // decode response
-        let decoder = JSONDecoder()
-        return try decoder.decode(SearchResponseDTO.self, from: data)
+        do {
+            return try await networkService.requestWithBody(url: searchURL, body: request)
+        } catch let error as NetworkError {
+            throw error
+        } catch {
+            throw NetworkError.requestFailed(underlyingError: error as? URLError ?? URLError(.unknown))
+        }
     }
 }
