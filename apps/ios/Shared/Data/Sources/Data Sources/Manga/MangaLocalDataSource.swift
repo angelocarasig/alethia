@@ -260,9 +260,9 @@ private extension MangaLocalDataSourceImpl {
             return try Int64.fetchAll(db, sql: sql, arguments: [entry.slug, sanitizedTitle, sanitizedTitle])
         } catch let dbError as DatabaseError {
             // if fts fails, fallback to like query
-#if DEBUG
+            #if DEBUG
             print("FTS query failed, falling back to LIKE: \(dbError)")
-#endif
+            #endif
             return try findMangaIdsWithLike(for: entry, in: db)
         } catch {
             throw StorageError.queryFailed(sql: "findMangaIds", error: error)

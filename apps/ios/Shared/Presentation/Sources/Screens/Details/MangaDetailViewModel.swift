@@ -21,15 +21,21 @@ final class MangaDetailViewModel {
     @ObservationIgnored
     private let removeMangaFromLibraryUseCase: RemoveMangaFromLibraryUseCase
     
-    private let entry: Entry
+    private var entry: Entry
     
-    private(set) var manga: [Manga] = []
-    private(set) var isLoading: Bool = false
-    private(set) var error: Error?
+    private(set) var state: ViewState = .loading
     
     // library state
     private(set) var isAddingToLibrary: Bool = false
     private(set) var isRemovingFromLibrary: Bool = false
+    
+    enum ViewState {
+        case loading
+        case error(Error)
+        case disambiguation([Manga])
+        case content(Manga)
+        case empty
+    }
     
     init(entry: Entry) {
         self.entry = entry
@@ -40,20 +46,38 @@ final class MangaDetailViewModel {
     
     func loadManga() {
         Task {
-            isLoading = true
-            error = nil
+            state = .loading
             
             for await result in getMangaDetailsUseCase.execute(entry: entry) {
                 switch result {
                 case .success(let mangaList):
-                    manga = mangaList
-                    isLoading = false
-                case .failure(let err):
-                    error = err
-                    isLoading = false
+                    handleMangaList(mangaList)
+                case .failure(let error):
+                    state = .error(error)
                 }
             }
         }
+    }
+    
+    func selectManga(_ manga: Manga) {
+        // update entry with the selected manga id
+        entry = Entry(
+            mangaId: manga.id,
+            sourceId: entry.sourceId,
+            slug: entry.slug,
+            title: entry.title,
+            cover: entry.cover,
+            state: entry.state,
+            unread: entry.unread
+        )
+        
+        // re-fetch with specific manga id
+        loadManga()
+    }
+    
+    func createNewManga() {
+        #warning("implement create new manga flow")
+        fatalError("create new manga not yet implemented")
     }
     
     func addToLibrary(mangaId: Int64) {
@@ -65,7 +89,6 @@ final class MangaDetailViewModel {
             do {
                 try await addMangaToLibraryUseCase.execute(mangaId: mangaId)
             } catch {
-                // error silently handled - UI will update from stream
                 print("Failed to add to library: \(error.localizedDescription)")
             }
             
@@ -82,11 +105,20 @@ final class MangaDetailViewModel {
             do {
                 try await removeMangaFromLibraryUseCase.execute(mangaId: mangaId)
             } catch {
-                // error silently handled - UI will update from stream
                 print("Failed to remove from library: \(error.localizedDescription)")
             }
             
             isRemovingFromLibrary = false
+        }
+    }
+    
+    private func handleMangaList(_ mangaList: [Manga]) {
+        if mangaList.isEmpty {
+            state = .empty
+        } else if mangaList.count == 1 {
+            state = .content(mangaList[0])
+        } else {
+            state = .disambiguation(mangaList)
         }
     }
 }
