@@ -36,6 +36,36 @@ public final class LibraryRepositoryImpl: LibraryRepository {
         }
     }
     
+    public func addMangaToLibrary(mangaId: Int64) async throws {
+        do {
+            try await local.addMangaToLibrary(mangaId: mangaId)
+        } catch let error as StorageError {
+            throw error.toDomainError()
+        } catch let dbError as DatabaseError {
+            throw RepositoryError.fromGRDB(dbError, context: "addMangaToLibrary").toDomainError()
+        } catch {
+            throw DataAccessError.storageFailure(
+                reason: "Failed to add manga to library",
+                underlying: error
+            )
+        }
+    }
+    
+    public func removeMangaFromLibrary(mangaId: Int64) async throws {
+        do {
+            try await local.removeMangaFromLibrary(mangaId: mangaId)
+        } catch let error as StorageError {
+            throw error.toDomainError()
+        } catch let dbError as DatabaseError {
+            throw RepositoryError.fromGRDB(dbError, context: "removeMangaFromLibrary").toDomainError()
+        } catch {
+            throw DataAccessError.storageFailure(
+                reason: "Failed to remove manga from library",
+                underlying: error
+            )
+        }
+    }
+    
     public func getLibraryManga(query: LibraryQuery) -> AsyncStream<Result<LibraryQueryResult, Error>> {
         AsyncStream { continuation in
             let task = Task {

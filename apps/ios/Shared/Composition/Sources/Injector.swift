@@ -55,6 +55,14 @@ public extension Injector {
     static func makeGetCollectionsUseCase() -> GetCollectionsUseCase {
         useCaseFactory.makeGetCollectionsUseCase()
     }
+    
+    static func makeAddMangaToLibraryUseCase() -> AddMangaToLibraryUseCase {
+        useCaseFactory.makeAddMangaToLibraryUseCase()
+    }
+    
+    static func makeRemoveMangaFromLibraryUseCase() -> RemoveMangaFromLibraryUseCase {
+        useCaseFactory.makeRemoveMangaFromLibraryUseCase()
+    }
 }
 
 // MARK: Manga Use-Cases

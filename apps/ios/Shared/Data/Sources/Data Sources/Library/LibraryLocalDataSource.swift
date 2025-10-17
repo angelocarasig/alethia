@@ -28,6 +28,8 @@ private extension DateFilter {
 internal protocol LibraryLocalDataSource: Sendable {
     func getLibraryEntries(query: LibraryQuery) -> AsyncStream<Result<LibraryDataBundle, Error>>
     func getLibraryCollections() -> AsyncStream<Result<[(CollectionRecord, Int)], Error>>
+    func addMangaToLibrary(mangaId: Int64) async throws
+    func removeMangaFromLibrary(mangaId: Int64) async throws
 }
 
 internal struct LibraryDataBundle: Sendable {
@@ -85,6 +87,46 @@ internal final class LibraryLocalDataSourceImpl: LibraryLocalDataSource {
         }
     }
     
+    func addMangaToLibrary(mangaId: Int64) async throws {
+        do {
+            try await database.writer.write { db in
+                guard var manga = try MangaRecord.fetchOne(db, key: MangaRecord.ID(rawValue: mangaId)) else {
+                    throw StorageError.recordNotFound(table: "manga", id: String(mangaId))
+                }
+                
+                manga.inLibrary = true
+                manga.addedAt = Date()
+                try manga.update(db)
+            }
+        } catch let dbError as DatabaseError {
+            throw StorageError.from(grdbError: dbError, context: "addMangaToLibrary")
+        } catch let error as StorageError {
+            throw error
+        } catch {
+            throw StorageError.queryFailed(sql: "addMangaToLibrary", error: error)
+        }
+    }
+    
+    func removeMangaFromLibrary(mangaId: Int64) async throws {
+        do {
+            try await database.writer.write { db in
+                guard var manga = try MangaRecord.fetchOne(db, key: MangaRecord.ID(rawValue: mangaId)) else {
+                    throw StorageError.recordNotFound(table: "manga", id: String(mangaId))
+                }
+                
+                manga.inLibrary = false
+                manga.addedAt = .distantPast
+                try manga.update(db)
+            }
+        } catch let dbError as DatabaseError {
+            throw StorageError.from(grdbError: dbError, context: "removeMangaFromLibrary")
+        } catch let error as StorageError {
+            throw error
+        } catch {
+            throw StorageError.queryFailed(sql: "removeMangaFromLibrary", error: error)
+        }
+    }
+    
     func getLibraryEntries(query: LibraryQuery) -> AsyncStream<Result<LibraryDataBundle, Error>> {
         AsyncStream { continuation in
             let observation = ValueObservation.tracking { [weak self] db -> LibraryDataBundle in
@@ -93,9 +135,8 @@ internal final class LibraryLocalDataSourceImpl: LibraryLocalDataSource {
                 }
                 
                 do {
-#warning("Remove when adding to library is available")
                     var request = MangaRecord
-                        .filter(MangaRecord.Columns.inLibrary == true || MangaRecord.Columns.inLibrary == false)
+                        .filter(MangaRecord.Columns.inLibrary)
                     
                     request = try self.applyFilters(request, filters: query.filters, db: db)
                     

@@ -14,4 +14,10 @@ public protocol LibraryRepository: Sendable {
     
     /// From an array of Entries return a stream of enriched entries based on match values
     func findMatches(for raw: [Entry]) -> AsyncStream<Result<[Entry], Error>>
+    
+    /// Adds manga to library
+    func addMangaToLibrary(mangaId: Int64) async throws
+    
+    /// Removes manga from library
+    func removeMangaFromLibrary(mangaId: Int64) async throws
 }

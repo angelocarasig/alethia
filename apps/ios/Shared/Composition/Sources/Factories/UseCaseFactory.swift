@@ -53,6 +53,14 @@ extension UseCaseFactory {
     func makeGetCollectionsUseCase() -> GetCollectionsUseCase {
         GetCollectionsUseCaseImpl(repository: repositoryFactory.libraryRepository)
     }
+    
+    func makeAddMangaToLibraryUseCase() -> AddMangaToLibraryUseCase {
+        AddMangaToLibraryUseCaseImpl(repository: repositoryFactory.libraryRepository)
+    }
+    
+    func makeRemoveMangaFromLibraryUseCase() -> RemoveMangaFromLibraryUseCase {
+        RemoveMangaFromLibraryUseCaseImpl(repository: repositoryFactory.libraryRepository)
+    }
 }
 
 // MARK: - Manga Use Cases

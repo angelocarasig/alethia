@@ -8,45 +8,8 @@
 import SwiftUI
 import Domain
 import Composition
-import Kingfisher
 
 fileprivate let BACKGROUND_GRADIENT_BREAKPOINT: CGFloat = 600
-
-@MainActor
-@Observable
-private final class MangaDetailViewModel {
-    @ObservationIgnored
-    private let getMangaDetailsUseCase: GetMangaDetailsUseCase
-    
-    private let entry: Entry
-    
-    private(set) var manga: [Manga] = []
-    private(set) var isLoading: Bool = false
-    private(set) var error: Error?
-    
-    init(entry: Entry) {
-        self.entry = entry
-        self.getMangaDetailsUseCase = Injector.makeGetMangaDetailsUseCase()
-    }
-    
-    func loadManga() {
-        Task {
-            isLoading = true
-            error = nil
-            
-            for await result in getMangaDetailsUseCase.execute(entry: entry) {
-                switch result {
-                case .success(let mangaList):
-                    manga = mangaList
-                    isLoading = false
-                case .failure(let err):
-                    error = err
-                    isLoading = false
-                }
-            }
-        }
-    }
-}
 
 struct DetailsScreen: View {
     @Environment(\.dimensions) private var dimensions
@@ -55,7 +18,6 @@ struct DetailsScreen: View {
     let entry: Entry
     
     @State private var vm: MangaDetailViewModel
-    @State private var showAllTags = false
     
     init(entry: Entry) {
         self.entry = entry
@@ -69,6 +31,7 @@ struct DetailsScreen: View {
                     vm.loadManga()
                 }
             }
+            .environment(vm)
     }
     
     @ViewBuilder
@@ -81,20 +44,6 @@ struct DetailsScreen: View {
             DetailContentView(manga: manga)
         } else {
             EmptyStateView()
-        }
-    }
-}
-
-// MARK: - Loading View
-extension DetailsScreen {
-    @ViewBuilder
-    private func LoadingView() -> some View {
-        ZStack {
-            theme.colors.background.ignoresSafeArea()
-            
-            ProgressView()
-                .progressViewStyle(.circular)
-                .scaleEffect(1.5)
         }
     }
 }
@@ -161,7 +110,7 @@ extension DetailsScreen {
                         covers: manga.covers
                     )
                     
-                    ActionButtonsView()
+                    ActionButtonsView(manga: manga)
                     
                     SynopsisView(synopsis: manga.synopsis)
                     
@@ -194,4 +143,3 @@ extension DetailsScreen {
         }
     }
 }
-
