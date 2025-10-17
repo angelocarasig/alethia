@@ -27,6 +27,7 @@ private extension DateFilter {
 
 internal protocol LibraryLocalDataSource: Sendable {
     func getLibraryEntries(query: LibraryQuery) -> AsyncStream<Result<LibraryDataBundle, Error>>
+    func getLibraryCollections() -> AsyncStream<Result<[CollectionRecord], Error>>
 }
 
 internal struct LibraryDataBundle: Sendable {
@@ -40,6 +41,30 @@ internal final class LibraryLocalDataSourceImpl: LibraryLocalDataSource {
     
     init(database: DatabaseConfiguration? = nil) {
         self.database = database ?? DatabaseConfiguration.shared
+    }
+    
+    func getLibraryCollections() -> AsyncStream<Result<[CollectionRecord], any Error>> {
+        return AsyncStream { continuation in
+            let observation = ValueObservation.tracking { db -> [CollectionRecord] in
+                return try CollectionRecord.fetchAll(db)
+            }
+            
+            let task = Task {
+                do {
+                    for try await bundle in observation.values(in: database.reader) {
+                        if Task.isCancelled { break }
+                        continuation.yield(.success(bundle))
+                    }
+                } catch {
+                    continuation.yield(.failure(error))
+                }
+                continuation.finish()
+            }
+            
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
     }
     
     func getLibraryEntries(query: LibraryQuery) -> AsyncStream<Result<LibraryDataBundle, Error>> {

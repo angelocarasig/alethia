@@ -41,28 +41,20 @@ struct MetadataView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     timelineNode(
                         label: "Added",
-                        value: addedAt.timeAgo(),
-                        stat: daysAgo(from: addedAt),
-                        statLabel: "days",
+                        date: addedAt,
                         isFirst: true
                     )
                     timelineNode(
                         label: "Updated",
-                        value: updatedAt.timeAgo(),
-                        stat: daysAgo(from: updatedAt),
-                        statLabel: "days"
+                        date: updatedAt
                     )
                     timelineNode(
                         label: "Fetched",
-                        value: lastFetchedAt.timeAgo(),
-                        stat: daysAgo(from: lastFetchedAt),
-                        statLabel: "days"
+                        date: lastFetchedAt
                     )
                     timelineNode(
                         label: "Last Read",
-                        value: lastReadAt.timeAgo(),
-                        stat: daysAgo(from: lastReadAt),
-                        statLabel: "days",
+                        date: lastReadAt,
                         isLast: true
                     )
                 }
@@ -86,13 +78,13 @@ struct MetadataView: View {
     
     private func timelineNode(
         label: String,
-        value: String,
-        stat: String,
-        statLabel: String,
+        date: Date,
         isFirst: Bool = false,
         isLast: Bool = false
     ) -> some View {
-        HStack(alignment: .top, spacing: dimensions.spacing.regular) {
+        let isNever = date.timeIntervalSince1970 < -2208988800
+        
+        return HStack(alignment: .top, spacing: dimensions.spacing.regular) {
             VStack(spacing: 0) {
                 if !isFirst {
                     Rectangle()
@@ -119,7 +111,7 @@ struct MetadataView: View {
                             .font(.caption)
                             .foregroundColor(theme.colors.foreground.opacity(0.6))
                         
-                        Text(value)
+                        Text(date.timeAgo())
                             .font(.footnote)
                             .fontWeight(.medium)
                             .foregroundColor(theme.colors.foreground)
@@ -131,15 +123,22 @@ struct MetadataView: View {
                         .frame(height: 1)
                         .padding()
                     
-                    VStack(alignment: .trailing, spacing: 0) {
-                        Text(stat)
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(theme.colors.foreground)
-                        
-                        Text(statLabel)
-                            .font(.caption2)
-                            .foregroundColor(theme.colors.foreground.opacity(0.4))
+                    if isNever {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(theme.colors.foreground.opacity(0.1))
+                            .frame(width: 40, height: 24)
+                            .shimmer()
+                    } else {
+                        VStack(alignment: .trailing, spacing: 0) {
+                            Text(daysAgo(from: date))
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(theme.colors.foreground)
+                            
+                            Text("days")
+                                .font(.caption2)
+                                .foregroundColor(theme.colors.foreground.opacity(0.4))
+                        }
                     }
                 }
             }
@@ -168,7 +167,7 @@ struct MetadataView: View {
                 addedAt: Calendar.current.date(byAdding: .year, value: -7, to: .now)!,
                 updatedAt: Calendar.current.date(byAdding: .year, value: -3, to: .now)!,
                 lastFetchedAt: Calendar.current.date(byAdding: .day, value: -2, to: .now)!,
-                lastReadAt: Calendar.current.date(byAdding: .day, value: -7, to: .now)!
+                lastReadAt: Calendar.current.date(byAdding: .year, value: -200, to: .now)!
             )
             .padding(.horizontal)
             

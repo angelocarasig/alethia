@@ -15,6 +15,28 @@ public final class LibraryRepositoryImpl: LibraryRepository {
         self.local = LibraryLocalDataSourceImpl()
     }
     
+    public func getCollections() -> AsyncStream<Result<[Collection], any Error>> {
+        AsyncStream { continuation in
+            let task = Task {
+                for await result in local.getLibraryCollections() {
+                    if Task.isCancelled { break }
+                    
+                    switch result {
+                    case .success(let collections):
+                        try continuation.yield(.success(collections.map(mapToCollection) ))
+                    case .failure(let error):
+                        continuation.yield(.failure(error))
+                    }
+                }
+                continuation.finish()
+            }
+            
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+    
     public func getLibraryManga(query: LibraryQuery) -> AsyncStream<Result<LibraryQueryResult, Error>> {
         AsyncStream { continuation in
             let task = Task {
@@ -55,10 +77,10 @@ public final class LibraryRepositoryImpl: LibraryRepository {
         
         // calculate next cursor if there are more items
         let nextCursor: LibraryCursor? = bundle.hasMore ?
-            LibraryCursor(
-                afterId: entries.last.flatMap { entry in entry.mangaId },
-                limit: query.cursor?.limit ?? 50
-            ) : nil
+        LibraryCursor(
+            afterId: entries.last.flatMap { entry in entry.mangaId },
+            limit: query.cursor?.limit ?? 50
+        ) : nil
         
         return LibraryQueryResult(
             entries: entries,
@@ -93,6 +115,22 @@ public final class LibraryRepositoryImpl: LibraryRepository {
             cover: coverURL,
             state: .fullMatch, // library entries are always full matches
             unread: unreadCount
+        )
+    }
+    
+    private func mapToCollection(record: CollectionRecord) throws -> Collection {
+        guard let recordId = record.id else {
+            throw RepositoryError.mappingError(reason: "Could not map CollectionRecord to Collection")
+        }
+        
+        return Collection(
+            id: recordId.rawValue,
+            name: record.name,
+            description: record.description ?? "",
+            // TODO: Add count field
+            count: 0,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt
         )
     }
 }

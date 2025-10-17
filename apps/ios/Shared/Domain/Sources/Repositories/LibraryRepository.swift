@@ -6,6 +6,9 @@
 //
 
 public protocol LibraryRepository: Sendable {
+    /// Fetches all collections
+    func getCollections() -> AsyncStream<Result<[Collection], Error>>
+    
     /// Fetches all entries in the user's library
     func getLibraryManga(query: LibraryQuery) -> AsyncStream<Result<LibraryQueryResult, Error>>
     
