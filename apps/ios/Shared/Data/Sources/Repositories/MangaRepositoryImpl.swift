@@ -145,15 +145,16 @@ public final class MangaRepositoryImpl: MangaRepository {
                 )
             }
             
-            let collections = bundle.collections.compactMap { collection -> Collection? in
-                guard let collectionId = collection.id else { return nil }
+            let collections = bundle.collections.compactMap { record -> Collection? in
+                guard let collectionId = record.collection.id else { return nil }
                 
                 return Collection(
                     id: collectionId.rawValue,
-                    name: collection.name,
-                    description: collection.description ?? "",
-                    createdAt: collection.createdAt,
-                    updatedAt: collection.updatedAt
+                    name: record.collection.name,
+                    description: record.collection.description ?? "",
+                    count: record.count,
+                    createdAt: record.collection.createdAt,
+                    updatedAt: record.collection.updatedAt
                 )
             }
             

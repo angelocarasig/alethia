@@ -27,7 +27,7 @@ private extension DateFilter {
 
 internal protocol LibraryLocalDataSource: Sendable {
     func getLibraryEntries(query: LibraryQuery) -> AsyncStream<Result<LibraryDataBundle, Error>>
-    func getLibraryCollections() -> AsyncStream<Result<[CollectionRecord], Error>>
+    func getLibraryCollections() -> AsyncStream<Result<[(CollectionRecord, Int)], Error>>
 }
 
 internal struct LibraryDataBundle: Sendable {
@@ -43,10 +43,24 @@ internal final class LibraryLocalDataSourceImpl: LibraryLocalDataSource {
         self.database = database ?? DatabaseConfiguration.shared
     }
     
-    func getLibraryCollections() -> AsyncStream<Result<[CollectionRecord], any Error>> {
+    func getLibraryCollections() -> AsyncStream<Result<[(CollectionRecord, Int)], any Error>> {
         return AsyncStream { continuation in
-            let observation = ValueObservation.tracking { db -> [CollectionRecord] in
-                return try CollectionRecord.fetchAll(db)
+            let observation = ValueObservation.tracking { db -> [(CollectionRecord, Int)] in
+                let collections = try CollectionRecord
+                    .order(CollectionRecord.Columns.name)
+                    .fetchAll(db)
+                
+                return try collections.map { collection in
+                    guard let collectionId = collection.id else {
+                        throw RepositoryError.mappingError(reason: "collection id is nil")
+                    }
+                    
+                    let count = try MangaCollectionRecord
+                        .filter(MangaCollectionRecord.Columns.collectionId == collectionId)
+                        .fetchCount(db)
+                    
+                    return (collection, count)
+                }
             }
             
             let task = Task {
@@ -74,7 +88,7 @@ internal final class LibraryLocalDataSourceImpl: LibraryLocalDataSource {
                     return LibraryDataBundle(entries: [], totalCount: 0, hasMore: false)
                 }
                 
-                #warning("Remove when adding to library is available")
+#warning("Remove when adding to library is available")
                 var request = MangaRecord
                     .filter(MangaRecord.Columns.inLibrary == true || MangaRecord.Columns.inLibrary == false)
                 
@@ -183,7 +197,7 @@ private extension LibraryLocalDataSourceImpl {
                 """, arguments: [pattern, pattern])
         }
         
-        if let collectionId = filters.collectionId, !collectionId.isEmpty {
+        if let collectionId = filters.collectionId {
             result = result.filter(sql: """
                 id IN (
                     SELECT mc.mangaId

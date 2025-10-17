@@ -21,7 +21,7 @@ internal struct MangaDataBundle {
     let origins: [OriginRecord]
     let sources: [OriginRecord.ID: (source: SourceRecord, host: HostRecord)]
     let chapters: [ChapterWithMetadata]
-    let collections: [CollectionRecord]
+    let collections: [(collection: CollectionRecord, count: Int)]
 }
 
 internal struct ChapterWithMetadata {
@@ -286,9 +286,21 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
         let covers = try manga.covers.fetchAll(db)
         let alternativeTitles = try manga.alternativeTitles.fetchAll(db)
         let origins = try manga.origins.fetchAll(db)
-        let collections = try manga.collections.fetchAll(db)
         let sources = try fetchSourcesForOrigins(origins, in: db)
         let chapters = try fetchChaptersWithMetadata(for: manga, in: db)
+        
+        let collectionRecords = try manga.collections.fetchAll(db)
+        let collectionsWithCounts = try collectionRecords.map { collection -> (CollectionRecord, Int) in
+            guard let collectionId = collection.id else {
+                throw RepositoryError.mappingError(reason: "collection id is nil")
+            }
+            
+            let count = try MangaCollectionRecord
+                .filter(MangaCollectionRecord.Columns.collectionId == collectionId)
+                .fetchCount(db)
+            
+            return (collection, count)
+        }
         
         return MangaDataBundle(
             manga: manga,
@@ -299,7 +311,7 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
             origins: origins,
             sources: sources,
             chapters: chapters,
-            collections: collections
+            collections: collectionsWithCounts
         )
     }
     

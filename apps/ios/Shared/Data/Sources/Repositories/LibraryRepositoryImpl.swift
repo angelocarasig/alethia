@@ -23,7 +23,7 @@ public final class LibraryRepositoryImpl: LibraryRepository {
                     
                     switch result {
                     case .success(let collections):
-                        try continuation.yield(.success(collections.map(mapToCollection) ))
+                        try continuation.yield(.success(collections.map(mapToCollection)))
                     case .failure(let error):
                         continuation.yield(.failure(error))
                     }
@@ -118,7 +118,7 @@ public final class LibraryRepositoryImpl: LibraryRepository {
         )
     }
     
-    private func mapToCollection(record: CollectionRecord) throws -> Collection {
+    private func mapToCollection(record: CollectionRecord, count: Int) throws -> Collection {
         guard let recordId = record.id else {
             throw RepositoryError.mappingError(reason: "Could not map CollectionRecord to Collection")
         }
@@ -127,8 +127,7 @@ public final class LibraryRepositoryImpl: LibraryRepository {
             id: recordId.rawValue,
             name: record.name,
             description: record.description ?? "",
-            // TODO: Add count field
-            count: 0,
+            count: count,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt
         )

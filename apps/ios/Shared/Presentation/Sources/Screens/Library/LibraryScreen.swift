@@ -9,8 +9,6 @@ import SwiftUI
 import Domain
 import Composition
 
-// MARK: - Main View
-
 public struct LibraryScreen: View {
     @State private var vm = LibraryViewModel()
     @State private var showingFilters = false
@@ -40,7 +38,10 @@ public struct LibraryScreen: View {
                 LibraryFiltersSheet()
                     .environment(vm)
             }
-            .task { vm.startObserving() }
+            .task {
+                vm.startObserving()
+                vm.startObservingCollections()
+            }
         }
         .environment(vm)
     }
@@ -68,7 +69,28 @@ private extension LibraryScreen {
                 placeholder: "Search library...",
                 onXTapped: vm.clearSearchText
             )
-            .padding(.horizontal, dimensions.padding.screen)
+            
+            if !vm.searchText.isEmpty {
+                NavigationLink {
+                    Text("TODO")
+                } label: {
+                    HStack {
+                        Image(systemName: "globe")
+                            .font(.subheadline)
+                        Text("Search everywhere for '\(vm.searchText)'")
+                            .font(.subheadline)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(dimensions.padding.screen)
+                    .background(theme.colors.accent.opacity(0.1))
+                    .cornerRadius(dimensions.cornerRadius.regular)
+                }
+            }
             
             if shouldShowRecentSearches {
                 RecentSearches(
@@ -77,6 +99,7 @@ private extension LibraryScreen {
                 )
             }
         }
+        .padding(.horizontal, dimensions.padding.screen)
         .animation(theme.animations.spring, value: vm.searchText)
     }
     
@@ -92,7 +115,7 @@ private extension LibraryScreen {
                         action: selectAllCollections
                     )
                     
-                    ForEach(MockData.collections) { collection in
+                    ForEach(vm.collections, id: \.id) { collection in
                         CollectionChip(
                             label: collection.name,
                             count: collection.count,
@@ -178,8 +201,11 @@ private extension LibraryScreen {
             }
             .padding(.top, dimensions.padding.regular)
         } actions: {
-            Button("Retry") { vm.startObserving() }
-                .buttonStyle(.borderedProminent)
+            Button("Retry") {
+                vm.startObserving()
+                vm.startObservingCollections()
+            }
+            .buttonStyle(.borderedProminent)
         }
         .padding(.top, dimensions.padding.screen)
     }
@@ -288,7 +314,7 @@ private extension LibraryScreen {
         vm.applyFilters()
     }
     
-    func selectCollection(_ id: String) {
+    func selectCollection(_ id: Int64) {
         vm.selectedCollection = id
         vm.applyFilters()
     }
@@ -306,7 +332,7 @@ private extension LibraryScreen {
     }
 }
 
-// MARK: - Supporting Components
+// MARK: - Components
 
 private struct RecentSearches: View {
     let searches: [String]
@@ -325,15 +351,14 @@ private struct RecentSearches: View {
                         Label(search, systemImage: "clock.arrow.circlepath")
                             .font(.caption)
                             .labelStyle(RecentSearchLabelStyle())
-                            .padding(.horizontal, dimensions.padding.regular)
-                            .padding(.vertical, dimensions.padding.minimal)
+                            .padding(.horizontal, dimensions.padding.screen)
+                            .padding(.vertical, dimensions.padding.regular)
                             .background(theme.colors.tint)
                             .clipShape(.capsule)
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, dimensions.padding.screen)
         }
         .transition(.move(edge: .top).combined(with: .opacity))
     }
@@ -484,20 +509,4 @@ private struct LoadingIndicators: View {
                 )
         }
     }
-}
-
-// MARK: - Mock Data
-
-private struct MockCollection: Identifiable {
-    let id = UUID().uuidString
-    let name: String
-    let count: Int
-}
-
-private enum MockData {
-    static let collections = [
-        MockCollection(name: "Favorites", count: 12),
-        MockCollection(name: "Currently Reading", count: 8),
-        MockCollection(name: "Shounen", count: 45)
-    ]
 }

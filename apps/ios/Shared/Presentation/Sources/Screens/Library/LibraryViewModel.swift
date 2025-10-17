@@ -23,7 +23,11 @@ public final class LibraryViewModel {
     @ObservationIgnored
     private let getLibraryMangaUseCase: GetLibraryMangaUseCase
     
+    @ObservationIgnored
+    private let getCollectionsUseCase: GetCollectionsUseCase
+    
     private(set) var entries: [Entry] = []
+    private(set) var collections: [Collection] = []
     private(set) var loading = false
     private(set) var loadingMore = false
     private(set) var error: Error?
@@ -34,6 +38,7 @@ public final class LibraryViewModel {
     private(set) var hasInitiallyLoaded = false
     
     private var observationTask: Task<Void, Never>?
+    private var collectionsTask: Task<Void, Never>?
     private var lastCursor: LibraryCursor?
     private var searchDebounceTask: Task<Void, Never>?
     
@@ -43,7 +48,7 @@ public final class LibraryViewModel {
             debounceSearch()
         }
     }
-    var selectedCollection: String?
+    var selectedCollection: Int64?
     var sortField: LibrarySortField = .alphabetical
     var sortDirection: Domain.SortDirection = .ascending
     var selectedSources: Set<Int64> = []
@@ -64,6 +69,7 @@ public final class LibraryViewModel {
     
     init() {
         self.getLibraryMangaUseCase = Injector.makeGetLibraryMangaUseCase()
+        self.getCollectionsUseCase = Injector.makeGetCollectionsUseCase()
         loadSavedPreferences()
     }
 }
@@ -72,15 +78,15 @@ extension LibraryViewModel {
     func startObserving() {
         observationTask?.cancel()
         
-        // Begin a new load
+        // begin a new load
         loading = true
         error = nil
         
         if !hasInitiallyLoaded {
-            // Initial load: clear and prepare pagination
+            // initial load: clear and prepare pagination
             resetPaginationState()
         } else {
-            // Subsequent query: keep current entries visible (no cache used),
+            // subsequent query: keep current entries visible (no cache used),
             // but disable pagination on old data while new query is loading.
             lastCursor = nil
             hasMore = false
@@ -97,6 +103,17 @@ extension LibraryViewModel {
         }
     }
     
+    func startObservingCollections() {
+        collectionsTask?.cancel()
+        
+        collectionsTask = Task { @MainActor in
+            for await result in getCollectionsUseCase.execute() {
+                guard !Task.isCancelled else { break }
+                handleCollectionsResult(result)
+            }
+        }
+    }
+    
     func refresh() async {
         isRefreshing = true
         startObserving()
@@ -105,8 +122,10 @@ extension LibraryViewModel {
     
     func stopObserving() {
         observationTask?.cancel()
+        collectionsTask?.cancel()
         searchDebounceTask?.cancel()
         observationTask = nil
+        collectionsTask = nil
         searchDebounceTask = nil
     }
 }
@@ -177,11 +196,11 @@ extension LibraryViewModel {
     func clearSearchText() {
         let previousText = searchText
         
-        // Cancel any pending search so we don't show a stale update
+        // cancel any pending search so we don't show a stale update
         searchDebounceTask?.cancel()
         searchText = ""
         
-        // Kick off a fresh load immediately for the empty query
+        // kick off a fresh load immediately for the empty query
         startObserving()
         
         if !previousText.isEmpty && !recentSearches.contains(previousText) {
@@ -258,7 +277,7 @@ extension LibraryViewModel {
     private func debounceSearch() {
         searchDebounceTask?.cancel()
         
-        // If the query becomes empty, refresh immediately
+        // if the query becomes empty, refresh immediately
         if searchText.isEmpty {
             startObserving()
             return
@@ -337,6 +356,17 @@ extension LibraryViewModel {
             }
         case .failure:
             loadingMore = false
+        }
+    }
+    
+    private func handleCollectionsResult(_ result: Result<[Collection], Error>) {
+        switch result {
+        case .success(let fetchedCollections):
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                collections = fetchedCollections
+            }
+        case .failure(let err):
+            print("Failed to load collections: \(err.localizedDescription)")
         }
     }
 }
