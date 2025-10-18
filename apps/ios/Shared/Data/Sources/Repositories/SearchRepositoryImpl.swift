@@ -12,10 +12,12 @@ import Domain
 public final class SearchRepositoryImpl: SearchRepository {
     private let remote: SearchRemoteDataSource
     private let local: SearchLocalDataSource
+    private let throttler: RequestThrottler
     
     public init() {
         self.remote = SearchRemoteDataSourceImpl()
         self.local = SearchLocalDataSourceImpl()
+        self.throttler = RequestThrottler.shared
     }
     
     public func searchWithPreset(source: Source, preset: SearchPreset) async throws -> [Entry] {
@@ -24,11 +26,14 @@ public final class SearchRepositoryImpl: SearchRepository {
                 throw RepositoryError.hostNotFound
             }
             
-            let responseDTO = try await remote.searchWithPreset(
-                sourceSlug: source.slug,
-                host: host.url,
-                preset: preset
-            )
+            // throttle the remote request
+            let responseDTO = try await throttler.execute {
+                try await self.remote.searchWithPreset(
+                    sourceSlug: source.slug,
+                    host: host.url,
+                    preset: preset
+                )
+            }
             
             // map dto to domain entities
             return responseDTO.results.map { dto in
@@ -62,13 +67,16 @@ public final class SearchRepositoryImpl: SearchRepository {
                 throw RepositoryError.hostNotFound
             }
             
-            let responseDTO = try await remote.searchWithPreset(
-                sourceSlug: source.slug,
-                host: host.url,
-                preset: preset,
-                page: page,
-                limit: limit
-            )
+            // throttle the remote request
+            let responseDTO = try await throttler.execute {
+                try await self.remote.searchWithPreset(
+                    sourceSlug: source.slug,
+                    host: host.url,
+                    preset: preset,
+                    page: page,
+                    limit: limit
+                )
+            }
             
             // map dto to domain entities
             let entries = responseDTO.results.map { dto in
