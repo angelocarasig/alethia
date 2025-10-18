@@ -47,6 +47,9 @@ final class SourceGridViewModel {
     private var currentPage = 1
     private let pageSize = Constants.Search.defaultPageSize
     
+    // track if data has been loaded
+    private var hasLoadedInitialData = false
+    
     // dependencies
     private let searchUseCase: SearchWithPresetUseCase
     private let findMatchesUseCase: FindMatchesUseCase
@@ -109,14 +112,11 @@ final class SourceGridViewModel {
         self.searchUseCase = searchUseCase ?? Injector.makeSearchWithPresetUseCase()
         self.findMatchesUseCase = findMatchesUseCase ?? Injector.makeFindMatchesUseCase()
         
-        // prefill filters from preset
         applyPresetFilters()
     }
     
-    // MARK: - public methods
-    
     func loadInitialData() {
-        guard !isLoading else { return }
+        guard !isLoading, !hasLoadedInitialData else { return }
         cancelAllTasks()
         resetState()
         isLoading = true
@@ -124,6 +124,7 @@ final class SourceGridViewModel {
         searchTask = Task { @MainActor in
             await performSearch()
             isInitialLoad = false
+            hasLoadedInitialData = true
         }
     }
     
@@ -138,12 +139,14 @@ final class SourceGridViewModel {
     }
     
     func refresh() {
+        hasLoadedInitialData = false
         loadInitialData()
     }
     
     func clearSearchText() {
         searchText = ""
         debounceTask?.cancel()
+        hasLoadedInitialData = false
         loadInitialData()
     }
     
@@ -164,14 +167,12 @@ final class SourceGridViewModel {
         let filters = preset.filters
         guard !filters.isEmpty else { return }
         
-        // year filter
         if case .stringArray(let years) = filters[.year] {
             selectedYears = Set(years)
         } else if case .string(let year) = filters[.year] {
             selectedYears = Set([year])
         }
         
-        // status filter
         if case .stringArray(let statusStrings) = filters[.status] {
             selectedStatuses = Set(statusStrings.compactMap { Status(rawValue: $0) })
         } else if case .string(let statusString) = filters[.status] {
@@ -180,14 +181,12 @@ final class SourceGridViewModel {
             }
         }
         
-        // translated language filter
         if case .stringArray(let langCodes) = filters[.translatedLanguage] {
             selectedLanguages = Set(langCodes.map { LanguageCode($0) })
         } else if case .string(let langCode) = filters[.translatedLanguage] {
             selectedLanguages = Set([LanguageCode(langCode)])
         }
         
-        // content rating filter
         if case .stringArray(let ratings) = filters[.contentRating] {
             selectedRatings = Set(ratings.compactMap { Classification(rawValue: $0) })
         } else if case .string(let rating) = filters[.contentRating] {
@@ -200,12 +199,12 @@ final class SourceGridViewModel {
     // MARK: - private methods
     
     private func debounceSearch() {
-        // skip debouncing on initial load
         guard !isInitialLoad else { return }
         
         debounceTask?.cancel()
         
         guard !searchText.isEmpty else {
+            hasLoadedInitialData = false
             loadInitialData()
             return
         }
@@ -213,6 +212,7 @@ final class SourceGridViewModel {
         debounceTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: debounceDelay)
             guard !Task.isCancelled else { return }
+            hasLoadedInitialData = false
             loadInitialData()
         }
     }
