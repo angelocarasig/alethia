@@ -192,6 +192,7 @@ internal final class MangaLocalDataSourceImpl: MangaLocalDataSource {
                     mangaId: mangaId,
                     sourceId: sourceId,
                     chapters: chapters,
+                    entryCover: entry.cover,
                     in: db
                 )
                 
@@ -467,12 +468,13 @@ private extension MangaLocalDataSourceImpl {
         mangaId: MangaRecord.ID,
         sourceId: Int64,
         chapters: [ChapterDTO],
+        entryCover: URL,
         in db: Database
     ) throws {
         do {
             try self.batchInsertAuthors(dto.authors, mangaId: mangaId, db: db)
             try self.batchInsertTags(dto.tags, mangaId: mangaId, db: db)
-            try self.batchInsertCovers(dto.covers, mangaId: mangaId, db: db)
+            try self.batchInsertCovers(dto.covers, mangaId: mangaId, primaryCoverURL: entryCover, db: db)
             try self.batchInsertAlternativeTitles(dto.alternativeTitles, mangaId: mangaId, db: db)
             
             let origin = try self.insertOrigin(dto, mangaId: mangaId, sourceId: sourceId, db: db)
@@ -550,18 +552,40 @@ private extension MangaLocalDataSourceImpl {
         }
     }
     
-    func batchInsertCovers(_ coverUrls: [String], mangaId: MangaRecord.ID, db: Database) throws {
+    func batchInsertCovers(_ coverUrls: [String], mangaId: MangaRecord.ID, primaryCoverURL: URL, db: Database) throws {
         do {
             try CoverRecord
                 .filter(CoverRecord.Columns.mangaId == mangaId)
                 .deleteAll(db)
             
+            let primaryCoverString = primaryCoverURL.absoluteString
+            
+            // extract base identifier (everything before first dot in last path component)
+            func extractBaseIdentifier(from urlString: String) -> String? {
+                guard let url = URL(string: urlString),
+                      let dotIndex = url.lastPathComponent.firstIndex(of: ".") else {
+                    return URL(string: urlString)?.lastPathComponent
+                }
+                return String(url.lastPathComponent[..<dotIndex])
+            }
+            
+            // try exact match first
+            var primaryIndex = coverUrls.firstIndex(where: { $0 == primaryCoverString })
+            
+            // if no exact match, try fuzzy match using base identifiers
+            if primaryIndex == nil, let entryBase = extractBaseIdentifier(from: primaryCoverString) {
+                primaryIndex = coverUrls.firstIndex { extractBaseIdentifier(from: $0) == entryBase }
+            }
+            
             for (index, coverURLString) in coverUrls.enumerated() {
                 guard let coverURL = URL(string: coverURLString) else { continue }
                 
+                // set as primary if matches entry cover, otherwise use first cover as fallback
+                let isPrimary = primaryIndex == index || (primaryIndex == nil && index == 0)
+                
                 var coverRecord = CoverRecord(
                     mangaId: mangaId,
-                    isPrimary: index == 0,
+                    isPrimary: isPrimary,
                     localPath: coverURL,
                     remotePath: coverURL
                 )
