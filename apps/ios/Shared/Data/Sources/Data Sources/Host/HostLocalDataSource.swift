@@ -112,6 +112,7 @@ internal final class HostLocalDataSourceImpl: HostLocalDataSource {
                         name: source.name,
                         icon: finalIconPath,
                         url: url,
+                        languages: source.languages,
                         pinned: false,
                         disabled: false,
                         authType: source.auth.type

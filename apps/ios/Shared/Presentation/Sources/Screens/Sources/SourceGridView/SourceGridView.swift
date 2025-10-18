@@ -49,13 +49,19 @@ struct SourceGridView: View {
         .sheet(isPresented: $showingFilters) {
             SourceGridFilterSheet(
                 searchText: vm.searchText,
-                selectedYears: $vm.selectedYears,
+                selectedYear: $vm.selectedYear,
                 selectedStatuses: $vm.selectedStatuses,
                 selectedLanguages: $vm.selectedLanguages,
                 selectedRatings: $vm.selectedRatings,
                 availableYears: vm.availableYears,
-                availableLanguages: vm.availableLanguages
+                availableLanguages: vm.availableLanguages,
+                supportsYearFilter: vm.supportsYearFilter,
+                supportsStatusFilter: vm.supportsStatusFilter,
+                supportsLanguageFilter: vm.supportsLanguageFilter,
+                supportsRatingFilter: vm.supportsRatingFilter
             )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showingSortOptions) {
             SourceGridSortSheet(
@@ -63,6 +69,8 @@ struct SourceGridView: View {
                 selectedDirection: $vm.selectedDirection,
                 availableSorts: source.search.options.sorting
             )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
         }
         .task { vm.loadInitialData() }
         .refreshable { vm.refresh() }
@@ -183,7 +191,7 @@ private extension SourceGridView {
         .onScrollGeometryChange(for: ScrollProgress.self) { geometry in
             calculateScrollProgress(from: geometry)
         } action: { oldValue, newValue in
-            // trigger load more when in last 10% of content
+            // trigger load more when in last 10% of content and not already loading
             if newValue.percentage >= 0.9 && vm.hasMore && !vm.isLoadingMore {
                 vm.loadMore()
             }
@@ -300,10 +308,9 @@ private struct SourceGridHeader: View {
     var body: some View {
         HStack(spacing: dimensions.spacing.regular) {
             sortButton
-            separatorLine
             filterButton
             Spacer()
-            pageButton
+            pageIndicator
         }
         .padding(.horizontal, dimensions.padding.screen)
         .padding(.vertical, dimensions.padding.regular)
@@ -321,75 +328,111 @@ private struct SourceGridHeader: View {
     }
     
     var sortButton: some View {
-        Button {
-            showingSortOptions = true
-        } label: {
-            HStack(spacing: dimensions.spacing.minimal) {
-                Image(systemName: selectedDirection == .ascending ? "arrow.up" : "arrow.down")
-                    .font(.caption2)
-                    .foregroundColor(theme.colors.accent)
-                
-                Text(selectedSort.displayName)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(theme.colors.foreground)
-                
-                Image(systemName: "chevron.down")
-                    .font(.caption2)
-                    .foregroundColor(theme.colors.foreground.opacity(0.4))
-            }
-        }
-        .buttonStyle(.plain)
-    }
-    
-    var separatorLine: some View {
-        Rectangle()
-            .fill(theme.colors.foreground.opacity(0.1))
-            .frame(width: 1, height: 12)
-    }
-    
-    var filterButton: some View {
-        Button {
-            showingFilters = true
-        } label: {
-            HStack(spacing: dimensions.spacing.minimal) {
-                Image(systemName: "line.3.horizontal.decrease")
-                    .font(.caption)
-                    .foregroundColor(theme.colors.accent)
-                
-                Text("\(activeFilterCount)")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(theme.colors.foreground)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-    
-    var pageButton: some View {
-        Button {
-            showingPagePicker = true
-        } label: {
-            HStack(spacing: dimensions.spacing.minimal) {
-                Text("Page")
+        HStack(spacing: dimensions.spacing.regular) {
+            // sort direction icon
+            Image(systemName: selectedDirection == .ascending ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                .font(.body)
+                .foregroundColor(theme.colors.accent)
+                .symbolRenderingMode(.hierarchical)
+            
+            // sort type
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Sort")
                     .font(.caption2)
                     .foregroundColor(theme.colors.foreground.opacity(0.5))
                 
+                Text(selectedSort.displayName)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(theme.colors.foreground)
+            }
+        }
+        .padding(.vertical, dimensions.padding.regular)
+        .padding(.horizontal, dimensions.padding.screen)
+        .background(theme.colors.tint)
+        .cornerRadius(dimensions.cornerRadius.button)
+        .tappable {
+            showingSortOptions = true
+        }
+    }
+    
+    var filterButton: some View {
+        HStack(spacing: dimensions.spacing.regular) {
+            // filter icon with badge
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                    .font(.body)
+                    .foregroundColor(activeFilterCount > 0 ? theme.colors.accent : theme.colors.foreground.opacity(0.3))
+                    .symbolRenderingMode(.hierarchical)
+                
+                if activeFilterCount > 0 {
+                    Text("\(activeFilterCount)")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(3)
+                        .background(theme.colors.appRed)
+                        .clipShape(Circle())
+                        .offset(x: 6, y: -6)
+                }
+            }
+            
+            // filter label
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Filters")
+                    .font(.caption2)
+                    .foregroundColor(theme.colors.foreground.opacity(0.5))
+                
+                Text(activeFilterCount > 0 ? "\(activeFilterCount) Active" : "None")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(theme.colors.foreground)
+            }
+        }
+        .padding(.vertical, dimensions.padding.regular)
+        .padding(.horizontal, dimensions.padding.screen)
+        .background(theme.colors.tint)
+        .cornerRadius(dimensions.cornerRadius.button)
+        .tappable {
+            showingFilters = true
+        }
+    }
+    
+    var pageIndicator: some View {
+        VStack(spacing: 4) {
+            // page number
+            HStack(spacing: 2) {
                 Text("\(currentPage)")
-                    .font(.caption)
+                    .font(.title3)
                     .fontWeight(.bold)
                     .foregroundColor(theme.colors.accent)
                 
                 Text("/")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundColor(theme.colors.foreground.opacity(0.3))
                 
                 Text("\(totalPages)")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundColor(theme.colors.foreground.opacity(0.5))
             }
+            
+            // progress bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    // background
+                    Capsule()
+                        .fill(theme.colors.foreground.opacity(0.1))
+                    
+                    // progress
+                    Capsule()
+                        .fill(theme.colors.accent)
+                        .frame(width: geo.size.width * CGFloat(currentPage) / CGFloat(totalPages))
+                }
+            }
+            .frame(width: 60, height: 3)
         }
-        .buttonStyle(.plain)
+        .tappable {
+            showingPagePicker = true
+        }
     }
 }
 

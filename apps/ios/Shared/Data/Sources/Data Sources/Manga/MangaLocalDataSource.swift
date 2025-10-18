@@ -560,7 +560,7 @@ private extension MangaLocalDataSourceImpl {
             
             let primaryCoverString = primaryCoverURL.absoluteString
             
-            // extract base identifier (everything before first dot in last path component)
+            // to determine a primary cover from the entry cover - extract base identifier (everything before first dot in last path component)
             func extractBaseIdentifier(from urlString: String) -> String? {
                 guard let url = URL(string: urlString),
                       let dotIndex = url.lastPathComponent.firstIndex(of: ".") else {
@@ -574,11 +574,16 @@ private extension MangaLocalDataSourceImpl {
             
             // if no exact match, try fuzzy match using base identifiers
             if primaryIndex == nil, let entryBase = extractBaseIdentifier(from: primaryCoverString) {
-                primaryIndex = coverUrls.firstIndex { extractBaseIdentifier(from: $0) == entryBase }
+                primaryIndex = coverUrls.firstIndex { coverURL in
+                    let dtoBase = extractBaseIdentifier(from: coverURL)
+                    return dtoBase == entryBase
+                }
             }
             
             for (index, coverURLString) in coverUrls.enumerated() {
-                guard let coverURL = URL(string: coverURLString) else { continue }
+                guard let coverURL = URL(string: coverURLString) else {
+                    continue
+                }
                 
                 // set as primary if matches entry cover, otherwise use first cover as fallback
                 let isPrimary = primaryIndex == index || (primaryIndex == nil && index == 0)

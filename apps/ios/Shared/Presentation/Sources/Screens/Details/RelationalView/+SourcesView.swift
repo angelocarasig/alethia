@@ -233,7 +233,8 @@ struct SourcesView: View {
                                 tags: [],
                                 presets: []
                             ),
-                            presets: []
+                            presets: [],
+                            languages: [LanguageCode("en")]
                         )
                     ),
                     Origin(
@@ -260,7 +261,8 @@ struct SourcesView: View {
                                 tags: [],
                                 presets: []
                             ),
-                            presets: []
+                            presets: [],
+                            languages: [LanguageCode("en")]
                         )
                     ),
                     Origin(
@@ -287,7 +289,8 @@ struct SourcesView: View {
                                 tags: [],
                                 presets: []
                             ),
-                            presets: []
+                            presets: [],
+                            languages: [LanguageCode("en")]
                         )
                     ),
                     Origin(

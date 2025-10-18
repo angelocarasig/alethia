@@ -29,19 +29,37 @@ final class SourceGridViewModel {
     }
     var selectedSort: Search.Options.Sort
     var selectedDirection: SortDirection
-    var selectedYears: Set<String> = []
+    var selectedYear: String?
     var selectedStatuses: Set<Status> = []
     var selectedLanguages: Set<LanguageCode> = []
     var selectedRatings: Set<Classification> = []
     
-    // available options
-    let availableYears = ["2024", "2023", "2022", "2021", "2020"]
-    let availableLanguages = [
-        LanguageCode("en"),
-        LanguageCode("ja"),
-        LanguageCode("ko"),
-        LanguageCode("zh")
-    ]
+    // available options - derived from source capabilities
+    var availableYears: [String] {
+        // generate years from current year back to 1900
+        let currentYear = Calendar.current.component(.year, from: Date())
+        return (1900...currentYear).reversed().map { String($0) }
+    }
+    
+    var availableLanguages: [LanguageCode] {
+        source.languages
+    }
+    
+    var supportsYearFilter: Bool {
+        source.search.options.filtering.contains(.year)
+    }
+    
+    var supportsStatusFilter: Bool {
+        source.search.options.filtering.contains(.status)
+    }
+    
+    var supportsLanguageFilter: Bool {
+        source.search.options.filtering.contains(.translatedLanguage)
+    }
+    
+    var supportsRatingFilter: Bool {
+        source.search.options.filtering.contains(.contentRating)
+    }
     
     // pagination
     private var currentPage = 1
@@ -85,7 +103,7 @@ final class SourceGridViewModel {
     var activeFilterCount: Int {
         var count = 0
         if !searchText.isEmpty { count += 1 }
-        if !selectedYears.isEmpty { count += 1 }
+        if selectedYear != nil { count += 1 }
         if !selectedStatuses.isEmpty { count += 1 }
         if !selectedLanguages.isEmpty { count += 1 }
         if !selectedRatings.isEmpty { count += 1 }
@@ -93,7 +111,7 @@ final class SourceGridViewModel {
     }
     
     private var hasActiveFilters: Bool {
-        !selectedYears.isEmpty ||
+        selectedYear != nil ||
         !selectedStatuses.isEmpty ||
         !selectedLanguages.isEmpty ||
         !selectedRatings.isEmpty
@@ -167,10 +185,9 @@ final class SourceGridViewModel {
         let filters = preset.filters
         guard !filters.isEmpty else { return }
         
-        if case .stringArray(let years) = filters[.year] {
-            selectedYears = Set(years)
-        } else if case .string(let year) = filters[.year] {
-            selectedYears = Set([year])
+        // year is now single selection
+        if case .string(let year) = filters[.year] {
+            selectedYear = year
         }
         
         if case .stringArray(let statusStrings) = filters[.status] {

@@ -285,7 +285,8 @@ private extension MangaRepositoryImpl {
             host: hostDisplayName,
             auth: auth,
             search: search,
-            presets: []
+            presets: [],
+            languages: sourceRecord.languages
         )
     }
     

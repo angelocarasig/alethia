@@ -11,7 +11,7 @@ import Flow
 
 struct SourceGridFilterSheet: View {
     let searchText: String
-    @Binding var selectedYears: Set<String>
+    @Binding var selectedYear: String?
     @Binding var selectedStatuses: Set<Status>
     @Binding var selectedLanguages: Set<LanguageCode>
     @Binding var selectedRatings: Set<Classification>
@@ -19,13 +19,18 @@ struct SourceGridFilterSheet: View {
     let availableYears: [String]
     let availableLanguages: [LanguageCode]
     
+    let supportsYearFilter: Bool
+    let supportsStatusFilter: Bool
+    let supportsLanguageFilter: Bool
+    let supportsRatingFilter: Bool
+    
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dimensions) private var dimensions
     @Environment(\.theme) private var theme
     
     private var hasActiveFilters: Bool {
         !searchText.isEmpty ||
-        !selectedYears.isEmpty ||
+        selectedYear != nil ||
         !selectedStatuses.isEmpty ||
         !selectedLanguages.isEmpty ||
         !selectedRatings.isEmpty
@@ -45,13 +50,24 @@ struct SourceGridFilterSheet: View {
                         Divider()
                     }
                     
-                    yearFilterSection
-                    Divider()
-                    statusFilterSection
-                    Divider()
-                    languageFilterSection
-                    Divider()
-                    ratingFilterSection
+                    if supportsYearFilter {
+                        yearFilterSection
+                        Divider()
+                    }
+                    
+                    if supportsStatusFilter {
+                        statusFilterSection
+                        Divider()
+                    }
+                    
+                    if supportsLanguageFilter && !availableLanguages.isEmpty {
+                        languageFilterSection
+                        Divider()
+                    }
+                    
+                    if supportsRatingFilter {
+                        ratingFilterSection
+                    }
                 }
                 .padding(dimensions.padding.screen)
             }
@@ -62,7 +78,7 @@ struct SourceGridFilterSheet: View {
                     if hasActiveFilters {
                         Button("Clear All") {
                             withAnimation(theme.animations.spring) {
-                                selectedYears.removeAll()
+                                selectedYear = nil
                                 selectedStatuses.removeAll()
                                 selectedLanguages.removeAll()
                                 selectedRatings.removeAll()
@@ -149,21 +165,69 @@ private extension SourceGridFilterSheet {
     }
     
     var yearFilterSection: some View {
-        FilterSection(
-            title: "YEAR",
-            icon: "calendar",
-            items: availableYears.map { FilterItem(id: $0, label: $0) },
-            selectedItems: selectedYears,
-            onToggle: { id in
-                withAnimation(theme.animations.spring) {
-                    if selectedYears.contains(id) {
-                        selectedYears.remove(id)
-                    } else {
-                        selectedYears.insert(id)
-                    }
+        VStack(alignment: .leading, spacing: dimensions.spacing.regular) {
+            HStack(spacing: dimensions.spacing.minimal) {
+                Image(systemName: "calendar")
+                    .font(.caption)
+                    .foregroundColor(theme.colors.foreground.opacity(0.5))
+                
+                Text("YEAR")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(theme.colors.foreground.opacity(0.6))
+                
+                Spacer()
+                
+                if selectedYear != nil {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundColor(theme.colors.accent)
                 }
             }
-        )
+            
+            Menu {
+                Button("Clear Selection") {
+                    withAnimation(theme.animations.spring) {
+                        selectedYear = nil
+                    }
+                }
+                .disabled(selectedYear == nil)
+                
+                Divider()
+                
+                ForEach(availableYears, id: \.self) { year in
+                    Button {
+                        withAnimation(theme.animations.spring) {
+                            selectedYear = year
+                        }
+                    } label: {
+                        HStack {
+                            Text(year)
+                            if selectedYear == year {
+                                Spacer()
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(selectedYear ?? "Select Year")
+                        .font(.subheadline)
+                        .fontWeight(selectedYear != nil ? .semibold : .regular)
+                        .foregroundColor(theme.colors.foreground)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2)
+                        .foregroundColor(theme.colors.foreground.opacity(0.5))
+                }
+                .padding(dimensions.padding.screen)
+                .background(selectedYear != nil ? theme.colors.accent.opacity(0.1) : theme.colors.tint)
+                .cornerRadius(dimensions.cornerRadius.button)
+            }
+        }
     }
     
     var statusFilterSection: some View {
@@ -191,7 +255,7 @@ private extension SourceGridFilterSheet {
             title: "LANGUAGE",
             icon: "globe",
             items: availableLanguages.map {
-                FilterItem(id: $0.rawValue, label: "\($0.flag) \($0.rawValue.uppercased())")
+                FilterItem(id: $0.rawValue, label: $0.flagWithName)
             },
             selectedItems: Set(selectedLanguages.map { $0.rawValue }),
             onToggle: { id in
@@ -234,7 +298,7 @@ private extension SourceGridFilterSheet {
     var activeFilterCount: Int {
         var count = 0
         if !searchText.isEmpty { count += 1 }
-        count += selectedYears.count
+        if selectedYear != nil { count += 1 }
         count += selectedStatuses.count
         count += selectedLanguages.count
         count += selectedRatings.count
@@ -256,13 +320,13 @@ private extension SourceGridFilterSheet {
             ))
         }
         
-        for year in selectedYears {
+        if let year = selectedYear {
             filters.append(ActiveFilter(
                 icon: "calendar",
                 label: "Year: \(year)",
                 onRemove: {
                     withAnimation(theme.animations.spring) {
-                        _ = selectedYears.remove(year)
+                        selectedYear = nil
                     }
                 }
             ))

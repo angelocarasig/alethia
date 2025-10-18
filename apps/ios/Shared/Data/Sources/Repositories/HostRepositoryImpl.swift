@@ -196,7 +196,8 @@ public final class HostRepositoryImpl: HostRepository {
                 host: hostDisplayName,
                 auth: auth,
                 search: search,
-                presets: presets
+                presets: presets,
+                languages: sourceRecord.languages
             )
         }
         
