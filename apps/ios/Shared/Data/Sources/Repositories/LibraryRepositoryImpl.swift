@@ -87,24 +87,15 @@ public final class LibraryRepositoryImpl: LibraryRepository {
     public func findMatches(for raw: [Entry]) -> AsyncStream<Result<[Entry], Error>> {
         AsyncStream { continuation in
             let task = Task {
-                do {
-                    let enriched = try await local.findMatches(for: raw)
-                    continuation.yield(.success(enriched))
-                } catch let error as StorageError {
-                    continuation.yield(.failure(error.toDomainError()))
-                } catch let dbError as DatabaseError {
-                    continuation.yield(.failure(RepositoryError.fromGRDB(dbError, context: "findMatches").toDomainError()))
-                } catch let error as BusinessError {
-                    continuation.yield(.failure(error))
-                } catch let error as DataAccessError {
-                    continuation.yield(.failure(error))
-                } catch let error as SystemError {
-                    continuation.yield(.failure(error))
-                } catch {
-                    continuation.yield(.failure(DataAccessError.storageFailure(
-                        reason: "Failed to find matches",
-                        underlying: error
-                    )))
+                for await result in local.findMatches(for: raw) {
+                    if Task.isCancelled { break }
+                    
+                    switch result {
+                    case .success(let enriched):
+                        continuation.yield(.success(enriched))
+                    case .failure(let error):
+                        continuation.yield(.failure(mapStorageError(error, context: "find matches")))
+                    }
                 }
                 continuation.finish()
             }

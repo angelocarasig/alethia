@@ -12,9 +12,11 @@ import GRDB
 // MARK: - Find Matches
 
 extension LibraryLocalDataSourceImpl {
-    func findMatches(for entries: [Entry]) async throws -> [Entry] {
-        do {
-            return try await database.reader.read { db in
+    func findMatches(for entries: [Entry]) -> AsyncStream<Result<[Entry], Error>> {
+        AsyncStream { continuation in
+            let observation = ValueObservation.tracking { [weak self] db -> [Entry] in
+                guard let self else { return [] }
+                
                 var enrichedEntries: [Entry] = []
                 enrichedEntries.reserveCapacity(entries.count)
                 
@@ -25,12 +27,26 @@ extension LibraryLocalDataSourceImpl {
                 
                 return enrichedEntries
             }
-        } catch let dbError as DatabaseError {
-            throw StorageError.from(grdbError: dbError, context: "findMatches")
-        } catch let error as StorageError {
-            throw error
-        } catch {
-            throw StorageError.queryFailed(sql: "findMatches", error: error)
+            
+            let task = Task {
+                do {
+                    for try await enriched in observation.values(in: database.reader) {
+                        if Task.isCancelled { break }
+                        continuation.yield(.success(enriched))
+                    }
+                } catch let dbError as DatabaseError {
+                    continuation.yield(.failure(StorageError.from(grdbError: dbError, context: "findMatches")))
+                } catch let error as StorageError {
+                    continuation.yield(.failure(error))
+                } catch {
+                    continuation.yield(.failure(StorageError.queryFailed(sql: "findMatches", error: error)))
+                }
+                continuation.finish()
+            }
+            
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
         }
     }
     

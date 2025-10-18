@@ -14,7 +14,7 @@ internal protocol LibraryLocalDataSource: Sendable {
     func getLibraryCollections() -> AsyncStream<Result<[(CollectionRecord, Int)], Error>>
     func addMangaToLibrary(mangaId: Int64) async throws
     func removeMangaFromLibrary(mangaId: Int64) async throws
-    func findMatches(for entries: [Entry]) async throws -> [Entry]
+    func findMatches(for entries: [Entry]) -> AsyncStream<Result<[Entry], Error>>
 }
 
 internal struct LibraryDataBundle: Sendable {
