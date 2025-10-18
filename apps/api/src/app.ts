@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
+import { cache } from 'hono/cache';
 import { loggingMiddleware } from './middleware/logging';
-import { errorHandler } from './middleware/error';
 import * as Sentry from '@sentry/cloudflare';
 import host from './routes/host';
 import sources from './routes/sources';
@@ -37,6 +37,15 @@ export const createApp = () => {
   });
 
   app.use('*', loggingMiddleware());
+
+  // 5min cache
+  app.use(
+    '*',
+    cache({
+      cacheName: 'alethia-api',
+      cacheControl: 'max-age=300', // 5 minutes
+    }),
+  );
 
   app.route('/', host);
   app.route('/', sources);
