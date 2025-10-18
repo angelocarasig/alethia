@@ -1,3 +1,10 @@
+//
+//  app.ts
+//  api
+//
+//  Created by Angelo Carasig on 18/10/2025.
+//
+
 import { Hono } from 'hono';
 import { cache } from 'hono/cache';
 import { loggingMiddleware } from './middleware/logging';
@@ -6,6 +13,7 @@ import host from './routes/host';
 import sources from './routes/sources';
 import type { Bindings } from './types';
 import { HTTPException } from 'hono/http-exception';
+import { postCacheMiddleware } from './middleware/post-cache';
 
 export const createApp = () => {
   const app = new Hono<{ Bindings: Bindings }>();
@@ -38,14 +46,19 @@ export const createApp = () => {
 
   app.use('*', loggingMiddleware());
 
-  // 5min cache
-  app.use(
-    '*',
-    cache({
-      cacheName: 'alethia-api',
-      cacheControl: 'max-age=300', // 5 minutes
-    }),
-  );
+  app.use('*', async (c, next) => {
+    if (c.req.method === 'GET') {
+      return cache({
+        cacheName: 'alethia-api',
+        cacheControl: 'max-age=300', // 5 minutes
+      })(c, next);
+    } else if (c.req.method === 'POST') {
+      return postCacheMiddleware({
+        cacheControl: 'max-age=300', // 5 minutes
+      })(c, next);
+    }
+    return next();
+  });
 
   app.route('/', host);
   app.route('/', sources);

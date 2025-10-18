@@ -185,11 +185,10 @@ export default class MangaDexSource extends Adapter {
 
     const limit = Number(params.get('limit'));
     const offset = Number(params.get('offset'));
-    const currentPage = Math.floor(offset / limit) + 1;
 
     return {
       results: collection.data.map((entry) => this.buildSearchEntry(entry)),
-      page: currentPage,
+      page: Math.floor(offset / limit) + 1,
       more: offset + limit < collection.total,
     };
   }
