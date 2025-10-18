@@ -150,7 +150,7 @@ private extension SourceGridView {
         ScrollView {
             LazyVGrid(columns: columns, spacing: dimensions.spacing.minimal) {
                 ForEach(0..<12, id: \.self) { _ in
-                    SkeletonCard()
+                    GridItemSkeleton()
                 }
             }
             .padding(.horizontal, dimensions.padding.screen)
@@ -174,9 +174,7 @@ private extension SourceGridView {
                     pageSection(page)
                 }
                 
-                if vm.isLoadingMore {
-                    loadingMoreSection
-                }
+                loadMoreSection
             }
             .padding(.horizontal, dimensions.padding.screen)
             .padding(.vertical, dimensions.padding.regular)
@@ -214,11 +212,32 @@ private extension SourceGridView {
         }
     }
     
-    var loadingMoreSection: some View {
-        VStack(spacing: dimensions.spacing.minimal) {
-            LazyVGrid(columns: columns, spacing: dimensions.spacing.minimal) {
-                LoadingMoreIndicators()
+    @ViewBuilder
+    var loadMoreSection: some View {
+        if vm.isLoadingMore {
+            Spinner(text: "Loading more...", size: .medium)
+                .padding(.vertical, dimensions.padding.screen)
+        } else if vm.hasMore {
+            Button {
+                vm.loadMore()
+            } label: {
+                HStack(spacing: dimensions.spacing.regular) {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(theme.colors.accent)
+                    
+                    Text("Load More")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(theme.colors.foreground)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, dimensions.padding.screen)
+                .background(theme.colors.accent.opacity(0.1))
+                .cornerRadius(dimensions.cornerRadius.button)
             }
+            .buttonStyle(.plain)
+            .padding(.top, dimensions.spacing.regular)
         }
     }
 }
@@ -404,35 +423,32 @@ private struct PageDivider: View {
     }
 }
 
-private struct SkeletonCard: View {
+private struct GridItemSkeleton: View {
     @Environment(\.dimensions) private var dimensions
     @Environment(\.theme) private var theme
     
-    var body: some View {
-        RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
-            .fill(theme.colors.foreground.opacity(0.05))
-            .aspectRatio(2/3, contentMode: .fit)
-            .shimmer()
-    }
-}
-
-private struct LoadingMoreIndicators: View {
-    @Environment(\.dimensions) private var dimensions
-    @Environment(\.theme) private var theme
+    private let coverAspectRatio: CGFloat = 11/16
+    private let textHeight: CGFloat = 12
+    private let shortTextWidth: CGFloat = 60
+    private let textCornerRadius: CGFloat = 4
     
     var body: some View {
-        ForEach(0..<3, id: \.self) { index in
+        VStack(alignment: .leading, spacing: dimensions.spacing.minimal) {
             RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
-                .fill(theme.colors.foreground.opacity(0.05))
-                .aspectRatio(2/3, contentMode: .fit)
-                .shimmer()
-                .transition(
-                    .opacity
-                        .combined(with: .scale(scale: 0.9))
-                        .animation(
-                            Animation.spring(response: 0.3, dampingFraction: 0.8).delay(Double(index) * 0.05)
-                        )
-                )
+                .fill(theme.colors.tint)
+                .aspectRatio(coverAspectRatio, contentMode: .fit)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                RoundedRectangle(cornerRadius: textCornerRadius)
+                    .fill(theme.colors.tint)
+                    .frame(height: textHeight)
+                
+                RoundedRectangle(cornerRadius: textCornerRadius)
+                    .fill(theme.colors.tint)
+                    .frame(width: shortTextWidth, height: textHeight)
+            }
         }
+        .padding(.horizontal, dimensions.padding.minimal)
+        .shimmer()
     }
 }
