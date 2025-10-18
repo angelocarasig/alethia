@@ -114,28 +114,28 @@ struct SourceHomeRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: dimensions.spacing.regular) {
             // section header
-            HStack(alignment: .center) {
-                Text(preset.name)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                if vm.isLoading {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                        .padding(.leading, dimensions.spacing.minimal)
-                }
-                
-                Spacer()
-                
-                if !vm.enrichedEntries.isEmpty {
-                    Image(systemName: "chevron.forward")
-                        .font(.caption)
-                        .foregroundColor(theme.colors.foreground.opacity(0.5))
+            NavigationLink(destination: SearchGridView(source: source, preset: preset)) {
+                HStack(alignment: .center) {
+                    Text(preset.name)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    if vm.isLoading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .padding(.leading, dimensions.spacing.minimal)
+                    }
+                    
+                    Spacer()
+                    
+                    if !vm.enrichedEntries.isEmpty {
+                        Image(systemName: "chevron.forward")
+                            .font(.caption)
+                            .foregroundColor(theme.colors.foreground.opacity(0.5))
+                    }
                 }
             }
-            .tappable {
-                // navigate to full preset view
-            }
+            .buttonStyle(.plain)
             
             // description if available
             if let description = preset.description {

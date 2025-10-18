@@ -10,6 +10,7 @@ import Domain
 
 internal protocol SearchRemoteDataSource: Sendable {
     func searchWithPreset(sourceSlug: String, host: URL, preset: SearchPreset) async throws -> SearchResponseDTO
+    func searchWithPreset(sourceSlug: String, host: URL, preset: SearchPreset, page: Int, limit: Int) async throws -> SearchResponseDTO
     func search(sourceSlug: String, host: URL, request: SearchRequestDTO) async throws -> SearchResponseDTO
 }
 
@@ -21,14 +22,25 @@ internal final class SearchRemoteDataSourceImpl: SearchRemoteDataSource {
     }
     
     func searchWithPreset(sourceSlug: String, host: URL, preset: SearchPreset) async throws -> SearchResponseDTO {
+        // default to page 1 with default limit
+        return try await searchWithPreset(
+            sourceSlug: sourceSlug,
+            host: host,
+            preset: preset,
+            page: 1,
+            limit: 20
+        )
+    }
+    
+    func searchWithPreset(sourceSlug: String, host: URL, preset: SearchPreset, page: Int, limit: Int) async throws -> SearchResponseDTO {
         let searchURL = host
             .appendingPathComponent(sourceSlug)
             .appendingPathComponent("search")
         
         let requestDTO = SearchRequestDTO(
             query: "",
-            page: 1,
-            limit: 20,
+            page: page,
+            limit: limit,
             sort: preset.sortOption,
             direction: preset.sortDirection,
             filters: preset.filters

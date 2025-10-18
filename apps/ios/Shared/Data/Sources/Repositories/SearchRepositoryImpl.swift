@@ -38,7 +38,8 @@ public final class SearchRepositoryImpl: SearchRepository {
                     slug: dto.slug,
                     title: dto.title,
                     cover: URL(string: dto.cover ?? "")!,
-                    state: .noMatch
+                    state: .noMatch,
+                    unread: 0
                 )
             }
             
@@ -50,38 +51,44 @@ public final class SearchRepositoryImpl: SearchRepository {
             throw error.toDomainError()
         } catch let dbError as DatabaseError {
             throw RepositoryError.fromGRDB(dbError).toDomainError()
-        } catch let error as BusinessError {
-            throw error
-        } catch let error as DataAccessError {
-            throw error
         } catch {
             throw DataAccessError.networkFailure(reason: "Failed to search", underlying: error)
         }
     }
     
-    private func search(source: Source, request: SearchRequestDTO) async throws -> [Entry] {
+    public func searchWithPreset(source: Source, preset: SearchPreset, page: Int, limit: Int) async throws -> SearchQueryResult {
         do {
             guard let host = try await local.getHostForSource(source.id) else {
                 throw RepositoryError.hostNotFound
             }
             
-            let responseDTO = try await remote.search(
+            let responseDTO = try await remote.searchWithPreset(
                 sourceSlug: source.slug,
                 host: host.url,
-                request: request
+                preset: preset,
+                page: page,
+                limit: limit
             )
             
             // map dto to domain entities
-            return responseDTO.results.map { dto in
+            let entries = responseDTO.results.map { dto in
                 Entry(
                     mangaId: nil,
                     sourceId: source.id,
                     slug: dto.slug,
                     title: dto.title,
                     cover: URL(string: dto.cover ?? "")!,
-                    state: .noMatch
+                    state: .noMatch,
+                    unread: 0
                 )
             }
+            
+            return SearchQueryResult(
+                entries: entries,
+                hasMore: responseDTO.more,
+                currentPage: responseDTO.page,
+                totalCount: nil
+            )
             
         } catch let error as RepositoryError {
             throw error.toDomainError()
@@ -91,10 +98,6 @@ public final class SearchRepositoryImpl: SearchRepository {
             throw error.toDomainError()
         } catch let dbError as DatabaseError {
             throw RepositoryError.fromGRDB(dbError).toDomainError()
-        } catch let error as BusinessError {
-            throw error
-        } catch let error as DataAccessError {
-            throw error
         } catch {
             throw DataAccessError.networkFailure(reason: "Failed to search", underlying: error)
         }

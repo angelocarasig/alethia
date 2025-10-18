@@ -18,4 +18,22 @@ public final class SearchWithPresetUseCaseImpl: SearchWithPresetUseCase {
     public func execute(source: Source, preset: SearchPreset) async throws -> [Entry] {
         try await repository.searchWithPreset(source: source, preset: preset)
     }
+    
+    public func execute(source: Source, preset: SearchPreset, page: Int, limit: Int) async throws -> SearchQueryResult {
+        // validate pagination parameters
+        guard page > 0 else {
+            throw BusinessError.invalidInput(reason: "Page must be greater than 0")
+        }
+        
+        guard limit > 0 && limit <= Constants.Search.maxResults else {
+            throw BusinessError.invalidInput(reason: "Limit must be between 1 and \(Constants.Search.maxResults)")
+        }
+        
+        return try await repository.searchWithPreset(
+            source: source,
+            preset: preset,
+            page: page,
+            limit: limit
+        )
+    }
 }

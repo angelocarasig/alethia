@@ -17,12 +17,13 @@ public enum BusinessError: DomainError {
     case authenticationRequired(source: String)
     case invalidURLFormat(url: String)
     case operationNotPermitted(reason: String)
+    case invalidInput(reason: String)
     
     // MARK: - DomainError Conformance
     
     public var isRecoverable: Bool {
         switch self {
-        case .hostAlreadyExists, .invalidHostConfiguration, .noSourcesInHost, .invalidURLFormat:
+        case .hostAlreadyExists, .invalidHostConfiguration, .noSourcesInHost, .invalidURLFormat, .invalidInput:
             return false // user needs to provide different input
         case .resourceNotFound, .authenticationRequired, .operationNotPermitted:
             return true // might work with different context
@@ -49,6 +50,8 @@ public enum BusinessError: DomainError {
             return "Invalid URL format: \(url)"
         case .operationNotPermitted(let reason):
             return "Operation not permitted: \(reason)"
+        case .invalidInput(let reason):
+            return "Invalid input: \(reason)"
         }
     }
     
@@ -70,6 +73,8 @@ public enum BusinessError: DomainError {
             return "The URL format is invalid. Please check and try again."
         case .operationNotPermitted(let reason):
             return "This operation is not permitted: \(reason)"
+        case .invalidInput(let reason):
+            return "Invalid input: \(reason)"
         }
     }
     
@@ -89,6 +94,8 @@ public enum BusinessError: DomainError {
             return "Ensure the URL starts with http:// or https:// and is properly formatted."
         case .operationNotPermitted:
             return nil
+        case .invalidInput:
+            return "Please check your input and try again."
         }
     }
 }
