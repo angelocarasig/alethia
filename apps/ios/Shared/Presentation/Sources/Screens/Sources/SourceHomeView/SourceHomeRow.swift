@@ -114,7 +114,7 @@ struct SourceHomeRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: dimensions.spacing.regular) {
             // section header
-            NavigationLink(destination: SearchGridView(source: source, preset: preset)) {
+            NavigationLink(destination: SourceGridView(source: source, preset: preset)) {
                 HStack(alignment: .center) {
                     Text(preset.name)
                         .font(.title2)
