@@ -16,19 +16,31 @@ import Kingfisher
 private final class SourceHomeRowViewModel {
     @ObservationIgnored
     private let searchWithPresetUseCase: SearchWithPresetUseCase
+    @ObservationIgnored
+    private let findMatchesUseCase: FindMatchesUseCase
     
     private let source: Domain.Source
     private let preset: SearchPreset
     
-    private(set) var entries: [Entry] = []
+    // raw entries from search (no match state)
+    @ObservationIgnored
+    private(set) var rawEntries: [Entry] = []
+    
+    // enriched entries with match state populated
+    private(set) var enrichedEntries: [Entry] = []
+    
     private(set) var isLoading: Bool = false
     private(set) var error: Error?
     private(set) var hasAppeared: Bool = false
+    
+    @ObservationIgnored
+    private var matchObservationTask: Task<Void, Never>?
     
     init(source: Domain.Source, preset: SearchPreset) {
         self.source = source
         self.preset = preset
         self.searchWithPresetUseCase = Injector.makeSearchWithPresetUseCase()
+        self.findMatchesUseCase = Injector.makeFindMatchesUseCase()
     }
     
     func search() {
@@ -38,7 +50,10 @@ private final class SourceHomeRowViewModel {
             
             do {
                 let result = try await searchWithPresetUseCase.execute(source: source, preset: preset)
-                entries = result
+                rawEntries = result
+                
+                // start observing matches for raw entries
+                startMatchObservation()
             } catch {
                 self.error = error
             }
@@ -49,6 +64,34 @@ private final class SourceHomeRowViewModel {
     
     func markAsAppeared() {
         hasAppeared = true
+    }
+    
+    private func startMatchObservation() {
+        // cancel any existing observation
+        matchObservationTask?.cancel()
+        
+        // start new observation
+        matchObservationTask = Task {
+            for await result in findMatchesUseCase.execute(for: rawEntries) {
+                if Task.isCancelled { break }
+                
+                switch result {
+                case .success(let enriched):
+                    self.enrichedEntries = enriched
+                case .failure(let error):
+                    // log error but don't fail the entire view
+                    #if DEBUG
+                    print("FindMatches error: \(error)")
+                    #endif
+                    // fallback to raw entries if matching fails
+                    self.enrichedEntries = rawEntries
+                }
+            }
+        }
+    }
+    
+    deinit {
+        matchObservationTask?.cancel()
     }
 }
 
@@ -84,7 +127,7 @@ struct SourceHomeRow: View {
                 
                 Spacer()
                 
-                if !vm.entries.isEmpty {
+                if !vm.enrichedEntries.isEmpty {
                     Image(systemName: "chevron.forward")
                         .font(.caption)
                         .foregroundColor(theme.colors.foreground.opacity(0.5))
@@ -103,7 +146,7 @@ struct SourceHomeRow: View {
             }
             
             // content
-            if vm.isLoading && vm.entries.isEmpty {
+            if vm.isLoading && vm.enrichedEntries.isEmpty {
                 LoadingPlaceholder()
             } else if let error = vm.error {
                 ContentUnavailableView(
@@ -121,7 +164,7 @@ struct SourceHomeRow: View {
                     .foregroundColor(theme.colors.accent)
                     .padding()
                 }
-            } else if vm.entries.isEmpty && vm.hasAppeared {
+            } else if vm.enrichedEntries.isEmpty && vm.hasAppeared {
                 ContentUnavailableView(
                     "No Results",
                     systemImage: "magnifyingglass",
@@ -134,7 +177,7 @@ struct SourceHomeRow: View {
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: Dimensions().spacing.minimal) {
-                        ForEach(vm.entries, id: \.slug) { entry in
+                        ForEach(vm.enrichedEntries, id: \.slug) { entry in
                             SourceCard(
                                 id: "\(preset.id)/\(entry.slug)",
                                 entry: entry,
@@ -152,7 +195,7 @@ struct SourceHomeRow: View {
             }
         }
         .animation(theme.animations.spring, value: vm.isLoading)
-        .animation(theme.animations.spring, value: vm.entries.count)
+        .animation(theme.animations.spring, value: vm.enrichedEntries.count)
     }
 }
 

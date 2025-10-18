@@ -16,6 +16,6 @@ public final class FindMatchesUseCaseImpl: FindMatchesUseCase {
     }
     
     public func execute(for raw: [Entry]) -> AsyncStream<Result<[Entry], Error>> {
-        repository.findMatches(for: raw)
+        return repository.findMatches(for: raw)
     }
 }

@@ -86,8 +86,32 @@ public final class LibraryRepositoryImpl: LibraryRepository {
     
     public func findMatches(for raw: [Entry]) -> AsyncStream<Result<[Entry], Error>> {
         AsyncStream { continuation in
-            // TODO: implement find matches logic
-            continuation.finish()
+            let task = Task {
+                do {
+                    let enriched = try await local.findMatches(for: raw)
+                    continuation.yield(.success(enriched))
+                } catch let error as StorageError {
+                    continuation.yield(.failure(error.toDomainError()))
+                } catch let dbError as DatabaseError {
+                    continuation.yield(.failure(RepositoryError.fromGRDB(dbError, context: "findMatches").toDomainError()))
+                } catch let error as BusinessError {
+                    continuation.yield(.failure(error))
+                } catch let error as DataAccessError {
+                    continuation.yield(.failure(error))
+                } catch let error as SystemError {
+                    continuation.yield(.failure(error))
+                } catch {
+                    continuation.yield(.failure(DataAccessError.storageFailure(
+                        reason: "Failed to find matches",
+                        underlying: error
+                    )))
+                }
+                continuation.finish()
+            }
+            
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
         }
     }
 }
@@ -199,13 +223,14 @@ private extension LibraryRepositoryImpl {
     ) -> Entry? {
         guard let mangaId = manga.id else { return nil }
         
+        // as mangaId is not nil, match will be `exact`.
         return Entry(
             mangaId: mangaId.rawValue,
             sourceId: primaryOrigin.sourceId?.rawValue,
             slug: primaryOrigin.slug,
             title: manga.title,
             cover: cover.remotePath,
-            state: .fullMatch,
+            state: .exactMatch,
             unread: unreadCount
         )
     }

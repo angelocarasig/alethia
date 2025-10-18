@@ -30,6 +30,7 @@ internal protocol LibraryLocalDataSource: Sendable {
     func getLibraryCollections() -> AsyncStream<Result<[(CollectionRecord, Int)], Error>>
     func addMangaToLibrary(mangaId: Int64) async throws
     func removeMangaFromLibrary(mangaId: Int64) async throws
+    func findMatches(for entries: [Entry]) async throws -> [Entry]
 }
 
 internal struct LibraryDataBundle: Sendable {
@@ -127,6 +128,30 @@ internal final class LibraryLocalDataSourceImpl: LibraryLocalDataSource {
         }
     }
     
+    func findMatches(for entries: [Entry]) async throws -> [Entry] {
+        do {
+            return try await database.reader.read { db in
+                var enrichedEntries: [Entry] = []
+                enrichedEntries.reserveCapacity(entries.count)
+                
+                for entry in entries {
+                    // note: findMatches does not calculate unread counts
+                    // unread counts are only populated for library queries
+                    let enriched = matchEntry(entry, in: db)
+                    enrichedEntries.append(enriched)
+                }
+                
+                return enrichedEntries
+            }
+        } catch let dbError as DatabaseError {
+            throw StorageError.from(grdbError: dbError, context: "findMatches")
+        } catch let error as StorageError {
+            throw error
+        } catch {
+            throw StorageError.queryFailed(sql: "findMatches", error: error)
+        }
+    }
+    
     func getLibraryEntries(query: LibraryQuery) -> AsyncStream<Result<LibraryDataBundle, Error>> {
         AsyncStream { continuation in
             let observation = ValueObservation.tracking { [weak self] db -> LibraryDataBundle in
@@ -219,6 +244,205 @@ internal final class LibraryLocalDataSourceImpl: LibraryLocalDataSource {
                 task.cancel()
             }
         }
+    }
+}
+
+// MARK: - Find Matches Helpers
+
+private extension LibraryLocalDataSourceImpl {
+    func matchEntry(_ entry: Entry, in db: Database) -> Entry {
+        do {
+            // step 1: try slug matching (highest priority)
+            let slugMatches = try findBySlug(entry.slug, in: db)
+            
+            if slugMatches.count == 1 {
+                let manga = slugMatches[0]
+                guard let mangaId = manga.id else {
+                    throw StorageError.recordNotFound(table: "manga", id: "nil after slug match")
+                }
+                
+                let origins = try manga.origins.fetchAll(db)
+                let hasSameSource = origins.contains { $0.sourceId?.rawValue == entry.sourceId }
+                
+                if hasSameSource {
+                    return Entry(
+                        mangaId: mangaId.rawValue,
+                        sourceId: entry.sourceId,
+                        slug: entry.slug,
+                        title: entry.title,
+                        cover: entry.cover,
+                        state: .exactMatch,
+                        unread: 0
+                    )
+                } else {
+                    return Entry(
+                        mangaId: mangaId.rawValue,
+                        sourceId: entry.sourceId,
+                        slug: entry.slug,
+                        title: entry.title,
+                        cover: entry.cover,
+                        state: .crossSourceMatch,
+                        unread: 0
+                    )
+                }
+            } else if slugMatches.count > 1 {
+                // multiple slug matches - data corruption
+                return Entry(
+                    mangaId: nil,
+                    sourceId: entry.sourceId,
+                    slug: entry.slug,
+                    title: entry.title,
+                    cover: entry.cover,
+                    state: .matchVerificationFailed,
+                    unread: 0
+                )
+            }
+            
+            // step 2: try title matching (fallback)
+            let titleMatches = try findByTitle(entry.title, in: db)
+            
+            if titleMatches.isEmpty {
+                return Entry(
+                    mangaId: nil,
+                    sourceId: entry.sourceId,
+                    slug: entry.slug,
+                    title: entry.title,
+                    cover: entry.cover,
+                    state: .noMatch,
+                    unread: 0
+                )
+            }
+            
+            // check which matches have same source
+            var sameSourceMatches: [MangaRecord] = []
+            for manga in titleMatches {
+                let origins = try manga.origins.fetchAll(db)
+                if origins.contains(where: { $0.sourceId?.rawValue == entry.sourceId }) {
+                    sameSourceMatches.append(manga)
+                }
+            }
+            
+            if sameSourceMatches.count == 1 {
+                guard let mangaId = sameSourceMatches[0].id else {
+                    throw StorageError.recordNotFound(table: "manga", id: "nil after title match")
+                }
+                
+                return Entry(
+                    mangaId: mangaId.rawValue,
+                    sourceId: entry.sourceId,
+                    slug: entry.slug,
+                    title: entry.title,
+                    cover: entry.cover,
+                    state: .titleMatchSameSource,
+                    unread: 0
+                )
+            } else if sameSourceMatches.count > 1 {
+                return Entry(
+                    mangaId: nil,
+                    sourceId: entry.sourceId,
+                    slug: entry.slug,
+                    title: entry.title,
+                    cover: entry.cover,
+                    state: .titleMatchSameSourceAmbiguous,
+                    unread: 0
+                )
+            } else {
+                // title matches but all from different sources
+                return Entry(
+                    mangaId: nil,
+                    sourceId: entry.sourceId,
+                    slug: entry.slug,
+                    title: entry.title,
+                    cover: entry.cover,
+                    state: .titleMatchDifferentSource,
+                    unread: 0
+                )
+            }
+            
+        } catch {
+            // any error during matching
+            return Entry(
+                mangaId: nil,
+                sourceId: entry.sourceId,
+                slug: entry.slug,
+                title: entry.title,
+                cover: entry.cover,
+                state: .matchVerificationFailed,
+                unread: 0
+            )
+        }
+    }
+    
+    func findBySlug(_ slug: String, in db: Database) throws -> [MangaRecord] {
+        let sql = """
+            SELECT DISTINCT manga.*
+            FROM \(MangaRecord.databaseTableName) manga
+            JOIN \(OriginRecord.databaseTableName) origin ON origin.mangaId = manga.id
+            WHERE origin.slug = ?
+            """
+        
+        return try MangaRecord.fetchAll(db, sql: sql, arguments: [slug])
+    }
+    
+    func findByTitle(_ title: String, in db: Database) throws -> [MangaRecord] {
+        // sanitize input for fts5 to avoid syntax errors
+        let sanitizedTitle = sanitizeForFTS(title)
+        
+        // fallback to like query if sanitized title is empty
+        guard !sanitizedTitle.isEmpty else {
+            return try findByTitleWithLike(title, in: db)
+        }
+        
+        let sql = """
+            SELECT DISTINCT manga.*
+            FROM \(MangaRecord.databaseTableName) manga
+            WHERE manga.id IN (
+                SELECT rowid as mangaId FROM \(MangaTitleFTS5.databaseTableName)
+                WHERE \(MangaTitleFTS5.databaseTableName) MATCH ?
+                
+                UNION
+                
+                SELECT mangaId FROM \(MangaAltTitleFTS5.databaseTableName)
+                WHERE \(MangaAltTitleFTS5.databaseTableName) MATCH ?
+            )
+            """
+        
+        do {
+            return try MangaRecord.fetchAll(db, sql: sql, arguments: [sanitizedTitle, sanitizedTitle])
+        } catch let dbError as DatabaseError {
+            // if fts fails, fallback to like query
+            #if DEBUG
+            print("FTS query failed in findMatches, falling back to LIKE: \(dbError)")
+            #endif
+            return try findByTitleWithLike(title, in: db)
+        }
+    }
+    
+    func findByTitleWithLike(_ title: String, in db: Database) throws -> [MangaRecord] {
+        let sql = """
+            SELECT DISTINCT manga.*
+            FROM \(MangaRecord.databaseTableName) manga
+            WHERE manga.id IN (
+                SELECT id as mangaId FROM \(MangaRecord.databaseTableName)
+                WHERE title = ? COLLATE NOCASE
+                
+                UNION
+                
+                SELECT mangaId FROM \(AlternativeTitleRecord.databaseTableName)
+                WHERE title = ? COLLATE NOCASE
+            )
+            """
+        
+        return try MangaRecord.fetchAll(db, sql: sql, arguments: [title, title])
+    }
+    
+    // sanitize input for fts5 queries to avoid syntax errors
+    func sanitizeForFTS(_ query: String) -> String {
+        // remove fts5 special characters that act as operators
+        let specialChars = CharacterSet(charactersIn: "!\"^*()+-")
+        return query.components(separatedBy: specialChars)
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
     }
 }
 

@@ -8,7 +8,7 @@
 import Foundation
 
 public struct Entry: Codable, Sendable, Hashable {
-    /// When null most likely
+    /// when null, entry is from external search and not yet matched
     public let mangaId: Int64?
     
     public let sourceId: Int64?
@@ -17,11 +17,12 @@ public struct Entry: Codable, Sendable, Hashable {
 
     public let title: String
 
-    /// Location to the remote resource
+    /// location to the remote resource
     public let cover: URL
     
     public let state: EntryState
     
+    /// unread chapter count - only populated for library queries, not for findMatches
     public let unread: Int
     
     public init(
@@ -44,7 +45,11 @@ public struct Entry: Codable, Sendable, Hashable {
 }
 
 public enum EntryState: Codable, Sendable {
-    case fullMatch
-    case partialMatch
-    case noMatch
+    case exactMatch                        // slug matched, same source
+    case crossSourceMatch                  // slug matched, different source
+    case titleMatchSameSource             // single title match, same source
+    case titleMatchSameSourceAmbiguous    // multiple title matches, same source
+    case titleMatchDifferentSource        // title match(es), different source(s)
+    case matchVerificationFailed          // error during matching
+    case noMatch                          // no match found
 }
