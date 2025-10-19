@@ -50,8 +50,6 @@ struct SourceGridView: View {
             contentView
         }
         .animation(theme.animations.generic, value: vm.isLoadingMore)
-        .navigationTitle(preset.name)
-        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             toolbar
         }
@@ -92,7 +90,15 @@ struct SourceGridView: View {
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
-        .task { vm.loadInitialData() }
+        .task {
+            vm.startObserving()
+        }
+        .onDisappear {
+            vm.stopObserving()
+        }
+        .refreshable {
+            vm.refresh()
+        }
         .refreshable { vm.refresh() }
         .alert("Error", isPresented: .constant(vm.errorMessage != nil)) {
             Button("OK") { vm.clearError() }
@@ -112,13 +118,8 @@ private extension SourceGridView {
             Button {
                 #warning("TODO: Save action")
             } label: {
-                HStack(spacing: dimensions.spacing.minimal) {
-                    Image(systemName: "plus")
-                        .font(.subheadline)
-                    Text("Save")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                }
+                Image(systemName: "plus")
+                    .font(.subheadline)
             }
             .disabled(true)
         }

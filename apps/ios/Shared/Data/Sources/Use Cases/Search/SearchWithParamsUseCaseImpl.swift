@@ -1,14 +1,14 @@
 //
-//  SearchWithPresetUseCaseImpl.swift
+//  SearchWithParamsUseCaseImpl.swift
 //  Data
 //
-//  Created by Angelo Carasig on 5/10/2025.
+//  Created by Angelo Carasig on 19/10/2025.
 //
 
 import Foundation
 import Domain
 
-public final class SearchWithPresetUseCaseImpl: SearchWithPresetUseCase {
+public final class SearchWithParamsUseCaseImpl: SearchWithParamsUseCase {
     private let repository: SearchRepository
     
     public init(repository: SearchRepository) {
@@ -17,7 +17,10 @@ public final class SearchWithPresetUseCaseImpl: SearchWithPresetUseCase {
     
     public func execute(
         source: Source,
-        preset: SearchPreset,
+        query: String,
+        sort: Search.Options.Sort,
+        direction: SortDirection,
+        filters: [Search.Options.Filter: Search.Options.FilterValue]?,
         page: Int,
         limit: Int
     ) async throws -> SearchQueryResult {
@@ -30,11 +33,19 @@ public final class SearchWithPresetUseCaseImpl: SearchWithPresetUseCase {
             throw BusinessError.invalidInput(reason: "Limit must be between 1 and \(Constants.Search.maxResults)")
         }
         
-        return try await repository.searchWithPreset(
-            source: source,
-            preset: preset,
+        // build search request dto from parameters
+        let request = SearchRequestDTO(
+            query: query,
             page: page,
-            limit: limit
+            limit: limit,
+            sort: sort,
+            direction: direction,
+            filters: filters
+        )
+        
+        return try await repository.search(
+            source: source,
+            request: request
         )
     }
 }

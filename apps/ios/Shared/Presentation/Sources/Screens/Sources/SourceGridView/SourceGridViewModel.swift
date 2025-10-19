@@ -21,12 +21,7 @@ final class SourceGridViewModel {
     var errorMessage: String?
     
     // search and filters
-    var searchText: String = "" {
-        didSet {
-            guard oldValue != searchText else { return }
-            debounceSearch()
-        }
-    }
+    var searchText: String = ""
     var selectedSort: Search.Options.Sort
     var selectedDirection: SortDirection
     var selectedYear: String?
@@ -38,7 +33,6 @@ final class SourceGridViewModel {
     
     // available options - derived from source capabilities
     var availableYears: [String] {
-        // generate years from current year back to 1900
         let currentYear = Calendar.current.component(.year, from: Date())
         return (1900...currentYear).reversed().map { String($0) }
     }
@@ -79,11 +73,8 @@ final class SourceGridViewModel {
     private var currentPage = 1
     private let pageSize = Constants.Search.defaultPageSize
     
-    // track if data has been loaded
-    private var hasLoadedInitialData = false
-    
     // dependencies
-    private let searchUseCase: SearchWithPresetUseCase
+    private let searchUseCase: SearchWithParamsUseCase
     private let findMatchesUseCase: FindMatchesUseCase
     private let source: Source
     private let preset: SearchPreset
@@ -91,11 +82,8 @@ final class SourceGridViewModel {
     // task management
     private var searchTask: Task<Void, Never>?
     private var matchTask: Task<Void, Never>?
-    private var debounceTask: Task<Void, Never>?
+    private var observationTask: Task<Void, Never>?
     private let debounceDelay: UInt64 = 300_000_000
-    
-    // track if search text came from preset to avoid debouncing on init
-    private var isInitialLoad = true
     
     // computed
     var emptyStateMessage: String {
@@ -138,30 +126,47 @@ final class SourceGridViewModel {
     init(
         source: Source,
         preset: SearchPreset,
-        searchUseCase: SearchWithPresetUseCase? = nil,
+        searchUseCase: SearchWithParamsUseCase? = nil,
         findMatchesUseCase: FindMatchesUseCase? = nil
     ) {
         self.source = source
         self.preset = preset
         self.selectedSort = preset.sortOption
         self.selectedDirection = preset.sortDirection
-        self.searchUseCase = searchUseCase ?? Injector.makeSearchWithPresetUseCase()
+        self.searchUseCase = searchUseCase ?? Injector.makeSearchWithParamsUseCase()
         self.findMatchesUseCase = findMatchesUseCase ?? Injector.makeFindMatchesUseCase()
         
         applyPresetFilters()
     }
     
-    func loadInitialData() {
-        guard !isLoading, !hasLoadedInitialData else { return }
-        cancelAllTasks()
-        resetState()
-        isLoading = true
+    func startObserving() {
+        observationTask?.cancel()
         
-        searchTask = Task { @MainActor in
+        observationTask = Task { @MainActor in
+            var previousState = captureState()
+            
+            // perform initial search
             await performSearch()
-            isInitialLoad = false
-            hasLoadedInitialData = true
+            
+            // observe changes with debouncing
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: debounceDelay)
+                
+                let currentState = captureState()
+                if currentState != previousState {
+                    previousState = currentState
+                    resetPagination()
+                    searchTask?.cancel()
+                    await performSearch()
+                }
+            }
         }
+    }
+
+    func stopObserving() {
+        observationTask?.cancel()
+        searchTask?.cancel()
+        matchTask?.cancel()
     }
     
     func loadMore() {
@@ -169,21 +174,23 @@ final class SourceGridViewModel {
         isLoadingMore = true
         currentPage += 1
         
+        searchTask?.cancel()
         searchTask = Task { @MainActor in
             await performSearch(isLoadingMore: true)
         }
     }
     
     func refresh() {
-        hasLoadedInitialData = false
-        loadInitialData()
+        resetPagination()
+        searchTask?.cancel()
+        
+        searchTask = Task { @MainActor in
+            await performSearch()
+        }
     }
     
     func clearSearchText() {
         searchText = ""
-        debounceTask?.cancel()
-        hasLoadedInitialData = false
-        loadInitialData()
     }
     
     func clearError() {
@@ -203,7 +210,6 @@ final class SourceGridViewModel {
         let filters = preset.filters
         guard !filters.isEmpty else { return }
         
-        // year is now single selection
         if case .string(let year) = filters[.year] {
             selectedYear = year
         }
@@ -230,7 +236,6 @@ final class SourceGridViewModel {
             }
         }
         
-        // apply tag filters from preset
         if case .stringArray(let tags) = filters[.includeTag] {
             includedTags = Set(tags)
         } else if case .string(let tag) = filters[.includeTag] {
@@ -244,32 +249,60 @@ final class SourceGridViewModel {
         }
     }
     
+    // MARK: - state observation
+    
+    private struct SearchState: Equatable {
+        let searchText: String
+        let sort: Search.Options.Sort
+        let direction: SortDirection
+        let year: String?
+        let statuses: Set<Status>
+        let languages: Set<LanguageCode>
+        let ratings: Set<Classification>
+        let includedTags: Set<String>
+        let excludedTags: Set<String>
+    }
+    
+    private func captureState() -> SearchState {
+        SearchState(
+            searchText: searchText,
+            sort: selectedSort,
+            direction: selectedDirection,
+            year: selectedYear,
+            statuses: selectedStatuses,
+            languages: selectedLanguages,
+            ratings: selectedRatings,
+            includedTags: includedTags,
+            excludedTags: excludedTags
+        )
+    }
+    
     // MARK: - private methods
     
-    private func debounceSearch() {
-        guard !isInitialLoad else { return }
-        
-        debounceTask?.cancel()
-        
-        guard !searchText.isEmpty else {
-            hasLoadedInitialData = false
-            loadInitialData()
-            return
-        }
-        
-        debounceTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: debounceDelay)
-            guard !Task.isCancelled else { return }
-            hasLoadedInitialData = false
-            loadInitialData()
-        }
+    private func resetPagination() {
+        currentPage = 1
+        entries = []
+        hasMore = true
+        totalCount = nil
+        errorMessage = nil
     }
     
     private func performSearch(isLoadingMore: Bool = false) async {
+        if isLoadingMore {
+            self.isLoadingMore = true
+        } else {
+            isLoading = true
+        }
+        
         do {
+            let filters = buildFilters()
+            
             let result = try await searchUseCase.execute(
                 source: source,
-                preset: preset,
+                query: searchText,
+                sort: selectedSort,
+                direction: selectedDirection,
+                filters: filters,
                 page: currentPage,
                 limit: pageSize
             )
@@ -282,11 +315,41 @@ final class SourceGridViewModel {
             handleError(error)
         }
         
-        if isLoadingMore {
+        if self.isLoadingMore {
             self.isLoadingMore = false
         } else {
             isLoading = false
         }
+    }
+    
+    private func buildFilters() -> [Search.Options.Filter: Search.Options.FilterValue]? {
+        var filters: [Search.Options.Filter: Search.Options.FilterValue] = [:]
+        
+        if let year = selectedYear {
+            filters[.year] = .string(year)
+        }
+        
+        if !selectedStatuses.isEmpty {
+            filters[.status] = .stringArray(selectedStatuses.map { $0.rawValue })
+        }
+        
+        if !selectedLanguages.isEmpty {
+            filters[.translatedLanguage] = .stringArray(selectedLanguages.map { $0.rawValue })
+        }
+        
+        if !selectedRatings.isEmpty {
+            filters[.contentRating] = .stringArray(selectedRatings.map { $0.rawValue })
+        }
+        
+        if !includedTags.isEmpty {
+            filters[.includeTag] = .stringArray(Array(includedTags))
+        }
+        
+        if !excludedTags.isEmpty {
+            filters[.excludeTag] = .stringArray(Array(excludedTags))
+        }
+        
+        return filters.isEmpty ? nil : filters
     }
     
     private func enrichEntries(_ newEntries: [Entry], isLoadingMore: Bool) async {
@@ -324,25 +387,13 @@ final class SourceGridViewModel {
             errorMessage = "An unexpected error occurred"
         }
         
-        isLoading = false
-        isLoadingMore = false
-        
-        if currentPage > 1 {
-            currentPage -= 1
+        if self.isLoadingMore {
+            self.isLoadingMore = false
+            if currentPage > 1 {
+                currentPage -= 1
+            }
+        } else {
+            isLoading = false
         }
-    }
-    
-    private func cancelAllTasks() {
-        searchTask?.cancel()
-        matchTask?.cancel()
-        debounceTask?.cancel()
-    }
-    
-    private func resetState() {
-        entries = []
-        currentPage = 1
-        hasMore = true
-        errorMessage = nil
-        totalCount = nil
     }
 }

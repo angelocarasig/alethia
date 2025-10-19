@@ -10,64 +10,87 @@ import Domain
 import Data
 
 public enum Injector {
-    nonisolated(unsafe) private static let repositoryFactory: RepositoryFactory = {
-        let database = DatabaseConfiguration.shared
-        return RepositoryFactory(database: database)
+    // MARK: - Database
+    
+    private static let database: DatabaseConfiguration = {
+        DatabaseConfiguration.shared
     }()
     
-    nonisolated(unsafe) private static let useCaseFactory: UseCaseFactory = {
-        UseCaseFactory(repositoryFactory: repositoryFactory)
+    // MARK: - Repositories
+    
+    private static let hostRepository: HostRepository = {
+        HostRepositoryImpl()
+    }()
+    
+    private static let libraryRepository: LibraryRepository = {
+        LibraryRepositoryImpl()
+    }()
+    
+    private static let searchRepository: SearchRepository = {
+        SearchRepositoryImpl()
+    }()
+    
+    private static let mangaRepository: MangaRepository = {
+        MangaRepositoryImpl()
     }()
 }
 
-// MARK: Host Use-Cases
+// MARK: - Host Use Cases
+
 public extension Injector {
     static func makeValidateHostURLUseCase() -> ValidateHostURLUseCase {
-        useCaseFactory.makeValidateHostURLUseCase()
+        ValidateHostURLUseCaseImpl(repository: hostRepository)
     }
     
     static func makeSaveHostUseCase() -> SaveHostUseCase {
-        useCaseFactory.makeSaveHostUseCase()
+        SaveHostUseCaseImpl(repository: hostRepository)
     }
     
     static func makeGetAllHostsUseCase() -> GetAllHostsUseCase {
-        useCaseFactory.makeGetAllhostsUseCase()
+        GetAllHostsUseCaseImpl(repository: hostRepository)
     }
 }
 
-// MARK: Search Use-Cases
+// MARK: - Search Use Cases
+
 public extension Injector {
     static func makeSearchWithPresetUseCase() -> SearchWithPresetUseCase {
-        useCaseFactory.makeSearchWithPresetUseCase()
+        SearchWithPresetUseCaseImpl(repository: searchRepository)
+    }
+    
+    static func makeSearchWithParamsUseCase() -> SearchWithParamsUseCase {
+        SearchWithParamsUseCaseImpl(repository: searchRepository)
     }
 }
 
-// MARK: Library Use-Cases
+// MARK: - Library Use Cases
+
 public extension Injector {
     static func makeFindMatchesUseCase() -> FindMatchesUseCase {
-        useCaseFactory.makeFindMatchesUseCase()
+        FindMatchesUseCaseImpl(repository: libraryRepository)
     }
     
     static func makeGetLibraryMangaUseCase() -> GetLibraryMangaUseCase {
-        useCaseFactory.makeGetLibraryMangaUseCase()
+        GetLibraryMangaUseCaseImpl(repository: libraryRepository)
     }
     
     static func makeGetCollectionsUseCase() -> GetCollectionsUseCase {
-        useCaseFactory.makeGetCollectionsUseCase()
+        GetCollectionsUseCaseImpl(repository: libraryRepository)
     }
     
     static func makeAddMangaToLibraryUseCase() -> AddMangaToLibraryUseCase {
-        useCaseFactory.makeAddMangaToLibraryUseCase()
+        AddMangaToLibraryUseCaseImpl(repository: libraryRepository)
     }
     
     static func makeRemoveMangaFromLibraryUseCase() -> RemoveMangaFromLibraryUseCase {
-        useCaseFactory.makeRemoveMangaFromLibraryUseCase()
+        RemoveMangaFromLibraryUseCaseImpl(repository: libraryRepository)
     }
 }
 
-// MARK: Manga Use-Cases
+// MARK: - Manga Use Cases
+
 public extension Injector {
     static func makeGetMangaDetailsUseCase() -> GetMangaDetailsUseCase {
-        useCaseFactory.makeGetMangaDetailsUseCase()
+        GetMangaDetailsUseCaseImpl(repository: mangaRepository)
     }
 }
