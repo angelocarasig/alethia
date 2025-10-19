@@ -18,7 +18,7 @@ struct SourceGridPageSheet: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: false) {
                 LazyVGrid(
                     columns: Array(
                         repeating: GridItem(.flexible(), spacing: dimensions.spacing.regular),

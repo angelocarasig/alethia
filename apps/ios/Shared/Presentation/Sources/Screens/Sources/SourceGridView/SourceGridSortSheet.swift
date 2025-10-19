@@ -19,7 +19,7 @@ struct SourceGridSortSheet: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: dimensions.spacing.screen) {
                     sortOptionsSection
                 }

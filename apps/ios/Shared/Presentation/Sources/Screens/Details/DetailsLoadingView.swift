@@ -24,27 +24,24 @@ struct DetailsLoadingView: View {
             VStack(alignment: .leading, spacing: dimensions.spacing.screen) {
                 Spacer().frame(height: 200)
                 
-                // header skeleton
-                HStack(alignment: .top, spacing: dimensions.spacing.screen) {
-                    // cover skeleton
-                    RoundedRectangle(cornerRadius: dimensions.cornerRadius.regular)
+                // cover skeleton
+                RoundedRectangle(cornerRadius: dimensions.cornerRadius.regular)
+                    .fill(theme.colors.tint)
+                    .frame(width: 140, height: 200)
+                    .shimmer()
+                
+                VStack(alignment: .leading, spacing: dimensions.spacing.regular) {
+                    // title skeleton
+                    RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
                         .fill(theme.colors.tint)
-                        .frame(width: 140, height: 200)
+                        .frame(height: 24)
                         .shimmer()
                     
-                    VStack(alignment: .leading, spacing: dimensions.spacing.regular) {
-                        // title skeleton
-                        RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
-                            .fill(theme.colors.tint)
-                            .frame(height: 24)
-                            .shimmer()
-                        
-                        // author skeleton
-                        RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
-                            .fill(theme.colors.tint)
-                            .frame(width: 120, height: 16)
-                            .shimmer()
-                    }
+                    // author skeleton
+                    RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
+                        .fill(theme.colors.tint)
+                        .frame(width: 120, height: 16)
+                        .shimmer()
                 }
                 
                 // action buttons skeleton
@@ -66,11 +63,11 @@ struct DetailsLoadingView: View {
                 }
                 
                 // synopsis skeleton
-                VStack(alignment: .leading, spacing: dimensions.spacing.minimal) {
+                VStack(alignment: .leading, spacing: dimensions.spacing.regular) {
                     ForEach(0..<4, id: \.self) { _ in
                         RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
                             .fill(theme.colors.tint)
-                            .frame(height: 14)
+                            .frame(height: 16)
                             .shimmer()
                     }
                     
@@ -82,7 +79,7 @@ struct DetailsLoadingView: View {
                 
                 // tags skeleton
                 HStack(spacing: dimensions.spacing.regular) {
-                    ForEach(0..<3, id: \.self) { _ in
+                    ForEach(0..<4, id: \.self) { _ in
                         Capsule()
                             .fill(theme.colors.tint)
                             .frame(width: 80, height: 30)

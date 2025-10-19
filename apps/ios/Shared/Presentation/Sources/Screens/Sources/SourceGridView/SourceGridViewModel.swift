@@ -33,6 +33,8 @@ final class SourceGridViewModel {
     var selectedStatuses: Set<Status> = []
     var selectedLanguages: Set<LanguageCode> = []
     var selectedRatings: Set<Classification> = []
+    var includedTags: Set<String> = []
+    var excludedTags: Set<String> = []
     
     // available options - derived from source capabilities
     var availableYears: [String] {
@@ -43,6 +45,10 @@ final class SourceGridViewModel {
     
     var availableLanguages: [LanguageCode] {
         source.languages
+    }
+    
+    var availableTags: [SearchTag] {
+        source.search.tags
     }
     
     var supportsYearFilter: Bool {
@@ -59,6 +65,14 @@ final class SourceGridViewModel {
     
     var supportsRatingFilter: Bool {
         source.search.options.filtering.contains(.contentRating)
+    }
+    
+    var supportsIncludeTags: Bool {
+        source.search.options.filtering.contains(.includeTag)
+    }
+    
+    var supportsExcludeTags: Bool {
+        source.search.options.filtering.contains(.excludeTag)
     }
     
     // pagination
@@ -108,6 +122,10 @@ final class SourceGridViewModel {
         if !selectedLanguages.isEmpty { count += 1 }
         if !selectedRatings.isEmpty { count += 1 }
         return count
+    }
+    
+    var activeTagCount: Int {
+        includedTags.count + excludedTags.count
     }
     
     private var hasActiveFilters: Bool {
@@ -210,6 +228,19 @@ final class SourceGridViewModel {
             if let classification = Classification(rawValue: rating) {
                 selectedRatings = Set([classification])
             }
+        }
+        
+        // apply tag filters from preset
+        if case .stringArray(let tags) = filters[.includeTag] {
+            includedTags = Set(tags)
+        } else if case .string(let tag) = filters[.includeTag] {
+            includedTags = Set([tag])
+        }
+        
+        if case .stringArray(let tags) = filters[.excludeTag] {
+            excludedTags = Set(tags)
+        } else if case .string(let tag) = filters[.excludeTag] {
+            excludedTags = Set([tag])
         }
     }
     

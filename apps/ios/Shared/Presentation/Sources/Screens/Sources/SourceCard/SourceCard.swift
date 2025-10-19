@@ -12,6 +12,19 @@ struct SourceCard: View {
     let id: String
     let entry: Entry
     let namespace: Namespace.ID
+    let width: CGFloat?
+    
+    init(
+        id: String,
+        entry: Entry,
+        namespace: Namespace.ID,
+        width: CGFloat? = 125
+    ) {
+        self.id = id
+        self.entry = entry
+        self.namespace = namespace
+        self.width = width
+    }
     
     @Environment(\.dimensions) private var dimensions
     @Environment(\.theme) private var theme
@@ -22,7 +35,10 @@ struct SourceCard: View {
                 .navigationTransition(.zoom(sourceID: id, in: namespace))
         } label: {
             EntryCard(entry: entry, lineLimit: 2)
-                .frame(width: 125)
+                .if(width != nil) {content in
+                    content
+                        .frame(width: width)
+                }
                 .overlay {
                     if entry.state != .noMatch {
                         matchOverlay
