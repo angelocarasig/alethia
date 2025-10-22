@@ -266,7 +266,7 @@ final class Reader: UIViewController {
                         collectionView.scrollToItem(
                             at: IndexPath(item: firstPageIndex, section: 0),
                             at: scrollPosition,
-                            animated: false
+                            animated: true
                         )
                     }
                     

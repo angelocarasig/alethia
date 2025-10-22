@@ -76,6 +76,33 @@ public final class ReaderCoordinator<DataSource: ReaderDataSource> {
         self.reader = reader
         self.dataSource = dataSource
         setupBindings()
+        
+        // initialize state immediately
+        updateInitialState()
+    }
+    
+    private func updateInitialState() {
+        guard let reader = reader else { return }
+        
+        // set current page
+        self.currentPage = reader.currentPage
+        
+        // set current chapter
+        if let anyChapter = reader.currentChapter,
+           let chapter: DataSource.Chapter = anyChapter.asChapter() {
+            self.currentChapter = chapter
+        }
+        
+        // set total pages - this is the key fix
+        self.totalPages = reader.currentChapterPageCount
+        
+        // if total pages is still 0, wait a bit and try again
+        if self.totalPages == 0 {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                self.totalPages = reader.currentChapterPageCount
+            }
+        }
     }
     
     private func setupBindings() {
@@ -89,10 +116,8 @@ public final class ReaderCoordinator<DataSource: ReaderDataSource> {
                     self.currentPage = page
                     self.currentChapter = chapter
                     
-                    // update total pages in case it wasn't set yet
-                    if self.totalPages == 0 {
-                        self.totalPages = reader.currentChapterPageCount
-                    }
+                    // always update total pages when page changes
+                    self.totalPages = reader.currentChapterPageCount
                 }
             }
         }
@@ -123,13 +148,5 @@ public final class ReaderCoordinator<DataSource: ReaderDataSource> {
                 self.onError?(error)
             }
         }
-        
-        // initialize state
-        self.currentPage = reader.currentPage
-        if let anyChapter = reader.currentChapter,
-           let chapter: DataSource.Chapter = anyChapter.asChapter() {
-            self.currentChapter = chapter
-        }
-        self.totalPages = reader.currentChapterPageCount
     }
 }
