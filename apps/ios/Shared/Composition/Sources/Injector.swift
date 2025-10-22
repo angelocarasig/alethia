@@ -33,6 +33,10 @@ public enum Injector {
     private static let mangaRepository: MangaRepository = {
         MangaRepositoryImpl()
     }()
+    
+    private static let chapterRepository: ChapterRepository = {
+        ChapterRepositoryImpl()
+    }()
 }
 
 // MARK: - Host Use Cases
@@ -92,5 +96,13 @@ public extension Injector {
 public extension Injector {
     static func makeGetMangaDetailsUseCase() -> GetMangaDetailsUseCase {
         GetMangaDetailsUseCaseImpl(repository: mangaRepository)
+    }
+}
+
+// MARK: - Chapter Use Cases
+
+public extension Injector {
+    static func makeGetChapterContentsUseCase() -> GetChapterContentsUseCase {
+        GetChapterContentsUseCaseImpl(repository: chapterRepository)
     }
 }

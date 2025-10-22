@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct Chapter: Sendable {
+public struct Chapter: Sendable, Identifiable, Equatable {
     public let id: Int64
     
     public let slug: String

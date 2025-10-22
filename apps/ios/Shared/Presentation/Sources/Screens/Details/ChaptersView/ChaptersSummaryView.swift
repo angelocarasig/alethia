@@ -135,17 +135,16 @@ extension ChaptersSummaryView {
                     .foregroundStyle(selectedChapters.contains(chapter.id) ? theme.colors.accent : theme.colors.foreground.opacity(0.25))
                     .frame(width: 28)
             }
-            
-            ChapterRow(chapter: chapter)
+            NavigationLink {
+                ReaderScreen(chapters: chapters, startingChapterSlug: chapter.slug)
+            } label: {
+                ChapterRow(chapter: chapter)
+            }
+            .buttonStyle(.plain)
         }
         .opacity(chapter.progress >= 1.0 ? 0.25 : 1.0)
         .padding(.vertical, dimensions.padding.regular)
         .contentShape(.rect)
-        .tappable {
-            if isSelecting {
-                toggleSelection(for: chapter)
-            }
-        }
     }
     
     private func toggleSelection(for chapter: Chapter) {
