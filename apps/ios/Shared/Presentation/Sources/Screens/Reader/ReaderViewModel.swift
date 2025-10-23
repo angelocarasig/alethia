@@ -67,7 +67,7 @@ final class ReaderViewModel {
         
         self.chapters = chapters
         self._startingChapterId = startingChapter.id
-        self.readingMode = Self.mapOrientation(orientation)
+        self.readingMode = Self.mapOrientation(.infinite)
         
         self.dataSource = AlethiaReaderDataSource(
             chapters: chapters,

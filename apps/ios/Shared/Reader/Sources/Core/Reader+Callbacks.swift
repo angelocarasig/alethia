@@ -35,21 +35,43 @@ extension Reader {
             return
         }
         
+        print("Current position: chapter=\(String(describing: result.chapterId)), page=\(result.page)")
+        
         // check if chapter changed
         if result.chapterId != currentChapterId {
-            currentChapterId = result.chapterId
-            
-            if let chapter = currentChapter {
-                onChapterChange?(chapter)
-            }
+            handleChapterChange(to: result.chapterId)
         }
         
         // check if page changed
         if result.page != currentPage {
-            currentPage = result.page
+            handlePageChange(to: result.page)
+        }
+    }
+    
+    private func handleChapterChange(to newChapterId: ChapterID) {
+        print("Chapter changed to: \(String(describing: newChapterId))")
+        
+        currentChapterId = newChapterId
+        
+        if let chapter = currentChapter {
+            onChapterChange?(chapter)
             
-            if let chapter = currentChapter {
-                onPageChange?(result.page, chapter)
+            // mark chapter as read/viewed if needed
+            Task {
+                await markChapterRead(chapter)
+            }
+        }
+    }
+    
+    private func handlePageChange(to newPage: Int) {
+        currentPage = newPage
+        
+        if let chapter = currentChapter {
+            onPageChange?(newPage, chapter)
+            
+            // save reading progress
+            Task {
+                await saveReadingProgress(chapter: chapter, page: newPage)
             }
         }
     }
@@ -82,5 +104,17 @@ extension Reader {
         // clamp to valid range
         let maxIndex = max(0, cachedImageURLs.count - 1)
         return min(max(0, calculatedIndex), maxIndex)
+    }
+    
+    // MARK: - Progress Tracking
+    
+    private func markChapterRead(_ chapter: AnyReadableChapter) async {
+        print("Marking chapter as read: \(String(describing: chapter.id))")
+        // TODO: 
+    }
+    
+    private func saveReadingProgress(chapter: AnyReadableChapter, page: Int) async {
+        print("Saving progress: chapter=\(String(describing: chapter.id)), page=\(page)")
+        // TODO: 
     }
 }

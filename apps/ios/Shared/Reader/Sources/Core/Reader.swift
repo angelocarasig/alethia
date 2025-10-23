@@ -49,6 +49,10 @@ final class Reader: UIViewController {
     var isUserScrolling: Bool = false
     var isProgrammaticScroll: Bool = false
     
+    // pending state for initial load (like Suwatte)
+    var pendingState: (chapterId: ChapterID, page: Int)?
+    var isLoaded: Bool = false
+    
     // callbacks
     var onPageChange: (@MainActor @Sendable (Int, AnyReadableChapter) -> Void)?
     var onChapterChange: (@MainActor @Sendable (AnyReadableChapter) -> Void)?
@@ -328,15 +332,33 @@ final class Reader: UIViewController {
     }
     
     private func loadInitialChapter() {
+        // set pending state
+        pendingState = (chapterId: currentChapterId, page: 0)
+        
         Task {
             await loadChapter(currentChapterId, position: .initial)
         }
     }
     
     func updateCachedData() async {
+        // get all image URLs in proper chapter order
+        cachedImageURLs = await chapterManager.getAllImageURLsInOrder()
+        
+        // rebuild the page mapper with proper order
         let loadedChapters = await chapterManager.getLoadedChapters()
-        let orderedChapterIds = await chapterManager.getLoadedChapterIds()
-        cachedImageURLs = await chapterManager.allImageURLs(orderedBy: orderedChapterIds)
-        pageMapper.updateMapping(chapters: loadedChapters, orderedBy: orderedChapterIds)
+        
+        // sort loaded chapters by their position in the original chapter list
+        let sortedChapters = loadedChapters.sorted { chapter1, chapter2 in
+            guard let index1 = dataSource.chapters.firstIndex(where: { $0.id == chapter1.id }),
+                  let index2 = dataSource.chapters.firstIndex(where: { $0.id == chapter2.id }) else {
+                return false
+            }
+            return index1 < index2
+        }
+        
+        let sortedIds = sortedChapters.map { $0.id }
+        pageMapper.updateMapping(chapters: sortedChapters, orderedBy: sortedIds)
+        
+        print("[Reader] Updated cached data: \(cachedImageURLs.count) total images, \(sortedChapters.count) chapters")
     }
 }
