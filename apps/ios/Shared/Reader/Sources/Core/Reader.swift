@@ -26,6 +26,15 @@ final class Reader: UIViewController {
     let scrollHandler: ReaderScrollHandler
     let ordering: AnyChapterOrdering
     
+    // new components for improved behavior
+    let stateMachine: ReaderStateMachine
+    let insertionStrategy: InsertionStrategy
+    let callbackManager: CallbackManager
+    
+    // chapter insertion task tracking
+    var insertionTask: Task<Void, Never>?
+    var insertionTaskId: UUID?
+    
     var currentChapterId: ChapterID
     var cachedImageURLs: [String] = []
     var imageSizes: [String: CGSize] = [:]
@@ -53,12 +62,44 @@ final class Reader: UIViewController {
     var pendingState: (chapterId: ChapterID, page: Int)?
     var isLoaded: Bool = false
     
-    // callbacks
-    var onPageChange: (@MainActor @Sendable (Int, AnyReadableChapter) -> Void)?
-    var onChapterChange: (@MainActor @Sendable (AnyReadableChapter) -> Void)?
-    var onScrollStateChange: (@MainActor @Sendable (Bool) -> Void)?
-    var onError: (@MainActor @Sendable (Error) -> Void)?
-    var onChapterLoadComplete: (@MainActor @Sendable (ChapterID, Int) -> Void)?
+    // callbacks (now managed through CallbackManager)
+    var onPageChange: (@MainActor @Sendable (Int, AnyReadableChapter) -> Void)? {
+        didSet {
+            callbackManager.onPageChange = { [weak self] context in
+                guard let self = self,
+                      let chapter = self.dataSource.chapters.first(where: { $0.id == context.chapterId }) else { return }
+                self.onPageChange?(context.page, chapter)
+            }
+        }
+    }
+    
+    var onChapterChange: (@MainActor @Sendable (AnyReadableChapter) -> Void)? {
+        didSet {
+            callbackManager.onChapterChange = { [weak self] context in
+                guard let self = self,
+                      let chapter = self.dataSource.chapters.first(where: { $0.id == context.chapterId }) else { return }
+                self.onChapterChange?(chapter)
+            }
+        }
+    }
+    
+    var onScrollStateChange: (@MainActor @Sendable (Bool) -> Void)? {
+        didSet {
+            callbackManager.onScrollStateChange = onScrollStateChange
+        }
+    }
+    
+    var onError: (@MainActor @Sendable (Error) -> Void)? {
+        didSet {
+            callbackManager.onError = onError
+        }
+    }
+    
+    var onChapterLoadComplete: (@MainActor @Sendable (ChapterID, Int) -> Void)? {
+        didSet {
+            callbackManager.onChapterLoadComplete = onChapterLoadComplete
+        }
+    }
     
     // MARK: - Initialization
     
@@ -82,6 +123,9 @@ final class Reader: UIViewController {
         
         self.pageMapper = PageMapper()
         self.scrollHandler = ReaderScrollHandler()
+        self.stateMachine = ReaderStateMachine()
+        self.insertionStrategy = InsertionStrategy()
+        self.callbackManager = CallbackManager()
         
         // setup layout based on reading mode
         if configuration.readingMode == .leftToRight || configuration.readingMode == .rightToLeft {
@@ -101,6 +145,8 @@ final class Reader: UIViewController {
         }
         
         super.init(nibName: nil, bundle: nil)
+        
+        setupStateMachine()
     }
     
     required init?(coder: NSCoder) {
@@ -118,22 +164,54 @@ final class Reader: UIViewController {
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
         
+        // capture anchor before rotation
+        let anchor = insertionStrategy.captureAnchor(
+            from: collectionView,
+            pageMapper: pageMapper,
+            readingMode: configuration.readingMode
+        )
+        
         coordinator.animate(alongsideTransition: { _ in
             self.collectionView.collectionViewLayout.invalidateLayout()
         }, completion: { _ in
-            // reset to page 0 of current chapter
-            self.currentPage = 0
-            
-            // trigger callbacks to update UI (scrollbar, etc.)
-            if let chapter = self.currentChapter {
-                self.onPageChange?(0, chapter)
+            // restore anchor after rotation
+            if let anchor = anchor,
+               let newIndex = self.pageMapper.getGlobalIndex(for: anchor.chapterId, page: anchor.pageInChapter) {
+                let indexPath = IndexPath(item: newIndex, section: 0)
+                
+                switch self.configuration.readingMode {
+                case .leftToRight, .rightToLeft:
+                    self.collectionView.scrollToItem(at: indexPath, at: .left, animated: false)
+                case .infinite, .vertical:
+                    self.collectionView.scrollToItem(at: indexPath, at: .top, animated: false)
+                }
             }
             
             // update visible pages to ensure state is synced
             DispatchQueue.main.async {
-                self.updateVisiblePages()
+                self.updateVisiblePages(reason: .programmaticJump)
             }
         })
+    }
+    
+    // MARK: - State Machine Setup
+    
+    private func setupStateMachine() {
+        stateMachine.onStateChange { [weak self] state in
+            guard let self = self else { return }
+            
+            switch state {
+            case .error(let error):
+                self.callbackManager.emitError(error)
+            case .ready:
+                // ensure we emit current position when becoming ready
+                if self.isLoaded {
+                    self.updateVisiblePages(reason: .programmaticJump)
+                }
+            default:
+                break
+            }
+        }
     }
     
     // MARK: - Internal API
@@ -143,46 +221,55 @@ final class Reader: UIViewController {
         
         isProgrammaticScroll = true
         
-        let indexPath = IndexPath(item: globalIndex, section: 0)
-        
-        // get layout attributes for target cell
-        if let layoutAttributes = collectionView.layoutAttributesForItem(at: indexPath) {
-            var targetRect = layoutAttributes.frame
-            
-            // adjust rect based on reading mode to anchor at top-left
-            switch configuration.readingMode {
-            case .leftToRight, .rightToLeft:
-                targetRect.origin.x = layoutAttributes.frame.minX
-                targetRect.origin.y = 0
-                targetRect.size = collectionView.bounds.size
-                
-            case .infinite, .vertical:
-                targetRect.origin.x = 0
-                targetRect.origin.y = layoutAttributes.frame.minY
-                targetRect.size = collectionView.bounds.size
+        Task {
+            await callbackManager.suppressDuring(reason: .programmaticJump) {
+                await MainActor.run {
+                    let indexPath = IndexPath(item: globalIndex, section: 0)
+                    
+                    // get layout attributes for target cell
+                    if let layoutAttributes = self.collectionView.layoutAttributesForItem(at: indexPath) {
+                        var targetRect = layoutAttributes.frame
+                        
+                        // adjust rect based on reading mode to anchor at top-left
+                        switch self.configuration.readingMode {
+                        case .leftToRight, .rightToLeft:
+                            targetRect.origin.x = layoutAttributes.frame.minX
+                            targetRect.origin.y = 0
+                            targetRect.size = self.collectionView.bounds.size
+                            
+                        case .infinite, .vertical:
+                            targetRect.origin.x = 0
+                            targetRect.origin.y = layoutAttributes.frame.minY
+                            targetRect.size = self.collectionView.bounds.size
+                        }
+                        
+                        self.collectionView.scrollRectToVisible(targetRect, animated: animated)
+                    } else {
+                        // fallback to scrollToItem if layout attributes unavailable
+                        let scrollPosition: UICollectionView.ScrollPosition
+                        switch self.configuration.readingMode {
+                        case .leftToRight, .rightToLeft:
+                            scrollPosition = .left
+                        case .infinite, .vertical:
+                            scrollPosition = .top
+                        }
+                        
+                        self.collectionView.scrollToItem(
+                            at: indexPath,
+                            at: scrollPosition,
+                            animated: animated
+                        )
+                    }
+                }
             }
             
-            collectionView.scrollRectToVisible(targetRect, animated: animated)
-        } else {
-            // fallback to scrollToItem if layout attributes unavailable
-            let scrollPosition: UICollectionView.ScrollPosition
-            switch configuration.readingMode {
-            case .leftToRight, .rightToLeft:
-                scrollPosition = .left
-            case .infinite, .vertical:
-                scrollPosition = .top
+            // if not animated, reset flag immediately
+            if !animated {
+                await MainActor.run {
+                    self.isProgrammaticScroll = false
+                    self.updateVisiblePages(reason: .programmaticJump)
+                }
             }
-            
-            collectionView.scrollToItem(
-                at: indexPath,
-                at: scrollPosition,
-                animated: animated
-            )
-        }
-        
-        // if not animated, reset flag immediately
-        if !animated {
-            isProgrammaticScroll = false
         }
     }
     
@@ -191,12 +278,15 @@ final class Reader: UIViewController {
     }
     
     func nextChapter() {
+        guard stateMachine.canStartLoading else { return }
+        
         let navigation = getNavigation(for: currentChapterId)
         guard let next = navigation.next else { return }
         
         Task {
             let isLoaded = await chapterManager.isChapterLoaded(next.id)
             if !isLoaded {
+                _ = stateMachine.transition(to: .loadingNext)
                 await loadChapter(next.id, position: .next)
             }
             
@@ -207,12 +297,15 @@ final class Reader: UIViewController {
     }
     
     func previousChapter() {
+        guard stateMachine.canStartLoading else { return }
+        
         let navigation = getNavigation(for: currentChapterId)
         guard let previous = navigation.previous else { return }
         
         Task {
             let isLoaded = await chapterManager.isChapterLoaded(previous.id)
             if !isLoaded {
+                _ = stateMachine.transition(to: .loadingPrevious)
                 await loadChapter(previous.id, position: .previous)
             }
             
@@ -234,6 +327,7 @@ final class Reader: UIViewController {
         // if mode changed, reconfigure layout
         if oldMode != newMode {
             let currentChapterIdToPreserve = currentChapterId
+            let currentPageToPreserve = currentPage
             
             // switch layout if needed
             let needsFlowLayout = (newMode == .leftToRight || newMode == .rightToLeft)
@@ -263,23 +357,20 @@ final class Reader: UIViewController {
                 await updateCachedData()
                 
                 await MainActor.run {
-                    collectionView.reloadData()
+                    self.collectionView.reloadData()
                     
-                    // scroll to first page of current chapter
-                    if let firstPageIndex = pageMapper.getGlobalIndex(for: currentChapterIdToPreserve, page: 0) {
+                    // scroll to preserved page
+                    if let firstPageIndex = self.pageMapper.getGlobalIndex(for: currentChapterIdToPreserve, page: currentPageToPreserve) {
                         let scrollPosition: UICollectionView.ScrollPosition = needsFlowLayout ? .left : .top
-                        collectionView.scrollToItem(
+                        self.collectionView.scrollToItem(
                             at: IndexPath(item: firstPageIndex, section: 0),
                             at: scrollPosition,
-                            animated: true
+                            animated: false
                         )
                     }
                     
-                    // reset internal state and trigger callbacks
-                    self.currentPage = 0
-                    if let chapter = self.currentChapter {
-                        self.onPageChange?(0, chapter)
-                    }
+                    // trigger callbacks with new state
+                    self.updateVisiblePages(reason: .programmaticJump)
                 }
             }
         }
@@ -334,6 +425,8 @@ final class Reader: UIViewController {
     private func loadInitialChapter() {
         // set pending state
         pendingState = (chapterId: currentChapterId, page: 0)
+        
+        _ = stateMachine.transition(to: .loadingInitial)
         
         Task {
             await loadChapter(currentChapterId, position: .initial)

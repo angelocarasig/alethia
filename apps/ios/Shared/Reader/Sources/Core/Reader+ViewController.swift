@@ -28,7 +28,7 @@ extension Reader: UICollectionViewDataSource {
         let urlString = cachedImageURLs[indexPath.item]
         let imageSize = imageSizes[urlString]
         
-        print("Configuring cell at index \(indexPath.item)")
+        print("[Cell] Configuring cell at index \(indexPath.item)")
         
         // configure cell based on reading mode
         switch configuration.readingMode {
@@ -79,7 +79,7 @@ extension Reader: UICollectionViewDelegateFlowLayout {
 extension Reader: UICollectionViewDataSourcePrefetching {
     
     func collectionView(_ collectionView: UICollectionView, prefetchItemsAt indexPaths: [IndexPath]) {
-        print("[Reader] Prefetching \(indexPaths.count) items")
+        print("[Prefetch] Prefetching \(indexPaths.count) items")
         
         let urls = indexPaths.compactMap { indexPath -> URL? in
             guard indexPath.item < cachedImageURLs.count else { return nil }
@@ -92,7 +92,7 @@ extension Reader: UICollectionViewDataSourcePrefetching {
     }
     
     func collectionView(_ collectionView: UICollectionView, cancelPrefetchingForItemsAt indexPaths: [IndexPath]) {
-        print("[Reader] Cancelling prefetch for \(indexPaths.count) items")
+        print("[Prefetch] Cancelling prefetch for \(indexPaths.count) items")
         
         let urls = indexPaths.compactMap { indexPath -> URL? in
             guard indexPath.item < cachedImageURLs.count else { return nil }
@@ -110,41 +110,58 @@ extension Reader: UICollectionViewDataSourcePrefetching {
 extension Reader: UICollectionViewDelegate {
     
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        print("[Reader] User started scrolling")
+        print("[Scroll] User started scrolling")
         isProgrammaticScroll = false
         isUserScrolling = true
-        onScrollStateChange?(true)
+        callbackManager.emitScrollStateChange(true)
     }
     
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         if !decelerate {
-            print("[Reader] User stopped scrolling (no deceleration)")
+            print("[Scroll] User stopped scrolling (no deceleration)")
             isUserScrolling = false
-            onScrollStateChange?(false)
+            callbackManager.emitScrollStateChange(false)
+            
+            // emit final position after scroll settles
+            DispatchQueue.main.async { [weak self] in
+                self?.updateVisiblePages(reason: .userScroll)
+            }
         }
     }
     
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-        print("[Reader] Scroll deceleration ended")
+        print("[Scroll] Scroll deceleration ended")
         isUserScrolling = false
-        onScrollStateChange?(false)
+        callbackManager.emitScrollStateChange(false)
+        
+        // emit final position after deceleration
+        DispatchQueue.main.async { [weak self] in
+            self?.updateVisiblePages(reason: .userScroll)
+        }
     }
     
     func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
-        print("Programmatic scroll ended")
+        print("[Scroll] Programmatic scroll ended")
         isProgrammaticScroll = false
         isUserScrolling = false
-        onScrollStateChange?(false)
+        callbackManager.emitScrollStateChange(false)
+        
+        // emit final position after programmatic scroll
+        DispatchQueue.main.async { [weak self] in
+            self?.updateVisiblePages(reason: .programmaticJump)
+        }
     }
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         guard !isAnyPageZoomed else { return }
         
-        // always update visible pages to keep callbacks in sync
-        updateVisiblePages()
+        // only update during user scroll, not programmatic
+        if isUserScrolling && !isProgrammaticScroll {
+            updateVisiblePages(reason: .userScroll)
+        }
         
-        // don't trigger loading during initial setup or programmatic scroll
-        guard isLoaded && !isProgrammaticScroll else { return }
+        // don't trigger loading during initial setup, programmatic scroll, or state transitions
+        guard isLoaded && !isProgrammaticScroll && stateMachine.canStartLoading else { return }
         
         let navigation = getNavigation(for: currentChapterId)
         
@@ -155,7 +172,7 @@ extension Reader: UICollectionViewDelegate {
             onLoadPrevious: { [weak self] in
                 guard let self = self else { return }
                 
-                print("Scroll threshold reached: loading previous")
+                print("[Scroll] Threshold reached: loading previous")
                 
                 Task {
                     let canLoad = await self.chapterManager.canLoadPrevious(
@@ -164,15 +181,18 @@ extension Reader: UICollectionViewDelegate {
                     )
                     
                     if canLoad, let previous = navigation.previous {
-                        await self.chapterManager.startLoadingPrevious()
-                        await self.loadChapter(previous.id, position: .previous)
+                        // use state machine to coordinate loading
+                        if self.stateMachine.transition(to: .loadingPrevious) {
+                            await self.chapterManager.startLoadingPrevious()
+                            await self.loadChapter(previous.id, position: .previous)
+                        }
                     }
                 }
             },
             onLoadNext: { [weak self] in
                 guard let self = self else { return }
                 
-                print("Scroll threshold reached: loading next")
+                print("[Scroll] Threshold reached: loading next")
                 
                 Task {
                     let canLoad = await self.chapterManager.canLoadNext(
@@ -181,8 +201,11 @@ extension Reader: UICollectionViewDelegate {
                     )
                     
                     if canLoad, let next = navigation.next {
-                        await self.chapterManager.startLoadingNext()
-                        await self.loadChapter(next.id, position: .next)
+                        // use state machine to coordinate loading
+                        if self.stateMachine.transition(to: .loadingNext) {
+                            await self.chapterManager.startLoadingNext()
+                            await self.loadChapter(next.id, position: .next)
+                        }
                     }
                 }
             }
@@ -195,11 +218,11 @@ extension Reader: UICollectionViewDelegate {
         let totalPages = pageMapper.getCurrentChapterPageCount(for: result.chapterId)
         let currentPage = result.page
         
-        print("Will display page \(currentPage)/\(totalPages) of chapter")
+        print("[Display] Will display page \(currentPage)/\(totalPages) of chapter")
         
         // only preload when we're in the last 5 pages of a chapter
         let pagesFromEnd = totalPages - currentPage
-        if isLoaded && pagesFromEnd <= 5 {
+        if isLoaded && pagesFromEnd <= 5 && stateMachine.canStartLoading {
             Task {
                 await preloadAdjacentChapters()
             }
@@ -208,6 +231,6 @@ extension Reader: UICollectionViewDelegate {
     
     func collectionView(_ collectionView: UICollectionView, didEndDisplaying cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
         visiblePages.remove(indexPath.item)
-        print("Cell at index \(indexPath.item) ended display")
+        print("[Display] Cell at index \(indexPath.item) ended display")
     }
 }
