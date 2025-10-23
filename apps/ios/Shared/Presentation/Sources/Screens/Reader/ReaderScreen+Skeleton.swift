@@ -21,22 +21,53 @@ extension ReaderScreen {
     @ViewBuilder
     private var topLoadingPlaceholder: some View {
         HStack(alignment: .center, spacing: dimensions.spacing.large) {
-            Circle()
-                .fill(theme.colors.foreground.opacity(0.1))
-                .frame(width: 44, height: 44)
-                .shimmer()
+            // close button should always be available
+            Button {
+                haptics.impact(.medium)
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(.ultraThinMaterial)
+                    .clipShape(.circle)
+                    .contentShape(.circle)
+            }
             
             Spacer()
             
-            Capsule()
-                .fill(theme.colors.foreground.opacity(0.1))
-                .frame(width: 120, height: 44)
-                .shimmer()
+            // show actual chapter info if available
+            if let chapter = vm.currentChapter {
+                VStack(spacing: dimensions.spacing.minimal) {
+                    Text("Chapter \(Int(chapter.number))")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    
+                    // skeleton for page count
+                    Capsule()
+                        .fill(.white.opacity(0.3))
+                        .frame(width: 40, height: 12)
+                        .shimmer()
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, dimensions.padding.screen)
+                .padding(.vertical, dimensions.padding.regular)
+                .background(.ultraThinMaterial)
+                .clipShape(.capsule)
+            } else {
+                // full skeleton if no chapter info
+                Capsule()
+                    .fill(.white.opacity(0.3))
+                    .frame(width: 120, height: 44)
+                    .shimmer()
+            }
             
             Spacer()
             
             Circle()
-                .fill(theme.colors.foreground.opacity(0.1))
+                .fill(.white.opacity(0.3))
                 .frame(width: 44, height: 44)
                 .shimmer()
         }
@@ -60,17 +91,17 @@ extension ReaderScreen {
     private var sliderLoadingPlaceholder: some View {
         HStack(spacing: dimensions.spacing.large) {
             Capsule()
-                .fill(theme.colors.foreground.opacity(0.1))
+                .fill(.white.opacity(0.3))
                 .frame(width: 36, height: 36)
                 .shimmer()
             
             Capsule()
-                .fill(theme.colors.foreground.opacity(0.1))
+                .fill(.white.opacity(0.3))
                 .frame(height: 4)
                 .shimmer()
             
             Capsule()
-                .fill(theme.colors.foreground.opacity(0.1))
+                .fill(.white.opacity(0.3))
                 .frame(width: 36, height: 36)
                 .shimmer()
         }
@@ -80,21 +111,40 @@ extension ReaderScreen {
     private var navigationLoadingPlaceholder: some View {
         HStack(spacing: dimensions.spacing.large) {
             Circle()
-                .fill(theme.colors.foreground.opacity(0.1))
+                .fill(.white.opacity(0.3))
                 .frame(width: 52, height: 52)
                 .shimmer()
             
             Spacer()
             
-            Capsule()
-                .fill(theme.colors.foreground.opacity(0.1))
-                .frame(width: 100, height: 44)
-                .shimmer()
+            // show actual chapter progress if available
+            if let chapter = vm.currentChapter {
+                VStack(spacing: dimensions.spacing.minimal) {
+                    Text("Chapter \(Int(chapter.number))")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                    
+                    Text("of \(vm.totalChapters)")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .monospacedDigit()
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, dimensions.padding.screen)
+                .padding(.vertical, dimensions.padding.regular)
+                .background(.ultraThinMaterial)
+                .clipShape(.capsule)
+            } else {
+                Capsule()
+                    .fill(.white.opacity(0.3))
+                    .frame(width: 100, height: 44)
+                    .shimmer()
+            }
             
             Spacer()
             
             Circle()
-                .fill(theme.colors.foreground.opacity(0.1))
+                .fill(.white.opacity(0.3))
                 .frame(width: 52, height: 52)
                 .shimmer()
         }

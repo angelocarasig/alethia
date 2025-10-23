@@ -27,57 +27,18 @@ final class ImageCell: UICollectionViewCell {
     private var cellDimension: CGFloat = 0
     private var dimensionType: CellDimensionType = .width
     
-    // loading state
-    private let loadingContainerView: UIView = {
-        let view = UIView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = UIColor.black.withAlphaComponent(0.7)
-        return view
-    }()
+    // loading state views
+    private let loadingContainer: UIView
+    private let progressView: UIProgressView
+    private let loadingLabel: UILabel
     
-    private let progressRing: CircularProgressView = {
-        let view = CircularProgressView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
+    // error state views
+    private let errorContainer: UIView
+    private let errorLabel: UILabel
+    private let retryButton: UIButton
     
-    private let percentageLabel: UILabel = {
-        let label = UILabel()
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.textAlignment = .center
-        label.font = .monospacedSystemFont(ofSize: 14, weight: .semibold)
-        label.textColor = .white
-        label.text = "0%"
-        return label
-    }()
-    
-    private let retryButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.translatesAutoresizingMaskIntoConstraints = false
-        
-        var config = UIButton.Configuration.filled()
-        config.baseBackgroundColor = .white.withAlphaComponent(0.15)
-        config.baseForegroundColor = .white
-        config.cornerStyle = .capsule
-        config.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 20, bottom: 12, trailing: 20)
-        
-        let imageConfig = UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
-        config.image = UIImage(systemName: "arrow.clockwise", withConfiguration: imageConfig)
-        config.imagePlacement = .leading
-        config.imagePadding = 8
-        config.title = "Retry"
-        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
-            var outgoing = incoming
-            outgoing.font = .systemFont(ofSize: 15, weight: .semibold)
-            return outgoing
-        }
-        
-        button.configuration = config
-        button.isHidden = true
-        return button
-    }()
-    
-    private var currentURLString: String?
+    // current url for retry
+    private var currentURL: URL?
     
     // zoom state callback
     var onZoomStateChanged: ((Bool) -> Void)?
@@ -95,6 +56,39 @@ final class ImageCell: UICollectionViewCell {
         imageNode.contentMode = .scaleAspectFit
         imageNode.backgroundColor = .clear
         
+        // loading views
+        loadingContainer = UIView()
+        loadingContainer.backgroundColor = .systemBackground
+        loadingContainer.isHidden = true
+        
+        progressView = UIProgressView(progressViewStyle: .default)
+        progressView.translatesAutoresizingMaskIntoConstraints = false
+        
+        loadingLabel = UILabel()
+        loadingLabel.text = "Loading..."
+        loadingLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        loadingLabel.textColor = .secondaryLabel
+        loadingLabel.textAlignment = .center
+        loadingLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        // error views
+        errorContainer = UIView()
+        errorContainer.backgroundColor = .systemBackground
+        errorContainer.isHidden = true
+        
+        errorLabel = UILabel()
+        errorLabel.text = "Failed to load image"
+        errorLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        errorLabel.textColor = .secondaryLabel
+        errorLabel.textAlignment = .center
+        errorLabel.numberOfLines = 2
+        errorLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        retryButton = UIButton(type: .system)
+        retryButton.setTitle("Tap to retry", for: .normal)
+        retryButton.titleLabel?.font = .systemFont(ofSize: 14, weight: .semibold)
+        retryButton.translatesAutoresizingMaskIntoConstraints = false
+        
         super.init(frame: frame)
         
         scrollView.delegate = self
@@ -102,6 +96,7 @@ final class ImageCell: UICollectionViewCell {
         scrollView.addSubnode(imageNode)
         
         setupLoadingViews()
+        setupErrorViews()
         setupGestures()
     }
     
@@ -110,30 +105,36 @@ final class ImageCell: UICollectionViewCell {
     }
     
     private func setupLoadingViews() {
-        contentView.addSubview(loadingContainerView)
-        loadingContainerView.addSubview(progressRing)
-        loadingContainerView.addSubview(percentageLabel)
-        loadingContainerView.addSubview(retryButton)
+        contentView.addSubview(loadingContainer)
+        loadingContainer.addSubview(progressView)
+        loadingContainer.addSubview(loadingLabel)
         
         NSLayoutConstraint.activate([
-            loadingContainerView.topAnchor.constraint(equalTo: contentView.topAnchor),
-            loadingContainerView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            loadingContainerView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            loadingContainerView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            progressView.centerXAnchor.constraint(equalTo: loadingContainer.centerXAnchor),
+            progressView.centerYAnchor.constraint(equalTo: loadingContainer.centerYAnchor, constant: -20),
+            progressView.widthAnchor.constraint(equalToConstant: 200),
             
-            progressRing.centerXAnchor.constraint(equalTo: loadingContainerView.centerXAnchor),
-            progressRing.centerYAnchor.constraint(equalTo: loadingContainerView.centerYAnchor),
-            progressRing.widthAnchor.constraint(equalToConstant: 80),
-            progressRing.heightAnchor.constraint(equalToConstant: 80),
+            loadingLabel.topAnchor.constraint(equalTo: progressView.bottomAnchor, constant: 12),
+            loadingLabel.centerXAnchor.constraint(equalTo: loadingContainer.centerXAnchor)
+        ])
+    }
+    
+    private func setupErrorViews() {
+        contentView.addSubview(errorContainer)
+        errorContainer.addSubview(errorLabel)
+        errorContainer.addSubview(retryButton)
+        
+        NSLayoutConstraint.activate([
+            errorLabel.centerXAnchor.constraint(equalTo: errorContainer.centerXAnchor),
+            errorLabel.centerYAnchor.constraint(equalTo: errorContainer.centerYAnchor, constant: -20),
+            errorLabel.leadingAnchor.constraint(equalTo: errorContainer.leadingAnchor, constant: 20),
+            errorLabel.trailingAnchor.constraint(equalTo: errorContainer.trailingAnchor, constant: -20),
             
-            percentageLabel.centerXAnchor.constraint(equalTo: progressRing.centerXAnchor),
-            percentageLabel.centerYAnchor.constraint(equalTo: progressRing.centerYAnchor),
-            
-            retryButton.centerXAnchor.constraint(equalTo: loadingContainerView.centerXAnchor),
-            retryButton.centerYAnchor.constraint(equalTo: loadingContainerView.centerYAnchor)
+            retryButton.topAnchor.constraint(equalTo: errorLabel.bottomAnchor, constant: 12),
+            retryButton.centerXAnchor.constraint(equalTo: errorContainer.centerXAnchor)
         ])
         
-        retryButton.addTarget(self, action: #selector(retryLoadingImage), for: .touchUpInside)
+        retryButton.addTarget(self, action: #selector(handleRetry), for: .touchUpInside)
     }
     
     private func setupGestures() {
@@ -152,18 +153,9 @@ final class ImageCell: UICollectionViewCell {
         }
     }
     
-    @objc private func retryLoadingImage() {
-        guard let urlString = currentURLString else { return }
-        
-        // hide retry button, show progress
-        UIView.animate(withDuration: 0.2) {
-            self.retryButton.isHidden = true
-            self.progressRing.isHidden = false
-            self.percentageLabel.isHidden = false
-        }
-        
-        // reload image
-        loadImage(urlString: urlString)
+    @objc private func handleRetry() {
+        guard let url = currentURL else { return }
+        loadImage(from: url)
     }
     
     private func zoomRect(for scale: CGFloat, center: CGPoint) -> CGRect {
@@ -178,6 +170,8 @@ final class ImageCell: UICollectionViewCell {
     override func layoutSubviews() {
         super.layoutSubviews()
         scrollView.frame = contentView.bounds
+        loadingContainer.frame = contentView.bounds
+        errorContainer.frame = contentView.bounds
         
         let imageFrame: CGRect
         
@@ -235,10 +229,76 @@ final class ImageCell: UICollectionViewCell {
         )
     }
     
+    private func showLoading() {
+        loadingContainer.isHidden = false
+        errorContainer.isHidden = true
+        scrollView.isHidden = true
+        progressView.progress = 0
+    }
+    
+    private func showError() {
+        loadingContainer.isHidden = true
+        errorContainer.isHidden = false
+        scrollView.isHidden = true
+    }
+    
+    private func showImage() {
+        loadingContainer.isHidden = true
+        errorContainer.isHidden = true
+        scrollView.isHidden = false
+    }
+    
+    private func loadImage(from url: URL) {
+        showLoading()
+        
+        KingfisherManager.shared.retrieveImage(
+            with: url,
+            options: [.transition(.fade(0.2))],
+            progressBlock: { [weak self] receivedSize, totalSize in
+                guard let self = self, totalSize > 0 else { return }
+                
+                let progress = Float(receivedSize) / Float(totalSize)
+                Task { @MainActor in
+                    self.progressView.setProgress(progress, animated: true)
+                }
+            }
+        ) { [weak self] result in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
+                switch result {
+                case .success(let imageResult):
+                    let image = imageResult.image
+                    let size = image.size
+                    let calculatedAspectRatio = size.height / size.width
+                    
+                    self.aspectRatio = calculatedAspectRatio
+                    self.imageNode.image = image
+                    self.setNeedsLayout()
+                    self.layoutIfNeeded()
+                    
+                    self.showImage()
+                    
+                    // trigger self-sizing update if needed
+                    if let collectionView = self.superview as? UICollectionView,
+                       collectionView.indexPath(for: self) != nil {
+                        UIView.performWithoutAnimation {
+                            collectionView.collectionViewLayout.invalidateLayout()
+                        }
+                    }
+                    
+                case .failure(let error):
+                    print("failed to load image: \(error)")
+                    self.showError()
+                }
+            }
+        }
+    }
+    
     func configure(with urlString: String, dimension: CGFloat, dimensionType: CellDimensionType, imageSize: CGSize?) {
         guard let url = URL(string: urlString) else { return }
         
-        self.currentURLString = urlString
+        self.currentURL = url
         self.cellDimension = dimension
         self.dimensionType = dimensionType
         
@@ -256,108 +316,8 @@ final class ImageCell: UICollectionViewCell {
         setNeedsLayout()
         layoutIfNeeded()
         
-        // show loading state
-        showLoadingState()
-        
-        // load image
-        loadImage(urlString: urlString)
-        
-        // if size not available, fetch and update
-        if imageSize == nil {
-            fetchImageSize(url: url)
-        }
-    }
-    
-    private func loadImage(urlString: String) {
-        guard let url = URL(string: urlString) else { return }
-        
-        imageNode.setURL(url, resetToDefault: true)
-        
-        // track progress
-        KingfisherManager.shared.retrieveImage(
-            with: url,
-            options: [.onlyLoadFirstFrame],
-            progressBlock: { [weak self] receivedSize, totalSize in
-                guard let self = self else { return }
-                let progress = Float(receivedSize) / Float(totalSize)
-                
-                DispatchQueue.main.async {
-                    self.updateProgress(progress)
-                }
-            },
-            completionHandler: { [weak self] result in
-                guard let self = self else { return }
-                
-                DispatchQueue.main.async {
-                    switch result {
-                    case .success:
-                        self.hideLoadingState()
-                    case .failure:
-                        self.showRetryState()
-                    }
-                }
-            }
-        )
-    }
-    
-    private func fetchImageSize(url: URL) {
-        KingfisherManager.shared.retrieveImage(with: url) { [weak self] result in
-            guard let self = self else { return }
-            
-            switch result {
-            case .success(let imageResult):
-                let image = imageResult.image
-                let size = image.size
-                let calculatedAspectRatio = size.height / size.width
-                
-                Task { @MainActor in
-                    self.aspectRatio = calculatedAspectRatio
-                    self.setNeedsLayout()
-                    self.layoutIfNeeded()
-                    
-                    if let collectionView = self.superview as? UICollectionView,
-                       collectionView.indexPath(for: self) != nil {
-                        
-                        UIView.performWithoutAnimation {
-                            collectionView.collectionViewLayout.invalidateLayout()
-                        }
-                    }
-                }
-                
-            case .failure(let error):
-                print("failed to load image for size calculation: \(error)")
-            }
-        }
-    }
-    
-    private func showLoadingState() {
-        loadingContainerView.isHidden = false
-        progressRing.isHidden = false
-        percentageLabel.isHidden = false
-        retryButton.isHidden = true
-        progressRing.setProgress(0)
-        percentageLabel.text = "0%"
-    }
-    
-    private func hideLoadingState() {
-        UIView.animate(withDuration: 0.3) {
-            self.loadingContainerView.alpha = 0
-        } completion: { _ in
-            self.loadingContainerView.isHidden = true
-            self.loadingContainerView.alpha = 1
-        }
-    }
-    
-    private func showRetryState() {
-        progressRing.isHidden = true
-        percentageLabel.isHidden = true
-        retryButton.isHidden = false
-    }
-    
-    private func updateProgress(_ progress: Float) {
-        let percentage = Int(progress * 100)
-        progressRing.setProgress(progress)
-        percentageLabel.text = "\(percentage)%"
+        // load image with progress tracking
+        loadImage(from: url)
     }
     
     override func preferredLayoutAttributesFitting(_ layoutAttributes: UICollectionViewLayoutAttributes) -> UICollectionViewLayoutAttributes {
@@ -404,19 +364,15 @@ final class ImageCell: UICollectionViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         imageNode.url = nil
+        imageNode.image = nil
         aspectRatio = 1.0
         cellDimension = 0
         dimensionType = .width
         scrollView.setZoomScale(1.0, animated: false)
         onZoomStateChanged = nil
-        currentURLString = nil
-        
-        // reset loading state
-        loadingContainerView.isHidden = true
-        loadingContainerView.alpha = 1
-        progressRing.setProgress(0)
-        percentageLabel.text = "0%"
-        retryButton.isHidden = true
+        currentURL = nil
+        progressView.progress = 0
+        showLoading()
     }
 }
 
@@ -433,69 +389,5 @@ extension ImageCell: UIScrollViewDelegate {
         
         let isZoomed = scrollView.zoomScale > 1.0
         onZoomStateChanged?(isZoomed)
-    }
-}
-
-// MARK: - Circular Progress View
-
-private final class CircularProgressView: UIView {
-    
-    private let trackLayer = CAShapeLayer()
-    private let progressLayer = CAShapeLayer()
-    
-    private var progress: Float = 0
-    
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        setupLayers()
-    }
-    
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setupLayers()
-    }
-    
-    private func setupLayers() {
-        // track layer (background circle)
-        trackLayer.fillColor = UIColor.clear.cgColor
-        trackLayer.strokeColor = UIColor.white.withAlphaComponent(0.2).cgColor
-        trackLayer.lineWidth = 3
-        trackLayer.lineCap = .round
-        layer.addSublayer(trackLayer)
-        
-        // progress layer (animated circle)
-        progressLayer.fillColor = UIColor.clear.cgColor
-        progressLayer.strokeColor = UIColor.white.cgColor
-        progressLayer.lineWidth = 3
-        progressLayer.lineCap = .round
-        progressLayer.strokeEnd = 0
-        layer.addSublayer(progressLayer)
-    }
-    
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        
-        let center = CGPoint(x: bounds.midX, y: bounds.midY)
-        let radius = (min(bounds.width, bounds.height) - 3) / 2
-        
-        let circularPath = UIBezierPath(
-            arcCenter: center,
-            radius: radius,
-            startAngle: -.pi / 2,
-            endAngle: 3 * .pi / 2,
-            clockwise: true
-        )
-        
-        trackLayer.path = circularPath.cgPath
-        progressLayer.path = circularPath.cgPath
-    }
-    
-    func setProgress(_ progress: Float) {
-        self.progress = progress
-        
-        CATransaction.begin()
-        CATransaction.setAnimationDuration(0.2)
-        progressLayer.strokeEnd = CGFloat(progress)
-        CATransaction.commit()
     }
 }

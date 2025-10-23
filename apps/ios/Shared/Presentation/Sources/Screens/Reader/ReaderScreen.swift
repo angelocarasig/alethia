@@ -15,16 +15,17 @@ struct ReaderScreen: View {
     @Environment(\.theme) var theme
     @Environment(\.haptics) var haptics
     
-    @State private var vm: ReaderViewModel
+    @State var vm: ReaderViewModel
     @State private var showOverlay = true
     @State private var isSliding = false
     @State private var sliderValue: Double = 0
     
-    init(chapters: [Chapter], startingChapterSlug: String) {
+    init(chapters: [Chapter], startingChapter: Chapter, orientation: Orientation) {
         self._vm = State(
             initialValue: ReaderViewModel(
                 chapters: chapters,
-                startingChapterSlug: startingChapterSlug
+                startingChapter: startingChapter,
+                orientation: orientation
             )
         )
     }
@@ -34,7 +35,16 @@ struct ReaderScreen: View {
             readerContent
             
             if showOverlay {
-                if let coordinator = vm.coordinator {
+                // show loading skeleton when loading
+                if vm.isLoadingInitial {
+                    loadingOverlay
+                }
+                // show error state if initial chapter failed (and not loading)
+                else if let error = vm.error, error.isInitialError {
+                    initialErrorView(error: error)
+                }
+                // show normal overlay
+                else if let coordinator = vm.coordinator {
                     ReaderOverlayView(
                         vm: vm,
                         coordinator: coordinator,
@@ -42,8 +52,6 @@ struct ReaderScreen: View {
                         isSliding: $isSliding,
                         sliderValue: $sliderValue
                     )
-                } else {
-                    loadingOverlay
                 }
             }
         }
@@ -52,6 +60,8 @@ struct ReaderScreen: View {
         .toolbarVisibility(.hidden, for: .navigationBar)
         .toolbarVisibility(.hidden, for: .bottomBar)
         .onTapGesture {
+            // only allow toggling overlay when ready and no initial error
+            guard vm.isReady, !(vm.error?.isInitialError ?? false) else { return }
             withAnimation(.smooth(duration: 0.3)) {
                 showOverlay.toggle()
             }
@@ -118,7 +128,17 @@ private struct ReaderOverlayView: View {
     var body: some View {
         VStack(spacing: 0) {
             topOverlay
+            
             Spacer()
+            
+            // show error banner for subsequent chapter errors
+            if let error = vm.error, !error.isInitialError {
+                subsequentErrorBanner(error: error)
+                    .padding(.horizontal, dimensions.padding.screen)
+                    .padding(.bottom, dimensions.padding.regular)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            
             bottomOverlay
         }
     }
@@ -179,19 +199,25 @@ private struct ReaderOverlayView: View {
     
     @ViewBuilder
     private func chapterInfoDisplay(chapter: Chapter, currentPage: Int, totalPages: Int) -> some View {
-        VStack(spacing: 3) {
+        VStack(spacing: dimensions.spacing.minimal) {
             Text("Chapter \(Int(chapter.number))")
                 .font(.subheadline)
                 .fontWeight(.semibold)
             
-            Text("\(currentPage + 1) / \(totalPages)")
-                .font(.caption2)
-                .foregroundStyle(.white.opacity(0.7))
-                .monospacedDigit()
+            if vm.isLoadingChapter {
+                Text("Loading...")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.7))
+            } else {
+                Text("\(currentPage + 1) / \(totalPages)")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .monospacedDigit()
+            }
         }
         .foregroundStyle(.white)
         .padding(.horizontal, dimensions.padding.screen)
-        .padding(.vertical, dimensions.padding.regular + 2)
+        .padding(.vertical, dimensions.padding.regular)
         .background(.ultraThinMaterial)
         .clipShape(.capsule)
     }
@@ -221,6 +247,8 @@ private struct ReaderOverlayView: View {
                 .clipShape(.circle)
                 .contentShape(.circle)
         }
+        .disabled(!vm.isReady)
+        .opacity(vm.isReady ? 1.0 : 0.5)
     }
     
     @ViewBuilder
@@ -228,7 +256,7 @@ private struct ReaderOverlayView: View {
         HStack(spacing: dimensions.spacing.large) {
             pageNumberLabel(coordinator.currentPage + 1)
             
-            if coordinator.totalPages > 1 {
+            if coordinator.totalPages > 1 && vm.isReady {
                 pageSlider
             } else {
                 staticSliderTrack
@@ -247,7 +275,7 @@ private struct ReaderOverlayView: View {
             .monospacedDigit()
             .frame(minWidth: 36)
             .padding(.vertical, dimensions.padding.regular)
-            .padding(.horizontal, dimensions.padding.regular + 2)
+            .padding(.horizontal, dimensions.padding.regular)
             .background(.ultraThinMaterial)
             .clipShape(.capsule)
     }
@@ -268,9 +296,10 @@ private struct ReaderOverlayView: View {
             }
         )
         .tint(.white)
-        .disabled(coordinator.isScrolling || coordinator.isLoadingChapter)
-        .opacity(coordinator.isScrolling ? 0.5 : 1.0)
+        .disabled(coordinator.isScrolling || !vm.isReady)
+        .opacity((coordinator.isScrolling || !vm.isReady) ? 0.5 : 1.0)
         .animation(.smooth(duration: 0.2), value: coordinator.isScrolling)
+        .animation(.smooth(duration: 0.2), value: vm.isReady)
         .onChange(of: sliderValue) { _, newValue in
             if isSliding {
                 vm.jumpToPage(Int(newValue))
@@ -294,7 +323,8 @@ private struct ReaderOverlayView: View {
         HStack(spacing: dimensions.spacing.large) {
             chapterNavigationButton(
                 direction: .previous,
-                isEnabled: vm.hasPreviousChapter
+                isEnabled: vm.hasPreviousChapter && vm.isReady,
+                isLoading: vm.isLoadingChapter && vm.lastNavigationDirection == .previous
             ) {
                 vm.previousChapter()
             }
@@ -311,7 +341,8 @@ private struct ReaderOverlayView: View {
             
             chapterNavigationButton(
                 direction: .next,
-                isEnabled: vm.hasNextChapter
+                isEnabled: vm.hasNextChapter && vm.isReady,
+                isLoading: vm.isLoadingChapter && vm.lastNavigationDirection == .next
             ) {
                 vm.nextChapter()
             }
@@ -322,31 +353,40 @@ private struct ReaderOverlayView: View {
     private func chapterNavigationButton(
         direction: ReaderScreen.NavigationDirection,
         isEnabled: Bool,
+        isLoading: Bool,
         action: @escaping () -> Void
     ) -> some View {
         Button {
             haptics.impact(.medium)
             action()
         } label: {
-            Image(systemName: direction.icon)
-                .font(.title3)
-                .fontWeight(.semibold)
-                .foregroundStyle(isEnabled ? .white : .white.opacity(0.3))
-                .frame(width: 52, height: 52)
-                .background(
-                    isEnabled
-                        ? AnyShapeStyle(.ultraThinMaterial)
-                        : AnyShapeStyle(.ultraThinMaterial.opacity(0.5))
-                )
-                .clipShape(.circle)
-                .contentShape(.circle)
+            ZStack {
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .scaleEffect(0.8)
+                } else {
+                    Image(systemName: direction.icon)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(isEnabled ? .white : .white.opacity(0.3))
+                }
+            }
+            .frame(width: 52, height: 52)
+            .background(
+                isEnabled
+                    ? AnyShapeStyle(.ultraThinMaterial)
+                    : AnyShapeStyle(.ultraThinMaterial.opacity(0.5))
+            )
+            .clipShape(.circle)
+            .contentShape(.circle)
         }
-        .disabled(!isEnabled)
+        .disabled(!isEnabled || isLoading)
     }
     
     @ViewBuilder
     private func chapterProgressDisplay(chapter: Chapter) -> some View {
-        VStack(spacing: 3) {
+        VStack(spacing: dimensions.spacing.minimal) {
             Text("Chapter \(Int(chapter.number))")
                 .font(.caption)
                 .fontWeight(.semibold)
@@ -358,7 +398,7 @@ private struct ReaderOverlayView: View {
         }
         .foregroundStyle(.white)
         .padding(.horizontal, dimensions.padding.screen)
-        .padding(.vertical, dimensions.padding.regular + 2)
+        .padding(.vertical, dimensions.padding.regular)
         .background(.ultraThinMaterial)
         .clipShape(.capsule)
     }
@@ -368,9 +408,46 @@ private struct ReaderOverlayView: View {
         ProgressView()
             .progressViewStyle(CircularProgressViewStyle(tint: .white))
             .padding(.horizontal, dimensions.padding.screen)
-            .padding(.vertical, dimensions.padding.regular + 2)
+            .padding(.vertical, dimensions.padding.regular)
             .background(.ultraThinMaterial)
             .clipShape(.capsule)
+    }
+    
+    @ViewBuilder
+    private func subsequentErrorBanner(error: ReaderError) -> some View {
+        HStack(spacing: dimensions.spacing.regular) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.title3)
+                .foregroundStyle(theme.colors.appYellow)
+            
+            VStack(alignment: .leading, spacing: dimensions.spacing.minimal) {
+                Text(error.errorDescription ?? "Error")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white)
+                
+                Text(error.failureReason ?? "An error occurred")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            
+            Spacer()
+            
+            Button {
+                haptics.impact(.light)
+                vm.clearError()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .frame(width: 24, height: 24)
+            }
+        }
+        .padding(dimensions.padding.screen)
+        .background(theme.colors.appYellow.opacity(0.2))
+        .background(.ultraThinMaterial)
+        .clipShape(.rect(cornerRadius: dimensions.cornerRadius.button))
     }
 }
 

@@ -14,6 +14,7 @@ struct ChaptersSummaryView: View {
     
     let chapters: [Chapter]
     let sources: Int // number of sources present
+    let orientation: Orientation
     
     @State private var sortBy: SortBy = .number
     @State private var sortOrder: SortOrder = .descending
@@ -136,7 +137,7 @@ extension ChaptersSummaryView {
                     .frame(width: 28)
             }
             NavigationLink {
-                ReaderScreen(chapters: chapters, startingChapterSlug: chapter.slug)
+                ReaderScreen(chapters: chapters, startingChapter: chapter, orientation: orientation)
             } label: {
                 ChapterRow(chapter: chapter)
             }

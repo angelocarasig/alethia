@@ -54,6 +54,7 @@ final class Reader: UIViewController {
     var onChapterChange: (@MainActor @Sendable (AnyReadableChapter) -> Void)?
     var onScrollStateChange: (@MainActor @Sendable (Bool) -> Void)?
     var onError: (@MainActor @Sendable (Error) -> Void)?
+    var onChapterLoadComplete: (@MainActor @Sendable (ChapterID, Int) -> Void)?
     
     // MARK: - Initialization
     

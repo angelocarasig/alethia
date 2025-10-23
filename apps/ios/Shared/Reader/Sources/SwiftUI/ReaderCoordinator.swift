@@ -19,16 +19,22 @@ public final class ReaderCoordinator<DataSource: ReaderDataSource> {
     public private(set) var currentChapter: DataSource.Chapter?
     public private(set) var totalPages: Int = 0
     public private(set) var isScrolling: Bool = false
+    public private(set) var isLoadingInitial: Bool = true
     public private(set) var isLoadingChapter: Bool = false
+    public private(set) var error: ReaderError?
+    
+    public var isReady: Bool {
+        !isLoadingInitial && !isLoadingChapter && error == nil && totalPages > 0
+    }
     
     public var canGoToPreviousChapter: Bool {
-        guard let reader = reader, let currentChapter = currentChapter else { return false }
+        guard let reader = reader, let currentChapter = currentChapter, isReady else { return false }
         let navigation = reader.getNavigation(for: ChapterID(currentChapter.id))
         return navigation.previous != nil
     }
     
     public var canGoToNextChapter: Bool {
-        guard let reader = reader, let currentChapter = currentChapter else { return false }
+        guard let reader = reader, let currentChapter = currentChapter, isReady else { return false }
         let navigation = reader.getNavigation(for: ChapterID(currentChapter.id))
         return navigation.next != nil
     }
@@ -36,10 +42,6 @@ public final class ReaderCoordinator<DataSource: ReaderDataSource> {
     public var totalChapters: Int {
         dataSource?.chapters.count ?? 0
     }
-    
-    // MARK: - Error Handling
-    
-    public var onError: (@MainActor @Sendable (Error) -> Void)?
     
     // MARK: - Internal
     
@@ -62,12 +64,32 @@ public final class ReaderCoordinator<DataSource: ReaderDataSource> {
     
     /// navigate to next chapter
     public func nextChapter() {
+        guard isReady else { return }
+        isLoadingChapter = true
         reader?.nextChapter()
     }
     
     /// navigate to previous chapter
     public func previousChapter() {
+        guard isReady else { return }
+        isLoadingChapter = true
         reader?.previousChapter()
+    }
+    
+    /// retry loading current chapter
+    public func retry() {
+        guard let currentChapter = currentChapter else { return }
+        error = nil
+        isLoadingInitial = true
+        isLoadingChapter = false
+        
+        // trigger reload by jumping to same chapter
+        jumpToChapter(currentChapter.id, animated: false)
+    }
+    
+    /// clear error state
+    public func clearError() {
+        error = nil
     }
     
     // MARK: - Internal Connection
@@ -76,64 +98,49 @@ public final class ReaderCoordinator<DataSource: ReaderDataSource> {
         self.reader = reader
         self.dataSource = dataSource
         setupBindings()
-        
-        // initialize state immediately
-        updateInitialState()
-    }
-    
-    private func updateInitialState() {
-        guard let reader = reader else { return }
-        
-        // set current page
-        self.currentPage = reader.currentPage
-        
-        // set current chapter
-        if let anyChapter = reader.currentChapter,
-           let chapter: DataSource.Chapter = anyChapter.asChapter() {
-            self.currentChapter = chapter
-        }
-        
-        // set total pages - this is the key fix
-        self.totalPages = reader.currentChapterPageCount
-        
-        // if total pages is still 0, wait a bit and try again
-        if self.totalPages == 0 {
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-                self.totalPages = reader.currentChapterPageCount
-            }
-        }
     }
     
     private func setupBindings() {
         guard let reader = reader, dataSource != nil else { return }
         
-        // bind page changes
         reader.onPageChange = { [weak self] page, anyChapter in
             guard let self = self else { return }
             Task { @MainActor in
                 if let chapter: DataSource.Chapter = anyChapter.asChapter() {
                     self.currentPage = page
                     self.currentChapter = chapter
-                    
-                    // always update total pages when page changes
                     self.totalPages = reader.currentChapterPageCount
+                    
+                    // if we have pages and were loading, mark as loaded
+                    if self.totalPages > 0 {
+                        self.isLoadingInitial = false
+                        self.isLoadingChapter = false
+                    }
                 }
             }
         }
         
-        // bind chapter changes
         reader.onChapterChange = { [weak self] anyChapter in
             guard let self = self else { return }
             Task { @MainActor in
                 if let chapter: DataSource.Chapter = anyChapter.asChapter() {
                     self.currentChapter = chapter
                     self.totalPages = reader.currentChapterPageCount
+                    
+                    // if we have pages, mark as loaded
+                    if self.totalPages > 0 {
+                        self.isLoadingInitial = false
+                        self.isLoadingChapter = false
+                        
+                        // clear any previous errors
+                        if self.error != nil {
+                            self.error = nil
+                        }
+                    }
                 }
             }
         }
         
-        // bind scroll state
         reader.onScrollStateChange = { [weak self] scrolling in
             guard let self = self else { return }
             Task { @MainActor in
@@ -141,11 +148,56 @@ public final class ReaderCoordinator<DataSource: ReaderDataSource> {
             }
         }
         
-        // bind errors
         reader.onError = { [weak self] error in
             guard let self = self else { return }
             Task { @MainActor in
-                self.onError?(error)
+                // determine if this is initial or subsequent chapter error
+                if self.isLoadingInitial {
+                    self.error = .initialChapterFailed(error)
+                    self.isLoadingInitial = false
+                } else if self.isLoadingChapter {
+                    if let chapter = self.currentChapter {
+                        self.error = .subsequentChapterFailed(chapterId: ChapterID(chapter.id), error)
+                    } else {
+                        self.error = .initialChapterFailed(error)
+                    }
+                    self.isLoadingChapter = false
+                } else {
+                    // error during normal operation
+                    if let chapter = self.currentChapter {
+                        self.error = .subsequentChapterFailed(chapterId: ChapterID(chapter.id), error)
+                    } else {
+                        self.error = .initialChapterFailed(error)
+                    }
+                }
+            }
+        }
+        
+        // add callback for when chapter loading completes successfully
+        reader.onChapterLoadComplete = { [weak self] chapterId, pageCount in
+            guard let self = self else { return }
+            Task { @MainActor in
+                // check if this is for the current chapter
+                if let currentChapter = self.currentChapter,
+                   ChapterID(currentChapter.id) == chapterId {
+                    
+                    if pageCount == 0 {
+                        // chapter loaded but has no pages
+                        self.error = .emptyPages(chapterId: chapterId)
+                        self.isLoadingInitial = false
+                        self.isLoadingChapter = false
+                    } else {
+                        // chapter loaded successfully
+                        self.totalPages = pageCount
+                        self.isLoadingInitial = false
+                        self.isLoadingChapter = false
+                        
+                        // clear any previous errors
+                        if self.error != nil {
+                            self.error = nil
+                        }
+                    }
+                }
             }
         }
     }

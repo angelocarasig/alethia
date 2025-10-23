@@ -14,14 +14,23 @@ import Reader
 @Observable
 final class ReaderViewModel {
     private(set) var chapters: [Chapter]
-    private(set) var currentChapter: Chapter?
     private(set) var readingMode: ReadingMode
     
     private(set) var coordinator: ReaderCoordinator<AlethiaReaderDataSource>?
     private(set) var dataSource: AlethiaReaderDataSource
     
+    private let _startingChapterId: Int64
+    
+    // track last navigation direction for loading indicators
+    private(set) var lastNavigationDirection: ReaderScreen.NavigationDirection?
+    
+    // computed properties that delegate to coordinator
+    var currentChapter: Chapter? {
+        coordinator?.currentChapter
+    }
+    
     var startingChapterId: Int64 {
-        currentChapter?.id ?? chapters.first?.id ?? 0
+        _startingChapterId
     }
     
     var totalChapters: Int {
@@ -29,32 +38,47 @@ final class ReaderViewModel {
     }
     
     var hasPreviousChapter: Bool {
-        guard let current = currentChapter else { return false }
-        return chapters.first?.id != current.id
+        coordinator?.canGoToPreviousChapter ?? false
     }
     
     var hasNextChapter: Bool {
-        guard let current = currentChapter else { return false }
-        return chapters.last?.id != current.id
+        coordinator?.canGoToNextChapter ?? false
     }
     
-    init(chapters: [Chapter], startingChapterSlug: String) {
+    var isReady: Bool {
+        coordinator?.isReady ?? false
+    }
+    
+    var isLoadingInitial: Bool {
+        coordinator?.isLoadingInitial ?? true
+    }
+    
+    var isLoadingChapter: Bool {
+        coordinator?.isLoadingChapter ?? false
+    }
+    
+    var error: ReaderError? {
+        coordinator?.error
+    }
+    
+    init(chapters: [Chapter], startingChapter: Chapter, orientation: Orientation) {
+        precondition(chapters.contains(where: { $0.id == startingChapter.id }),
+                     "starting chapter must exist in chapters array")
+        
         self.chapters = chapters
-        self.currentChapter = chapters.first(where: { $0.slug == startingChapterSlug })
+        self._startingChapterId = startingChapter.id
+        self.readingMode = Self.mapOrientation(orientation)
         
-        // map domain orientation to reading mode
-        // TODO: Pass in manga orientation
-        self.readingMode = Self.mapOrientation(.leftToRight)
-        
-        // initialize data source
         self.dataSource = AlethiaReaderDataSource(
             chapters: chapters,
             getChapterContentsUseCase: Injector.makeGetChapterContentsUseCase()
         )
+        
+        self.coordinator = ReaderCoordinator<AlethiaReaderDataSource>()
     }
     
     func setupCoordinator() {
-        coordinator = ReaderCoordinator<AlethiaReaderDataSource>()
+        // coordinator already initialized in init
     }
     
     func updateReadingMode(_ mode: ReadingMode) {
@@ -62,28 +86,27 @@ final class ReaderViewModel {
     }
     
     func previousChapter() {
-        guard let current = currentChapter,
-              let currentIndex = chapters.firstIndex(where: { $0.id == current.id }),
-              currentIndex > 0 else { return }
-        
-        let previous = chapters[currentIndex - 1]
-        currentChapter = previous
-        coordinator?.jumpToChapter(previous.id, animated: true)
+        lastNavigationDirection = .previous
+        coordinator?.previousChapter()
     }
     
     func nextChapter() {
-        guard let current = currentChapter,
-              let currentIndex = chapters.firstIndex(where: { $0.id == current.id }),
-              currentIndex < chapters.count - 1 else { return }
-        
-        let next = chapters[currentIndex + 1]
-        currentChapter = next
-        coordinator?.jumpToChapter(next.id, animated: true)
+        lastNavigationDirection = .next
+        coordinator?.nextChapter()
     }
     
     func jumpToPage(_ page: Int) {
         guard let chapter = currentChapter else { return }
         coordinator?.jumpToPage(page, in: chapter.id, animated: false)
+    }
+    
+    func retry() {
+        lastNavigationDirection = nil
+        coordinator?.retry()
+    }
+    
+    func clearError() {
+        coordinator?.clearError()
     }
     
     private static func mapOrientation(_ orientation: Orientation) -> ReadingMode {

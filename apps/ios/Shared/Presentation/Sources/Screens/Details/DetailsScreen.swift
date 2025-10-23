@@ -83,7 +83,7 @@ struct DetailsScreen: View {
                                 Divider()
                             }
                             
-                            ChaptersSummaryView(chapters: manga.chapters, sources: manga.origins.count)
+                            ChaptersSummaryView(chapters: manga.chapters, sources: manga.origins.count, orientation: manga.orientation)
                         }
                         .padding(.horizontal, dimensions.padding.regular)
                         .background(BackgroundGradientView())

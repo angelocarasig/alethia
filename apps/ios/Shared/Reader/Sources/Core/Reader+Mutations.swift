@@ -29,6 +29,25 @@ extension Reader {
         do {
             let imageURLs = try await chapterManager.fetchChapter(for: chapterId)
             
+            // notify completion with page count
+            await MainActor.run {
+                onChapterLoadComplete?(chapterId, imageURLs.count)
+            }
+            
+            // check if we got pages
+            guard !imageURLs.isEmpty else {
+                // empty chapter - error already sent via completion callback
+                switch position {
+                case .previous:
+                    await chapterManager.finishLoadingPrevious()
+                case .next:
+                    await chapterManager.finishLoadingNext()
+                case .initial:
+                    break
+                }
+                return
+            }
+            
             await preloadImageSizes(for: imageURLs)
             
             _ = await MainActor.run {
