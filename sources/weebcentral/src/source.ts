@@ -42,6 +42,11 @@ export default class WeebCentralSource extends Adapter<
     status: 'status',
   } as const satisfies MappingFor<typeof SUPPORTED_FILTERS, string>;
 
+  // precompiled regexes to reduce per-call allocations
+  private static readonly RE_SERIES_SLUG = /\/series\/([^/]+)/;
+  private static readonly RE_CHAPTER_SLUG = /\/chapters\/([^/]+)/;
+  private static readonly RE_CHAPTER_NUM = /Chapter\s+([\d.]+)/i;
+
   private static readonly API_DEFAULTS = {
     official: 'Any',
     anime: 'Any',
@@ -62,7 +67,10 @@ export default class WeebCentralSource extends Adapter<
     super(source);
   }
 
-  protected async performAuthentication(_: AuthRequest): Promise<AuthResponse> {
+  protected async performAuthentication(
+    _credentials: AuthRequest,
+  ): Promise<AuthResponse> {
+    void _credentials;
     return {
       success: true,
       headers: {},
@@ -131,60 +139,45 @@ export default class WeebCentralSource extends Adapter<
     const $ = cheerio.load(html);
     const entries: Entry[] = [];
 
-    $('article.bg-base-300.flex.gap-4.p-4').each((_, element) => {
-      const $element = $(element);
+    const cards = $('article.bg-base-300.flex.gap-4.p-4').toArray();
+    for (const el of cards) {
+      const $el = $(el);
 
-      const link = $element.find('a[href*="/series/"]').first();
+      const link = $el.find('a[href*="/series/"]').first();
       const href = link.attr('href');
-      if (!href) return;
+      if (!href) continue;
 
-      const slugMatch = href.match(/\/series\/([^/]+)/);
-      if (!slugMatch) return;
-      const slug = slugMatch[1];
+      const m = href.match(WeebCentralSource.RE_SERIES_SLUG);
+      if (!m) continue;
+      const slug = m[1]!;
 
-      const title = $element
+      const titleEl = $el
         .find('.text-ellipsis.truncate.text-white.text-center.text-lg.z-20')
-        .first()
-        .text()
-        .trim();
+        .first();
+      const title = titleEl.text().trim();
+      if (!title) continue;
 
-      if (!title) return;
+      const picture = $el.find('picture').first();
+      const cover =
+        picture.find('source[media="(min-width: 768px)"]').attr('srcset') ||
+        picture.find('source').first().attr('srcset') ||
+        picture.find('img').attr('src') ||
+        null;
 
-      const picture = $element.find('picture').first();
-      let cover: string | null = null;
-
-      picture.find('source').each((_, source) => {
-        const srcset = $(source).attr('srcset');
-        const media = $(source).attr('media');
-
-        if (srcset && media === '(min-width: 768px)') {
-          cover = srcset;
-          return false;
-        }
-      });
-
-      if (!cover) {
-        cover =
-          picture.find('source').first().attr('srcset') ||
-          picture.find('img').attr('src') ||
-          null;
-      }
-
-      if (slug && title) {
-        entries.push(
-          EntrySchema.parse({
-            slug,
-            title,
-            cover,
-          }),
-        );
-      }
-    });
+      entries.push(
+        EntrySchema.parse({
+          slug,
+          title,
+          cover,
+        }),
+      );
+    }
 
     const limit = Number(params.get('limit') || 32);
     const offset = Number(params.get('offset') || 0);
     const currentPage = Math.floor(offset / limit) + 1;
-    const hasMore = $('span:contains("View More Results")').length > 0;
+    // cheaper than a DOM query for a single text occurrence
+    const hasMore = html.includes('View More Results');
 
     return {
       results: entries,
@@ -215,49 +208,57 @@ export default class WeebCentralSource extends Adapter<
     const $ = cheerio.load(html);
 
     const title = $('h1').first().text().trim();
-    const metadataList = $('ul.flex.flex-col.gap-4').first();
-    const descriptionList = $('ul.flex.flex-col.gap-4').eq(1);
+
+    // grab the two lists once
+    const lists = $('ul.flex.flex-col.gap-4');
+    const metadataList = lists.eq(0);
+    const descriptionList = lists.eq(1);
 
     const authors: string[] = [];
-    metadataList.find('li:contains("Author(s):") a').each((_, el) => {
-      authors.push($(el).text().trim());
-    });
-
     const tags: string[] = [];
-    metadataList.find('li:contains("Tags(s):") a').each((_, el) => {
-      tags.push($(el).text().trim());
+    let statusText = '';
+    let year = '';
+    let adultContent = '';
+    let alternativeTitles: string[] = [];
+    let synopsis = '';
+
+    // single pass over metadata li elements
+    metadataList.children('li').each((_, li) => {
+      const $li = $(li);
+      const label = $li.find('strong').first().text().trim().replace(/:$/, '');
+      const key = label.toLowerCase();
+      if (key.startsWith('author')) {
+        $li.find('a').each((__, a) => {
+          authors.push($(a).text().trim());
+        });
+      } else if (key.startsWith('tags')) {
+        $li.find('a').each((__, a) => {
+          tags.push($(a).text().trim());
+        });
+      } else if (key.startsWith('status')) {
+        statusText = $li.find('a').first().text().trim();
+      } else if (key.startsWith('released')) {
+        year = $li.find('span').first().text().trim();
+      } else if (key.startsWith('adult content')) {
+        adultContent = $li.find('a').first().text().trim();
+      }
     });
 
-    const altTitlesSet = new Set<string>();
-    descriptionList
-      .find('li:has(strong:contains("Associated Name")) ul.list-disc li')
-      .each((_, el) => {
-        const altTitle = $(el).text().trim();
-        if (altTitle && altTitle.toLowerCase() !== title.toLowerCase()) {
-          altTitlesSet.add(altTitle);
-        }
-      });
-    const alternativeTitles = Array.from(altTitlesSet);
-
-    const statusText = metadataList
-      .find('li:contains("Status:") a')
-      .text()
-      .trim();
-
-    const year = metadataList
-      .find('li:contains("Released:") span')
-      .text()
-      .trim();
-
-    const adultContent = metadataList
-      .find('li:contains("Adult Content:") a')
-      .text()
-      .trim();
-
-    const synopsis = descriptionList
-      .find('li:has(strong:contains("Description")) p')
-      .text()
-      .trim();
+    // single pass over description li elements
+    descriptionList.children('li').each((_, li) => {
+      const $li = $(li);
+      const label = $li.find('strong').first().text().trim();
+      const key = label.toLowerCase();
+      if (key.includes('associated name')) {
+        alternativeTitles = $li
+          .find('ul.list-disc li')
+          .map((__, el) => $(el).text().trim())
+          .get()
+          .filter((t) => t && t.toLowerCase() !== title.toLowerCase());
+      } else if (key.includes('description')) {
+        synopsis = $li.find('p').text().trim();
+      }
+    });
 
     const coverSection = $('section.flex.items-center.justify-center picture');
     const coverUrl =
@@ -324,27 +325,21 @@ export default class WeebCentralSource extends Adapter<
     const $ = cheerio.load(html);
     const chapters: Chapter[] = [];
 
-    $('div.flex.items-center').each((_, element) => {
-      const $element = $(element);
-
-      const link = $element.find('a[href*="/chapters/"]').first();
+    const chapterRows = $('#chapter-list div.flex.items-center').toArray();
+    for (const row of chapterRows) {
+      const $row = $(row);
+      const link = $row.find('a[href*="/chapters/"]').first();
       const href = link.attr('href');
-      if (!href) return;
+      if (!href) continue;
 
-      const slugMatch = href.match(/\/chapters\/([^/]+)/);
-      if (!slugMatch) return;
-      const slug = slugMatch[1];
+      const m = href.match(WeebCentralSource.RE_CHAPTER_SLUG);
+      if (!m) continue;
+      const slug = m[1]!;
 
-      // extract chapter text and parse number
-      const chapterText = link
-        .find('span:contains("Chapter")')
-        .first()
-        .text()
-        .trim();
-      const numberMatch = chapterText.match(/Chapter\s+([\d.]+)/i);
-      const number = numberMatch ? parseFloat(numberMatch[1]!) : 0;
+      const chapterText = link.find('span').first().text().trim();
+      const n = chapterText.match(WeebCentralSource.RE_CHAPTER_NUM);
+      const number = n ? parseFloat(n[1]!) : 0;
 
-      // extract date and remove milliseconds
       const datetime = link.find('time').attr('datetime');
       const date = datetime
         ? datetime.split('.')[0] + 'Z'
@@ -353,7 +348,7 @@ export default class WeebCentralSource extends Adapter<
       chapters.push(
         ChapterSchema.parse({
           slug,
-          title: `Chapter ${number}`,
+          title: number ? `Chapter ${number}` : chapterText || undefined,
           number,
           scanlator: 'WeebCentral',
           language: 'en',
@@ -361,7 +356,7 @@ export default class WeebCentralSource extends Adapter<
           date,
         }),
       );
-    });
+    }
 
     return chapters;
   }
@@ -388,7 +383,7 @@ export default class WeebCentralSource extends Adapter<
 
     const $ = cheerio.load(await response.text());
 
-    return $('section.flex-1.flex.flex-col.pb-4.cursor-pointer img')
+    return $('section img[src]')
       .map((_, el) => $(el).attr('src')!)
       .get();
   }
