@@ -5,6 +5,7 @@ import {
   SearchRequest,
   SearchResponse,
   Source,
+  MappingFor,
 } from '@repo/contracts';
 
 import {
@@ -19,21 +20,27 @@ import {
 } from '@repo/schema';
 
 import * as cheerio from 'cheerio';
+import { SUPPORTED_FILTERS, SUPPORTED_SORTS } from './config';
 
-export default class WeebCentralSource extends Adapter {
-  private static readonly API_SORT_MAPPING = {
+export default class WeebCentralSource extends Adapter<
+  typeof SUPPORTED_SORTS,
+  typeof SUPPORTED_FILTERS,
+  MappingFor<typeof SUPPORTED_SORTS, string>,
+  MappingFor<typeof SUPPORTED_FILTERS, string>
+> {
+  protected readonly sortMap = {
     title: 'Alphabet',
     popularity: 'Popularity',
     follows: 'Subscribers',
     createdAt: 'Recently Added',
     updatedAt: 'Latest Updates',
     relevance: 'Best Match',
-  } as const;
+  } as const satisfies MappingFor<typeof SUPPORTED_SORTS, string>;
 
-  private static readonly API_FILTER_MAPPING = {
+  protected readonly filterMap = {
     includeTag: 'included_tag',
     status: 'status',
-  } as const;
+  } as const satisfies MappingFor<typeof SUPPORTED_FILTERS, string>;
 
   private static readonly API_DEFAULTS = {
     official: 'Any',
@@ -77,9 +84,8 @@ export default class WeebCentralSource extends Adapter {
     params.append('offset', String(offset));
 
     const sortValue =
-      WeebCentralSource.API_SORT_MAPPING[
-        request.sort as keyof typeof WeebCentralSource.API_SORT_MAPPING
-      ] || WeebCentralSource.API_SORT_MAPPING.relevance;
+      this.sortMap[request.sort as keyof typeof this.sortMap] ||
+      this.sortMap.relevance;
     params.append('sort', sortValue);
     params.append(
       'order',
@@ -92,10 +98,7 @@ export default class WeebCentralSource extends Adapter {
 
     const filters = request.filters || {};
     Object.entries(filters).forEach(([key, value]) => {
-      const apiParam =
-        WeebCentralSource.API_FILTER_MAPPING[
-          key as keyof typeof WeebCentralSource.API_FILTER_MAPPING
-        ];
+      const apiParam = this.filterMap[key as keyof typeof this.filterMap];
 
       if (!apiParam) return;
 
@@ -135,7 +138,7 @@ export default class WeebCentralSource extends Adapter {
       const href = link.attr('href');
       if (!href) return;
 
-      const slugMatch = href.match(/\/series\/([^\/]+)/);
+      const slugMatch = href.match(/\/series\/([^/]+)/);
       if (!slugMatch) return;
       const slug = slugMatch[1];
 
@@ -328,7 +331,7 @@ export default class WeebCentralSource extends Adapter {
       const href = link.attr('href');
       if (!href) return;
 
-      const slugMatch = href.match(/\/chapters\/([^\/]+)/);
+      const slugMatch = href.match(/\/chapters\/([^/]+)/);
       if (!slugMatch) return;
       const slug = slugMatch[1];
 

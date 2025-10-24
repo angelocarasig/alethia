@@ -5,6 +5,7 @@ import {
   AuthResponse,
   SearchRequest,
   SearchResponse,
+  MappingFor,
 } from '@repo/contracts';
 
 import {
@@ -23,6 +24,8 @@ import {
   CDN_ENDPOINTS,
   IMAGE_QUALITY,
   CONTENT_FILTERS,
+  SUPPORTED_FILTERS,
+  SUPPORTED_SORTS,
 } from './config';
 
 import {
@@ -39,7 +42,6 @@ import {
   ContentRating,
   MangaStatus,
   LocalizedString,
-  MangadexCollectionResponse,
   MangadexEntityResponse,
   ChapterFeedResponse,
   AtHomeServerResponse,
@@ -47,17 +49,23 @@ import {
   CoverCollectionResponse,
 } from './types';
 
-export default class MangaDexSource extends Adapter {
-  private static readonly API_SORT_MAPPING = {
+export default class MangaDexSource extends Adapter<
+  typeof SUPPORTED_SORTS,
+  typeof SUPPORTED_FILTERS,
+  MappingFor<typeof SUPPORTED_SORTS, string>,
+  MappingFor<typeof SUPPORTED_FILTERS, string>
+> {
+  protected readonly sortMap = {
     title: 'title',
     year: 'year',
     createdAt: 'createdAt',
     updatedAt: 'latestUploadedChapter',
     popularity: 'followedCount',
     rating: 'rating',
-  } as const;
+    relevance: 'relevance',
+  } as const satisfies MappingFor<typeof SUPPORTED_SORTS, string>;
 
-  private static readonly API_FILTER_MAPPING = {
+  protected readonly filterMap = {
     year: 'year',
     includeTag: 'includedTags[]',
     excludeTag: 'excludedTags[]',
@@ -65,7 +73,7 @@ export default class MangaDexSource extends Adapter {
     originalLanguage: 'originalLanguage[]',
     translatedLanguage: 'availableTranslatedLanguage[]',
     contentRating: 'contentRating[]',
-  } as const;
+  } as const satisfies MappingFor<typeof SUPPORTED_FILTERS, string>;
 
   private static readonly PREFERRED_TITLE_LANGUAGES = [
     'en',
@@ -113,9 +121,7 @@ export default class MangaDexSource extends Adapter {
 
     if (request.sort !== 'relevance') {
       const apiSortField =
-        MangaDexSource.API_SORT_MAPPING[
-          request.sort as keyof typeof MangaDexSource.API_SORT_MAPPING
-        ];
+        this.sortMap[request.sort as keyof typeof this.sortMap];
       if (apiSortField) {
         params.append(`order[${apiSortField}]`, request.direction);
       }
@@ -123,10 +129,7 @@ export default class MangaDexSource extends Adapter {
 
     const filters = request.filters || {};
     Object.entries(filters).forEach(([key, value]) => {
-      const apiParam =
-        MangaDexSource.API_FILTER_MAPPING[
-          key as keyof typeof MangaDexSource.API_FILTER_MAPPING
-        ];
+      const apiParam = this.filterMap[key as keyof typeof this.filterMap];
 
       if (!apiParam) return;
 
@@ -285,7 +288,9 @@ export default class MangaDexSource extends Adapter {
         ENDPOINTS.feed(mangaSlug),
         { params, headers },
       );
-      const feedResponse = ChapterFeedResponseSchema.parse(response.data);
+      const feedResponse = ChapterFeedResponseSchema.parse(
+        response.data,
+      ) as ChapterFeedResponse;
 
       const validChapters = feedResponse.data
         .filter((chapter) => chapter.attributes.pages > 0)

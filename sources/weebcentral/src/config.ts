@@ -219,6 +219,17 @@ export const TAGS: Tag[] = [
   },
 ];
 
+export const SUPPORTED_SORTS = [
+  'title',
+  'popularity',
+  'follows',
+  'createdAt',
+  'updatedAt',
+  'relevance',
+] as const;
+
+export const SUPPORTED_FILTERS = ['includeTag', 'status'] as const;
+
 export const config: Source = {
   name: 'WeebCentral',
   slug: 'weebcentral',
@@ -233,8 +244,8 @@ export const config: Source = {
   },
   search: {
     // must update any fields inside of the source mappings if changed here
-    sort: ['title', 'popularity', 'follows', 'createdAt', 'updatedAt'],
-    filters: ['includeTag', 'status'],
+    sort: [...SUPPORTED_SORTS],
+    filters: [...SUPPORTED_FILTERS],
     tags: [...SERIES_TYPES, ...TAGS],
   },
   presets: [...PRESETS],

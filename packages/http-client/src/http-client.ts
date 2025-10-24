@@ -59,12 +59,20 @@ export class HTTPClient implements HttpClient {
       url = `${url}?${params.toString()}`;
     }
 
-    // retry logic
+    const startTime = Date.now();
     let lastError: HttpError | Error | undefined;
+
+    console.log(`[http-client] ${method} ${url}`);
+    console.log('[http-client] request config:', { config });
 
     for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
       try {
-        // create abort controller for timeout
+        if (attempt > 0) {
+          console.log(
+            `[http-client] retry attempt ${attempt} for ${method} ${url}`,
+          );
+        }
+
         const controller = new AbortController();
         const timeoutId = config.timeout
           ? setTimeout(() => controller.abort(), config.timeout)
@@ -79,9 +87,14 @@ export class HTTPClient implements HttpClient {
 
         if (timeoutId) clearTimeout(timeoutId);
 
+        const duration = Date.now() - startTime;
         const data = await response.json().catch(() => null);
 
         if (!response.ok) {
+          console.error(
+            `[http-client] ${method} ${url} failed with status ${response.status} (${duration}ms)`,
+          );
+
           const error = new HttpError(
             `HTTP ${response.status}: ${response.statusText}`,
             response.status,
@@ -94,16 +107,25 @@ export class HTTPClient implements HttpClient {
             attempt < RETRY_CONFIG.maxRetries &&
             RETRY_CONFIG.retryableStatuses.includes(response.status)
           ) {
-            lastError = error;
-            await this.delay(
+            const retryDelay =
               RETRY_CONFIG.retryDelay *
-                Math.pow(RETRY_CONFIG.retryMultiplier, attempt),
+              Math.pow(RETRY_CONFIG.retryMultiplier, attempt);
+
+            console.log(
+              `[http-client] status ${response.status} is retryable, waiting ${retryDelay}ms before retry`,
             );
+
+            lastError = error;
+            await this.delay(retryDelay);
             continue;
           }
 
           throw error;
         }
+
+        console.log(
+          `[http-client] ${method} ${url} completed with status ${response.status} (${duration}ms)`,
+        );
 
         return {
           data: data as T,
@@ -112,24 +134,45 @@ export class HTTPClient implements HttpClient {
           headers: response.headers,
         };
       } catch (error) {
+        const duration = Date.now() - startTime;
+
         // handle timeout/network errors
         if (error instanceof Error && error.name === 'AbortError') {
-          lastError = new HttpError('Request timeout', 408, 'Request Timeout');
+          console.error(
+            `[http-client] ${method} ${url} timed out after ${duration}ms`,
+          );
+          lastError = new HttpError('request timeout', 408, 'request timeout');
+        } else if (error instanceof HttpError) {
+          // already logged above
+          lastError = error;
         } else {
+          console.error(
+            `[http-client] ${method} ${url} failed with error:`,
+            error,
+          );
           lastError = error as Error;
         }
 
         if (attempt < RETRY_CONFIG.maxRetries) {
-          await this.delay(
+          const retryDelay =
             RETRY_CONFIG.retryDelay *
-              Math.pow(RETRY_CONFIG.retryMultiplier, attempt),
+            Math.pow(RETRY_CONFIG.retryMultiplier, attempt);
+
+          console.log(
+            `[http-client] retrying after ${retryDelay}ms (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries})`,
           );
+
+          await this.delay(retryDelay);
           continue;
         }
+
+        console.error(
+          `[http-client] ${method} ${url} failed after ${RETRY_CONFIG.maxRetries + 1} attempts (${duration}ms)`,
+        );
       }
     }
 
-    throw lastError || new Error('Request failed');
+    throw lastError || new Error('request failed');
   }
 
   private delay(ms: number): Promise<void> {

@@ -155,3 +155,11 @@ export const HostSchema = z.object({
 });
 
 export type Host = z.infer<typeof HostSchema>;
+
+/**
+ * Helper type to define a mapping object whose keys must exactly match
+ * the elements of a readonly tuple of strings (e.g., supported sorts/filters).
+ */
+export type MappingFor<Keys extends readonly string[], V> = {
+  [K in Keys[number]]: V;
+};

@@ -7,6 +7,7 @@ import {
   SearchResponse,
 } from '../api';
 import { Source } from './types';
+import { FilterOption, SortOption } from '@repo/schema';
 import { HTTPClient } from '@repo/http-client';
 import { ILogger, Logger } from '@repo/logger';
 import { PERFORMANCE_THRESHOLDS } from '../util';
@@ -33,7 +34,12 @@ import { PERFORMANCE_THRESHOLDS } from '../util';
  *   // ... other abstract method implementations
  * }
  */
-export abstract class Adapter {
+export abstract class Adapter<
+  TSortKeys extends readonly SortOption[],
+  TFilterKeys extends readonly FilterOption[],
+  TSortMap extends Record<TSortKeys[number], string>,
+  TFilterMap extends Record<TFilterKeys[number], string>,
+> {
   /**
    * @protected
    * @type {Source}
@@ -42,6 +48,23 @@ export abstract class Adapter {
 
   protected httpClient: HTTPClient;
   protected logger: ILogger;
+  private mappingsValidated = false;
+
+  /**
+   * A mapping from supported SortOption keys to the source-specific sort value/field.
+   *
+   * Implementations must provide this mapping and it should align exactly with
+   * the configured supported sorts of the source (config.search.sort).
+   */
+  protected abstract readonly sortMap: TSortMap;
+
+  /**
+   * A mapping from supported FilterOption keys to the source-specific query parameter name.
+   *
+   * Implementations must provide this mapping and it should align exactly with
+   * the configured supported filters of the source (config.search.filters).
+   */
+  protected abstract readonly filterMap: TFilterMap;
 
   /**
    * Creates an instance of Adapter.
@@ -195,6 +218,11 @@ export abstract class Adapter {
     params: SearchRequest,
     headers?: Record<string, string>,
   ): Promise<SearchResponse> {
+    if (!this.mappingsValidated) {
+      this.validateMappingsAgainstConfig();
+      this.mappingsValidated = true;
+    }
+    this.validateSort(params);
     this.validateFilters(params);
     this.validateHeaders(headers);
 
@@ -338,6 +366,60 @@ export abstract class Adapter {
     if (!hasHeaders) {
       throw new Error(
         `Source '${this.source.name}' requires authentication but no headers were provided in the request.`,
+      );
+    }
+  }
+
+  /**
+   * Validates that the requested sort is supported by the source and has a mapping.
+   */
+  private validateSort(params: SearchRequest): void {
+    const supportedSorts = this.source.search.sort || [];
+    if (!supportedSorts.includes(params.sort)) {
+      throw new Error(
+        `Sort '${params.sort}' is not supported by '${this.source.name}'. Supported: ${supportedSorts.join(', ')}`,
+      );
+    }
+
+    const sortKeys = new Set<string>(Object.keys(this.sortMap));
+    if (!sortKeys.has(params.sort)) {
+      throw new Error(
+        `Sort mapping missing for '${params.sort}' in '${this.source.name}'. Ensure sortMap defines all configured sorts.`,
+      );
+    }
+  }
+
+  /**
+   * Validates that mapping keys exactly match the configured sorts and filters.
+   */
+  private validateMappingsAgainstConfig(): void {
+    const configuredSorts = this.source.search.sort || [];
+    const configuredFilters = this.source.search.filters || [];
+
+    const sortKeys = Object.keys(this.sortMap);
+    const filterKeys = Object.keys(this.filterMap);
+
+    const missingSorts = configuredSorts.filter((s) => !sortKeys.includes(s));
+    const extraSorts = sortKeys.filter(
+      (s) => !(configuredSorts as readonly string[]).includes(s),
+    );
+
+    const missingFilters = configuredFilters.filter(
+      (f) => !filterKeys.includes(f),
+    );
+    const extraFilters = filterKeys.filter(
+      (f) => !(configuredFilters as readonly string[]).includes(f),
+    );
+
+    if (missingSorts.length || extraSorts.length) {
+      throw new Error(
+        `Sort mapping mismatch for '${this.source.name}'. Missing: [${missingSorts.join(', ')}], Extra: [${extraSorts.join(', ')}]`,
+      );
+    }
+
+    if (missingFilters.length || extraFilters.length) {
+      throw new Error(
+        `Filter mapping mismatch for '${this.source.name}'. Missing: [${missingFilters.join(', ')}], Extra: [${extraFilters.join(', ')}]`,
       );
     }
   }

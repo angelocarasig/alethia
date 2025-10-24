@@ -186,6 +186,23 @@ export const config: Source = {
   presets: [...PRESETS],
 };
 
+export const SUPPORTED_SORTS = [
+  'rating',
+  'popularity',
+  'chapters',
+  'updatedAt',
+  'createdAt',
+  'title',
+] as const;
+
+export const SUPPORTED_FILTERS = [
+  'includeTag',
+  'excludeTag',
+  'status',
+  'originalLanguage',
+  'minChapters',
+] as const;
+
 export const ENDPOINTS = {
   search: 'https://mangapark.org/search',
   title: (slug: string) => `https://mangapark.org/title/${slug}`,

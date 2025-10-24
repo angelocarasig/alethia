@@ -5,6 +5,7 @@ import {
   SearchRequest,
   SearchResponse,
   Source,
+  MappingFor,
 } from '@repo/contracts';
 
 import {
@@ -19,26 +20,31 @@ import {
 } from '@repo/schema';
 
 import * as cheerio from 'cheerio';
-import { LANGUAGE_MAP, type MangaParkStatus } from './types';
-import { ENDPOINTS } from './config';
+import { type MangaParkStatus } from './types';
+import { ENDPOINTS, SUPPORTED_FILTERS, SUPPORTED_SORTS } from './config';
 
-export default class MangaParkSource extends Adapter {
-  private static readonly API_SORT_MAPPING = {
+export default class MangaParkSource extends Adapter<
+  typeof SUPPORTED_SORTS,
+  typeof SUPPORTED_FILTERS,
+  MappingFor<typeof SUPPORTED_SORTS, string>,
+  MappingFor<typeof SUPPORTED_FILTERS, string>
+> {
+  protected readonly sortMap = {
     rating: 'field_score',
     popularity: 'field_follows',
     chapters: 'field_chapter_count',
     updatedAt: 'field_uploaded',
     createdAt: 'field_created',
     title: 'field_name',
-  } as const;
+  } as const satisfies MappingFor<typeof SUPPORTED_SORTS, string>;
 
-  private static readonly API_FILTER_MAPPING = {
+  protected readonly filterMap = {
     includeTag: 'genres',
     excludeTag: 'genres_exclude',
     status: 'status',
     originalLanguage: 'orig',
     minChapters: 'chapters',
-  } as const;
+  } as const satisfies MappingFor<typeof SUPPORTED_FILTERS, string>;
 
   constructor(source: Source) {
     super(source);
@@ -77,10 +83,7 @@ export default class MangaParkSource extends Adapter {
     params.append('page', String(request.page));
 
     if (request.sort && request.sort !== 'relevance') {
-      const sortValue =
-        MangaParkSource.API_SORT_MAPPING[
-          request.sort as keyof typeof MangaParkSource.API_SORT_MAPPING
-        ];
+      const sortValue = this.sortMap[request.sort as keyof typeof this.sortMap];
       if (sortValue) {
         params.append('sortby', sortValue);
       }
@@ -88,10 +91,7 @@ export default class MangaParkSource extends Adapter {
 
     const filters = request.filters || {};
     Object.entries(filters).forEach(([key, value]) => {
-      const apiParam =
-        MangaParkSource.API_FILTER_MAPPING[
-          key as keyof typeof MangaParkSource.API_FILTER_MAPPING
-        ];
+      const apiParam = this.filterMap[key as keyof typeof this.filterMap];
 
       if (!apiParam) return;
 
@@ -147,7 +147,7 @@ export default class MangaParkSource extends Adapter {
       const href = link.attr('href');
       if (!href) return;
 
-      const slugMatch = href.match(/\/title\/([^\/]+)/);
+      const slugMatch = href.match(/\/title\/([^/]+)/);
       if (!slugMatch) return;
       const slug = slugMatch[1];
 
@@ -253,15 +253,7 @@ export default class MangaParkSource extends Adapter {
       }
     });
 
-    let originalLanguage = 'ja';
-    $('div').each((_, el) => {
-      const text = $(el).text();
-      if (text.includes('Tr From')) {
-        const langText = $(el).find('span').last().text().trim();
-        originalLanguage = LANGUAGE_MAP[langText] || 'ja';
-        return false;
-      }
-    });
+    // original language is not used in the output; skip parsing
 
     const synopsisParagraphs: string[] = [];
     const synopsisDiv = $('div.limit-html.prose').first();
@@ -324,7 +316,7 @@ export default class MangaParkSource extends Adapter {
       const href = link.attr('href');
       if (!href) return;
 
-      const slugMatch = href.match(/\/title\/[^\/]+\/([^\/]+)/);
+      const slugMatch = href.match(/\/title\/[^/]+\/([^/]+)/);
       if (!slugMatch) return;
       const slug = slugMatch[1];
 

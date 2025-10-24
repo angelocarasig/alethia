@@ -323,6 +323,26 @@ export const config: Source = {
   presets: [...PRESETS],
 } as const;
 
+export const SUPPORTED_SORTS = [
+  'title',
+  'year',
+  'createdAt',
+  'updatedAt',
+  'relevance',
+  'popularity',
+  'rating',
+] as const;
+
+export const SUPPORTED_FILTERS = [
+  'year',
+  'includeTag',
+  'excludeTag',
+  'status',
+  'originalLanguage',
+  'translatedLanguage',
+  'contentRating',
+] as const;
+
 export const ENDPOINTS = {
   manga: 'https://api.mangadex.org/manga',
   cover: 'https://api.mangadex.org/cover',
