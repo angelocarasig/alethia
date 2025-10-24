@@ -20,18 +20,30 @@ internal struct SourceRecord: Codable, DatabaseRecord {
     var name: String
     var icon: URL
     var url: URL
+    var languages: [LanguageCode]
     var pinned: Bool = false
     var disabled: Bool = false
     
     var authType: Domain.AuthType?
     
-    init(hostId: HostRecord.ID, slug: String, name: String, icon: URL, url: URL, pinned: Bool, disabled: Bool, authType: Domain.AuthType) {
+    init(
+        hostId: HostRecord.ID,
+        slug: String,
+        name: String,
+        icon: URL,
+        url: URL,
+        languages: [LanguageCode],
+        pinned: Bool,
+        disabled: Bool,
+        authType: Domain.AuthType
+    ) {
         self.id = nil
         self.hostId = hostId
         self.slug = slug
         self.name = name
         self.icon = icon
         self.url = url
+        self.languages = languages
         self.pinned = pinned
         self.disabled = disabled
         self.authType = authType
@@ -53,6 +65,7 @@ extension SourceRecord {
         static let name = Column(CodingKeys.name)
         static let icon = Column(CodingKeys.icon)
         static let url = Column(CodingKeys.url)
+        static let languages = Column(CodingKeys.languages)
         static let pinned = Column(CodingKeys.pinned)
         static let disabled = Column(CodingKeys.disabled)
         
@@ -69,7 +82,8 @@ extension SourceRecord {
             t.column(Columns.name.name, .text).notNull()
             t.column(Columns.icon.name, .text).notNull()
             t.column(Columns.url.name, .text).notNull()
-            
+            t.column(Columns.languages.name, .blob).notNull()
+                
             t.column(Columns.pinned.name, .boolean).notNull().defaults(to: false)
             t.column(Columns.disabled.name, .boolean).notNull().defaults(to: false)
             

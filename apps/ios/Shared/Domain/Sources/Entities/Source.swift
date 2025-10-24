@@ -37,6 +37,9 @@ public struct Source: Sendable {
     
     public let presets: [SearchPreset]
     
+    /// Languages that this source provides content in
+    public let languages: [LanguageCode]
+    
     public init(
         id: Int64,
         slug: String,
@@ -49,7 +52,8 @@ public struct Source: Sendable {
         host: String,
         auth: Auth,
         search: Search,
-        presets: [SearchPreset]
+        presets: [SearchPreset],
+        languages: [LanguageCode]
     ) {
         self.id = id
         self.slug = slug
@@ -63,5 +67,6 @@ public struct Source: Sendable {
         self.auth = auth
         self.search = search
         self.presets = presets
+        self.languages = languages
     }
 }

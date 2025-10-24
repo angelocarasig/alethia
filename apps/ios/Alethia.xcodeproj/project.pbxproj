@@ -17,6 +17,7 @@
 		84B223FA2E878D96004299EA /* Data */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Data; path = Shared/Data; sourceTree = "<group>"; };
 		84B224032E878E04004299EA /* Domain */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Domain; path = Shared/Domain; sourceTree = "<group>"; };
 		84B224042E878E12004299EA /* Presentation */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Presentation; path = Shared/Presentation; sourceTree = "<group>"; };
+		84CEAB5A2EA907FD00D089C0 /* Reader */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Reader; path = Shared/Reader; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -49,6 +50,7 @@
 		84B223DF2E87882A004299EA = {
 			isa = PBXGroup;
 			children = (
+				84CEAB5A2EA907FD00D089C0 /* Reader */,
 				841E2A8C2E90D5C800363795 /* Composition */,
 				8482D0D32E88C3670098F34F /* Core */,
 				84B223FA2E878D96004299EA /* Data */,

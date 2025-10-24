@@ -6,34 +6,39 @@
 //
 
 import SwiftUI
+import Domain
 
 struct ActionButtonsView: View {
+    @Environment(MangaDetailViewModel.self) private var vm
     @Environment(\.dimensions) private var dimensions
     @Environment(\.theme) private var theme
     
-    @State private var inLibrary: Bool = false
+    let manga: Manga
+    
     @State private var sourcePresent: Bool = false
-    @State private var addingToLibrary: Bool = false
     @State private var isAddingOrigin: Bool = false
     
     var body: some View {
         HStack(spacing: dimensions.spacing.regular) {
-            ActionButton(isActive: inLibrary) {
-                if inLibrary {
-                    // TODO: remove from library
+            ActionButton(isActive: manga.inLibrary) {
+                if manga.inLibrary {
+                    vm.removeFromLibrary(mangaId: manga.id)
                 } else {
-                    addingToLibrary = true
+                    vm.addToLibrary(mangaId: manga.id)
                 }
             } content: {
-                HStack {
-                    Image(systemName: inLibrary ? "heart.fill" : "plus")
-                    Text(inLibrary ? "In Library" : "Add to Library")
+                if vm.isAddingToLibrary || vm.isRemovingFromLibrary {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .tint(manga.inLibrary ? theme.colors.background : theme.colors.foreground)
+                } else {
+                    HStack {
+                        Image(systemName: manga.inLibrary ? "heart.fill" : "plus")
+                        Text(manga.inLibrary ? "In Library" : "Add to Library")
+                    }
                 }
             }
-            .sheet(isPresented: $addingToLibrary) {
-                // TODO: add to library sheet
-                Text("Add to Library")
-            }
+            .disabled(vm.isAddingToLibrary || vm.isRemovingFromLibrary)
             
             ActionButton(isActive: sourcePresent) {
                 // TODO: add origin
@@ -69,7 +74,9 @@ struct ActionButtonsView: View {
             }
         }
         .frame(height: 50)
-        .animation(.easeInOut(duration: 0.3), value: inLibrary)
+        .animation(.easeInOut(duration: 0.3), value: manga.inLibrary)
+        .animation(.easeInOut(duration: 0.3), value: vm.isAddingToLibrary)
+        .animation(.easeInOut(duration: 0.3), value: vm.isRemovingFromLibrary)
     }
     
     @ViewBuilder

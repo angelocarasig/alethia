@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct Manga: Sendable {
+public struct Manga: Sendable, Equatable {
     public let id: Int64
     
     // main metadata
@@ -85,5 +85,9 @@ public struct Manga: Sendable {
         self.orientation = orientation
         self.showAllChapters = showAllChapters
         self.showHalfChapters = showHalfChapters
+    }
+    
+    public static func == (lhs: Manga, rhs: Manga) -> Bool {
+        return lhs.id == rhs.id
     }
 }

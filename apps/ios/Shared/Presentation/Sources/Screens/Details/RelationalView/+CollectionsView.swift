@@ -146,6 +146,7 @@ extension CollectionsView {
                     id: 1,
                     name: "Currently Reading",
                     description: "Manga I'm actively following",
+                    count: 67,
                     createdAt: Calendar.current.date(byAdding: .year, value: -1, to: .now)!,
                     updatedAt: Calendar.current.date(byAdding: .month, value: -2, to: .now)!
                 ),
@@ -153,6 +154,7 @@ extension CollectionsView {
                     id: 2,
                     name: "Top Tier Isekai",
                     description: "The best isekai manga I've read",
+                    count: 67,
                     createdAt: Calendar.current.date(byAdding: .year, value: -1, to: .now)!,
                     updatedAt: Calendar.current.date(byAdding: .month, value: -2, to: .now)!
                 ),
@@ -160,6 +162,7 @@ extension CollectionsView {
                     id: 3,
                     name: "To Re-read",
                     description: "",
+                    count: 67,
                     createdAt: Calendar.current.date(byAdding: .year, value: -1, to: .now)!,
                     updatedAt: Calendar.current.date(byAdding: .month, value: -2, to: .now)!
                 ),
@@ -167,6 +170,7 @@ extension CollectionsView {
                     id: 4,
                     name: "Favorites",
                     description: "My all-time favorites",
+                    count: 67,
                     createdAt: Calendar.current.date(byAdding: .year, value: -1, to: .now)!,
                     updatedAt: Calendar.current.date(byAdding: .month, value: -2, to: .now)!
                 )

@@ -15,6 +15,7 @@ let package = Package(
         .package(path: "../Core"),
         .package(path: "../Domain"),
         .package(path: "../Composition"),
+        .package(path: "../Reader"),
         .package(url: "https://github.com/onevcat/Kingfisher.git", .upToNextMajor(from: "8.0.0")),
         .package(url: "https://github.com/tevelee/SwiftUI-Flow.git", from: "3.1.0")
     ],
@@ -24,9 +25,10 @@ let package = Package(
             dependencies: [
                 .product(name: "Core", package: "Core"),
                 .product(name: "Domain", package: "Domain"),
+                .product(name: "Reader", package: "Reader"),
                 .product(name: "Composition", package: "Composition"),
                 "Kingfisher",
-                .product(name: "Flow", package: "SwiftUI-Flow")
+                .product(name: "Flow", package: "SwiftUI-Flow"),
             ],
             path: "Sources"
         ),

@@ -5,7 +5,7 @@
 //  Created by Angelo Carasig on 5/10/2025.
 //
 
-public struct SearchRequestDTO: Codable {
+public struct SearchRequestDTO: Sendable, Codable {
     public let query: String
     public let page: Int
     public let limit: Int

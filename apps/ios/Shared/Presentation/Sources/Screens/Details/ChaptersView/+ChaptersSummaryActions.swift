@@ -61,13 +61,14 @@ extension ChaptersSummaryActions {
                 .font(.caption)
                 .fontWeight(.semibold)
         }
-        .foregroundColor(.white)
         .padding(.horizontal, dimensions.padding.screen)
         .padding(.vertical, dimensions.padding.regular)
         .frame(maxWidth: .infinity)
         .frame(height: height)
-        .background(Color.accentColor)
         .clipShape(.rect(cornerRadius: dimensions.cornerRadius.button))
+        .foregroundColor(theme.colors.accent)
+        .background(theme.colors.accent.opacity(0.1))
+        .cornerRadius(dimensions.cornerRadius.button)
         .tappable {
             // TODO: navigate to reader
         }

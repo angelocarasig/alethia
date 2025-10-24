@@ -1,6 +1,15 @@
 {
-  "originHash" : "3728a1b0141562dbf1bfed73992397ea505bfc6ab9880df5fef1060d000f67a6",
+  "originHash" : "eafdb7921cc7cc50321c7277f9e0cb254d8b2cdc96ae8dabd436a7068c843d7b",
   "pins" : [
+    {
+      "identity" : "chatlayout",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ekazaev/ChatLayout.git",
+      "state" : {
+        "revision" : "c1c358e4214f04009bb32da61b4f343c3533df30",
+        "version" : "2.3.1"
+      }
+    },
     {
       "identity" : "grdb.swift",
       "kind" : "remoteSourceControl",
@@ -35,6 +44,15 @@
       "state" : {
         "revision" : "d227f999b2894ab737ef5786d9b14d02d3e5362e",
         "version" : "3.1.1"
+      }
+    },
+    {
+      "identity" : "texture",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/angelocarasig/Texture.git",
+      "state" : {
+        "revision" : "716106690e3bfac90e18ab39f5f2c6e8018e34c9",
+        "version" : "3.2.0"
       }
     }
   ],

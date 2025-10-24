@@ -7,6 +7,7 @@
 
 import Foundation
 import Domain
+import GRDB
 
 public final class LibraryRepositoryImpl: LibraryRepository {
     private let local: LibraryLocalDataSource
@@ -15,20 +16,64 @@ public final class LibraryRepositoryImpl: LibraryRepository {
         self.local = LibraryLocalDataSourceImpl()
     }
     
+    // MARK: - Public Interface
+    
+    public func getCollections() -> AsyncStream<Result<[Collection], any Error>> {
+        AsyncStream { continuation in
+            let task = Task {
+                for await result in local.getLibraryCollections() {
+                    if Task.isCancelled { break }
+                    
+                    let mappedResult = self.handleCollectionsResult(result)
+                    continuation.yield(mappedResult)
+                }
+                continuation.finish()
+            }
+            
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+    
+    public func addMangaToLibrary(mangaId: Int64) async throws {
+        do {
+            try await local.addMangaToLibrary(mangaId: mangaId)
+        } catch let error as StorageError {
+            throw error.toDomainError()
+        } catch let dbError as DatabaseError {
+            throw RepositoryError.fromGRDB(dbError, context: "addMangaToLibrary").toDomainError()
+        } catch {
+            throw DataAccessError.storageFailure(
+                reason: "Failed to add manga to library",
+                underlying: error
+            )
+        }
+    }
+    
+    public func removeMangaFromLibrary(mangaId: Int64) async throws {
+        do {
+            try await local.removeMangaFromLibrary(mangaId: mangaId)
+        } catch let error as StorageError {
+            throw error.toDomainError()
+        } catch let dbError as DatabaseError {
+            throw RepositoryError.fromGRDB(dbError, context: "removeMangaFromLibrary").toDomainError()
+        } catch {
+            throw DataAccessError.storageFailure(
+                reason: "Failed to remove manga from library",
+                underlying: error
+            )
+        }
+    }
+    
     public func getLibraryManga(query: LibraryQuery) -> AsyncStream<Result<LibraryQueryResult, Error>> {
         AsyncStream { continuation in
             let task = Task {
                 for await result in local.getLibraryEntries(query: query) {
                     if Task.isCancelled { break }
                     
-                    switch result {
-                    case .success(let bundle):
-                        let queryResult = self.mapToQueryResult(bundle, query: query)
-                        continuation.yield(.success(queryResult))
-                        
-                    case .failure(let error):
-                        continuation.yield(.failure(error))
-                    }
+                    let mappedResult = self.handleLibraryEntriesResult(result, query: query)
+                    continuation.yield(mappedResult)
                 }
                 continuation.finish()
             }
@@ -41,24 +86,99 @@ public final class LibraryRepositoryImpl: LibraryRepository {
     
     public func findMatches(for raw: [Entry]) -> AsyncStream<Result<[Entry], Error>> {
         AsyncStream { continuation in
-            // TODO: Implement find matches logic
-            continuation.finish()
+            let task = Task {
+                for await result in local.findMatches(for: raw) {
+                    if Task.isCancelled { break }
+                    
+                    switch result {
+                    case .success(let enriched):
+                        continuation.yield(.success(enriched))
+                    case .failure(let error):
+                        continuation.yield(.failure(mapStorageError(error, context: "find matches")))
+                    }
+                }
+                continuation.finish()
+            }
+            
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+}
+
+// MARK: - Result Handling
+
+private extension LibraryRepositoryImpl {
+    func handleCollectionsResult(
+        _ result: Result<[(CollectionRecord, Int)], Error>
+    ) -> Result<[Collection], Error> {
+        switch result {
+        case .success(let collections):
+            do {
+                let mapped = try collections.map(mapToCollection)
+                return .success(mapped)
+            } catch let error as RepositoryError {
+                return .failure(error.toDomainError())
+            } catch {
+                return .failure(SystemError.mappingFailed(reason: "Failed to map collections"))
+            }
+            
+        case .failure(let error):
+            return .failure(mapStorageError(error, context: "fetch collections"))
         }
     }
     
-    // MARK: - Private Mapping Methods
-    
-    private func mapToQueryResult(_ bundle: LibraryDataBundle, query: LibraryQuery) -> LibraryQueryResult {
-        let entries = bundle.entries.compactMap { (manga, cover, unreadCount, primaryOrigin) in
-            mapToEntry(manga: manga, cover: cover, unreadCount: unreadCount, primaryOrigin: primaryOrigin)
+    func handleLibraryEntriesResult(
+        _ result: Result<LibraryDataBundle, Error>,
+        query: LibraryQuery
+    ) -> Result<LibraryQueryResult, Error> {
+        switch result {
+        case .success(let bundle):
+            let queryResult = mapToQueryResult(bundle, query: query)
+            return .success(queryResult)
+            
+        case .failure(let error):
+            return .failure(mapStorageError(error, context: "fetch library entries"))
+        }
+    }
+}
+
+// MARK: - Error Mapping
+
+private extension LibraryRepositoryImpl {
+    func mapStorageError(_ error: Error, context: String) -> DomainError {
+        if let dbError = error as? DatabaseError {
+            return RepositoryError.fromGRDB(dbError, context: context).toDomainError()
+        } else if let storageError = error as? StorageError {
+            return storageError.toDomainError()
+        } else {
+            return DataAccessError.storageFailure(
+                reason: "Failed to \(context)",
+                underlying: error
+            )
+        }
+    }
+}
+
+// MARK: - Query Result Mapping
+
+private extension LibraryRepositoryImpl {
+    func mapToQueryResult(_ bundle: LibraryDataBundle, query: LibraryQuery) -> LibraryQueryResult {
+        let entries = bundle.entries.compactMap { tuple in
+            mapToEntry(
+                manga: tuple.manga,
+                cover: tuple.cover,
+                unreadCount: tuple.unreadCount,
+                primaryOrigin: tuple.primaryOrigin
+            )
         }
         
-        // calculate next cursor if there are more items
-        let nextCursor: LibraryCursor? = bundle.hasMore ?
-            LibraryCursor(
-                afterId: entries.last.flatMap { entry in entry.mangaId },
-                limit: query.cursor?.limit ?? 50
-            ) : nil
+        let nextCursor = calculateNextCursor(
+            hasMore: bundle.hasMore,
+            entries: entries,
+            currentCursor: query.cursor
+        )
         
         return LibraryQueryResult(
             entries: entries,
@@ -68,7 +188,25 @@ public final class LibraryRepositoryImpl: LibraryRepository {
         )
     }
     
-    private func mapToEntry(
+    func calculateNextCursor(
+        hasMore: Bool,
+        entries: [Entry],
+        currentCursor: LibraryCursor?
+    ) -> LibraryCursor? {
+        guard hasMore else { return nil }
+        
+        let limit = currentCursor?.limit ?? 50
+        return LibraryCursor(
+            afterId: entries.last?.mangaId,
+            limit: limit
+        )
+    }
+}
+
+// MARK: - Entity Mapping
+
+private extension LibraryRepositoryImpl {
+    func mapToEntry(
         manga: MangaRecord,
         cover: CoverRecord,
         unreadCount: Int,
@@ -76,23 +214,30 @@ public final class LibraryRepositoryImpl: LibraryRepository {
     ) -> Entry? {
         guard let mangaId = manga.id else { return nil }
         
-        // use primary origin's slug
-        let slug = primaryOrigin.slug
-        
-        // use cover's remote path
-        let coverURL = cover.remotePath
-        
-        // get source id from primary origin
-        let sourceId = primaryOrigin.sourceId?.rawValue
-        
+        // as mangaId is not nil, match will be `exact`.
         return Entry(
             mangaId: mangaId.rawValue,
-            sourceId: sourceId,
-            slug: slug,
+            sourceId: primaryOrigin.sourceId?.rawValue,
+            slug: primaryOrigin.slug,
             title: manga.title,
-            cover: coverURL,
-            state: .fullMatch, // library entries are always full matches
+            cover: cover.remotePath,
+            state: .exactMatch,
             unread: unreadCount
+        )
+    }
+    
+    func mapToCollection(record: CollectionRecord, count: Int) throws -> Collection {
+        guard let recordId = record.id else {
+            throw RepositoryError.mappingFailed(reason: "Collection ID is nil")
+        }
+        
+        return Collection(
+            id: recordId.rawValue,
+            name: record.name,
+            description: record.description ?? "",
+            count: count,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt
         )
     }
 }

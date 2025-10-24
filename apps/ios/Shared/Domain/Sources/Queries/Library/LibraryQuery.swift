@@ -73,7 +73,7 @@ public enum LibrarySortField: String, CaseIterable, Sendable {
 
 public struct LibraryFilters: Sendable, Equatable {
     public let search: String?
-    public let collectionId: String?
+    public let collectionId: Int64?
     public let sourceIds: Set<Int64>
     public let statuses: Set<Status>
     public let classifications: Set<Classification>
@@ -84,7 +84,7 @@ public struct LibraryFilters: Sendable, Equatable {
     
     public init(
         search: String? = nil,
-        collectionId: String? = nil,
+        collectionId: Int64? = nil,
         sourceIds: Set<Int64> = [],
         statuses: Set<Status> = [],
         classifications: Set<Classification> = [],

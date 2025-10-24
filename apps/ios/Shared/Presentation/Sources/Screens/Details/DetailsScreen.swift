@@ -8,45 +8,6 @@
 import SwiftUI
 import Domain
 import Composition
-import Kingfisher
-
-fileprivate let BACKGROUND_GRADIENT_BREAKPOINT: CGFloat = 600
-
-@MainActor
-@Observable
-private final class MangaDetailViewModel {
-    @ObservationIgnored
-    private let getMangaDetailsUseCase: GetMangaDetailsUseCase
-    
-    private let entry: Entry
-    
-    private(set) var manga: [Manga] = []
-    private(set) var isLoading: Bool = false
-    private(set) var error: Error?
-    
-    init(entry: Entry) {
-        self.entry = entry
-        self.getMangaDetailsUseCase = Injector.makeGetMangaDetailsUseCase()
-    }
-    
-    func loadManga() {
-        Task {
-            isLoading = true
-            error = nil
-            
-            for await result in getMangaDetailsUseCase.execute(entry: entry) {
-                switch result {
-                case .success(let mangaList):
-                    manga = mangaList
-                    isLoading = false
-                case .failure(let err):
-                    error = err
-                    isLoading = false
-                }
-            }
-        }
-    }
-}
 
 struct DetailsScreen: View {
     @Environment(\.dimensions) private var dimensions
@@ -55,7 +16,6 @@ struct DetailsScreen: View {
     let entry: Entry
     
     @State private var vm: MangaDetailViewModel
-    @State private var showAllTags = false
     
     init(entry: Entry) {
         self.entry = entry
@@ -63,25 +23,83 @@ struct DetailsScreen: View {
     }
     
     var body: some View {
-        contentView
-            .task {
-                if vm.manga.isEmpty && !vm.isLoading {
-                    vm.loadManga()
+        Group {
+            switch vm.state {
+            case .loading:
+                LoadingView()
+                
+            case .error(let error):
+                ErrorView(error: error)
+                
+            case .disambiguation(let matches):
+                MangaDisambiguationView(
+                    matches: matches,
+                    onSelect: { manga in
+                        vm.selectManga(manga)
+                    },
+                    onCreateNew: {
+                        vm.createNewManga()
+                    }
+                )
+                
+            case .content(let manga):
+                ZStack {
+                    BackdropView(backdrop: manga.covers.firstOrDefault)
+                    
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: dimensions.spacing.screen) {
+                            Spacer().frame(height: 200)
+                            
+                            HeaderView(
+                                cover: manga.covers.firstOrDefault,
+                                title: manga.title,
+                                alternativeTitles: manga.alternativeTitles,
+                                authors: manga.authors,
+                                covers: manga.covers
+                            )
+                            
+                            ActionButtonsView(manga: manga)
+                            
+                            SynopsisView(synopsis: manga.synopsis)
+                            
+                            TagsView(tags: manga.tags)
+                            
+                            Divider()
+                            
+                            RelationalView(manga: manga)
+                            
+                            Divider()
+                            
+                            if let origin = manga.origins.first {
+                                MetadataView(
+                                    classification: origin.classification,
+                                    status: origin.status,
+                                    addedAt: manga.addedAt,
+                                    updatedAt: manga.updatedAt,
+                                    lastFetchedAt: manga.lastFetchedAt,
+                                    lastReadAt: manga.lastReadAt
+                                )
+                                
+                                Divider()
+                            }
+                            
+                            ChaptersSummaryView(chapters: manga.chapters, sources: manga.origins.count, orientation: manga.orientation)
+                        }
+                        .padding(.horizontal, dimensions.padding.regular)
+                        .background(BackgroundGradientView())
+                    }
                 }
+                
+            case .empty:
+                EmptyStateView()
             }
-    }
-    
-    @ViewBuilder
-    private var contentView: some View {
-        if vm.isLoading {
-            Spinner(size: .large)
-        } else if let error = vm.error {
-            ErrorView(error: error)
-        } else if let manga = vm.manga.first {
-            DetailContentView(manga: manga)
-        } else {
-            EmptyStateView()
         }
+        .task {
+            if case .loading = vm.state {
+                vm.loadManga()
+            }
+        }
+        .environment(vm)
     }
 }
 
@@ -89,13 +107,7 @@ struct DetailsScreen: View {
 extension DetailsScreen {
     @ViewBuilder
     private func LoadingView() -> some View {
-        ZStack {
-            theme.colors.background.ignoresSafeArea()
-            
-            ProgressView()
-                .progressViewStyle(.circular)
-                .scaleEffect(1.5)
-        }
+        DetailsLoadingView()
     }
 }
 
@@ -141,57 +153,3 @@ extension DetailsScreen {
         }
     }
 }
-
-// MARK: - Detail Content View
-extension DetailsScreen {
-    @ViewBuilder
-    private func DetailContentView(manga: Manga) -> some View {
-        ZStack {
-            BackdropView(backdrop: manga.covers.firstOrDefault)
-            
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: dimensions.spacing.screen) {
-                    Spacer().frame(height: 200)
-                    
-                    HeaderView(
-                        cover: manga.covers.firstOrDefault,
-                        title: manga.title,
-                        alternativeTitles: manga.alternativeTitles,
-                        authors: manga.authors,
-                        covers: manga.covers
-                    )
-                    
-                    ActionButtonsView()
-                    
-                    SynopsisView(synopsis: manga.synopsis)
-                    
-                    TagsView(tags: manga.tags)
-                    
-                    Divider()
-                    
-                    RelationalView(manga: manga)
-                    
-                    Divider()
-                    
-                    if let origin = manga.origins.first {
-                        MetadataView(
-                            classification: origin.classification,
-                            status: origin.status,
-                            addedAt: manga.addedAt,
-                            updatedAt: manga.updatedAt,
-                            lastFetchedAt: manga.lastFetchedAt,
-                            lastReadAt: manga.lastReadAt
-                        )
-                        
-                        Divider()
-                    }
-                    
-                    ChaptersSummaryView(chapters: manga.chapters, sources: manga.origins.count)
-                }
-                .padding(.horizontal, dimensions.padding.regular)
-                .background(BackgroundGradientView())
-            }
-        }
-    }
-}
-

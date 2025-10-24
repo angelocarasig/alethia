@@ -19,52 +19,74 @@ public final class HostRepositoryImpl: HostRepository {
     }
     
     public func validateHost(url: URL) async throws -> HostDTO {
-        let dto = try await remote.fetchManifest(from: url.trailingSlash(.remove))
-        
-        // check if already exists
-        if let (_, repositoryURL) = try await local.hostExists(with: dto.repository) {
-            throw RepositoryError.hostAlreadyExists(
-                id: HostRecord.ID(rawValue: 0), // temporary
-                url: repositoryURL
-            )
-        }
-        
-        // validate
-        guard !dto.name.isEmpty else {
-            throw RepositoryError.invalidManifest(reason: "Host name is empty")
-        }
-        
-        guard !dto.author.isEmpty else {
-            throw RepositoryError.invalidManifest(reason: "Host author is empty")
-        }
-        
-        guard !dto.sources.isEmpty else {
-            throw RepositoryError.invalidManifest(reason: "No sources found in manifest")
-        }
-        
-        for source in dto.sources {
-            guard !source.name.isEmpty else {
-                throw RepositoryError.invalidManifest(reason: "Source name is empty")
+        do {
+            let dto = try await remote.fetchManifest(from: url.trailingSlash(.remove))
+            
+            // check if already exists
+            if let (_, repositoryURL) = try await local.hostExists(with: dto.repository) {
+                throw RepositoryError.hostAlreadyExists(
+                    id: HostRecord.ID(rawValue: 0),
+                    url: repositoryURL
+                )
             }
             
-            guard !source.slug.isEmpty else {
-                throw RepositoryError.invalidManifest(reason: "Source slug is empty")
+            // validate host configuration
+            guard !dto.name.isEmpty else {
+                throw RepositoryError.invalidConfiguration(reason: "Host name is empty")
             }
+            
+            guard !dto.author.isEmpty else {
+                throw RepositoryError.invalidConfiguration(reason: "Host author is empty")
+            }
+            
+            guard !dto.sources.isEmpty else {
+                throw BusinessError.noSourcesInHost
+            }
+            
+            for source in dto.sources {
+                guard !source.name.isEmpty else {
+                    throw RepositoryError.invalidConfiguration(reason: "Source name is empty")
+                }
+                
+                guard !source.slug.isEmpty else {
+                    throw RepositoryError.invalidConfiguration(reason: "Source slug is empty")
+                }
+            }
+            
+            return dto
+            
+        } catch let error as RepositoryError {
+            throw error.toDomainError()
+        } catch let error as NetworkError {
+            throw error.toDomainError()
+        } catch let error as BusinessError {
+            throw error
+        } catch {
+            throw DataAccessError.networkFailure(reason: "Failed to validate host", underlying: error)
         }
-        
-        return dto
     }
     
     public func saveHost(_ dto: HostDTO, hostURL: URL) async throws -> Host {
-        let (hostRecord, sourceRecords, configRecords, tagRecords, presetRecords) = try await local.saveHost(dto, hostURL: hostURL)
-        
-        return try mapToHost(
-            hostRecord: hostRecord,
-            sourceRecords: sourceRecords,
-            configRecords: configRecords,
-            tagRecords: tagRecords,
-            presetRecords: presetRecords
-        )
+        do {
+            let (hostRecord, sourceRecords, configRecords, tagRecords, presetRecords) = try await local.saveHost(dto, hostURL: hostURL)
+            
+            return try mapToHost(
+                hostRecord: hostRecord,
+                sourceRecords: sourceRecords,
+                configRecords: configRecords,
+                tagRecords: tagRecords,
+                presetRecords: presetRecords
+            )
+            
+        } catch let error as RepositoryError {
+            throw error.toDomainError()
+        } catch let error as StorageError {
+            throw error.toDomainError()
+        } catch let dbError as DatabaseError {
+            throw RepositoryError.fromGRDB(dbError).toDomainError()
+        } catch {
+            throw DataAccessError.storageFailure(reason: "Failed to save host", underlying: error)
+        }
     }
     
     public func getAllHosts() -> AsyncStream<[Host]> {
@@ -79,7 +101,10 @@ public final class HostRepositoryImpl: HostRepository {
                         let hosts = try self.mapRecordsToHosts(recordsData)
                         continuation.yield(hosts)
                     } catch {
+                        // log mapping errors but don't break the stream
+                        #if DEBUG
                         print("Error mapping hosts: \(error)")
+                        #endif
                         continuation.yield([])
                     }
                 }
@@ -93,7 +118,15 @@ public final class HostRepositoryImpl: HostRepository {
     }
     
     public func deleteHost(id: Int64) async throws {
-        try await local.deleteHost(id: id)
+        do {
+            try await local.deleteHost(id: id)
+        } catch let error as StorageError {
+            throw error.toDomainError()
+        } catch let dbError as DatabaseError {
+            throw RepositoryError.fromGRDB(dbError).toDomainError()
+        } catch {
+            throw DataAccessError.storageFailure(reason: "Failed to delete host", underlying: error)
+        }
     }
     
     // MARK: - Private Mapping Methods
@@ -106,14 +139,14 @@ public final class HostRepositoryImpl: HostRepository {
         presetRecords: [SearchPresetRecord]
     ) throws -> Host {
         guard let hostId = hostRecord.id else {
-            throw RepositoryError.mappingError(reason: "Host ID is nil")
+            throw RepositoryError.mappingFailed(reason: "Host ID is nil after insert")
         }
         
         let hostDisplayName = "@\(hostRecord.author)/\(hostRecord.name)"
         
         let sources = try sourceRecords.compactMap { sourceRecord -> Source? in
             guard let sourceId = sourceRecord.id else {
-                throw RepositoryError.mappingError(reason: "Source ID is nil")
+                throw RepositoryError.mappingFailed(reason: "Source ID is nil")
             }
             
             let config = configRecords.first { $0.sourceId == sourceId }
@@ -157,13 +190,14 @@ public final class HostRepositoryImpl: HostRepository {
                 name: sourceRecord.name,
                 icon: sourceRecord.icon,
                 url: sourceRecord.url,
-                repository: hostRecord.repository, // From the host
+                repository: hostRecord.repository,
                 pinned: sourceRecord.pinned,
                 disabled: sourceRecord.disabled,
                 host: hostDisplayName,
                 auth: auth,
                 search: search,
-                presets: presets
+                presets: presets,
+                languages: sourceRecord.languages
             )
         }
         

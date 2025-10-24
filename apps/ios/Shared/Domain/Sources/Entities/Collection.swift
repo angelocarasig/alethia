@@ -12,13 +12,15 @@ public struct Collection: Sendable {
     
     public let name: String
     public let description: String
+    public let count: Int
     public let createdAt: Date
     public let updatedAt: Date
     
-    public init(id: Int64, name: String, description: String, createdAt: Date, updatedAt: Date) {
+    public init(id: Int64, name: String, description: String, count: Int, createdAt: Date, updatedAt: Date) {
         self.id = id
         self.name = name
         self.description = description
+        self.count = count
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
