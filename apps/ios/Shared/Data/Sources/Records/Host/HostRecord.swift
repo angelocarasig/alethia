@@ -12,10 +12,10 @@ import Domain
 
 internal struct HostRecord: Codable, DatabaseRecord {
     typealias ID = Tagged<Self, Int64>
-    private(set) var id: ID?
+    var id: ID?
     
-    private(set) var name: String
-    private(set) var author: String
+    var name: String
+    var author: String
     private(set) var url: URL
     private(set) var repository: URL
     

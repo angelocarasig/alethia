@@ -9,8 +9,7 @@ import Foundation
 import Domain
 import GRDB
 
-/// internal storage-specific errors
-/// these are mapped to DataAccessError at repository boundaries
+/// Internal storage-specific errors that are mapped to DataAccessError at repository boundaries
 internal enum StorageError: LocalizedError {
     case databaseLocked
     case databaseCorrupted(details: String)
@@ -21,6 +20,8 @@ internal enum StorageError: LocalizedError {
     case constraintViolation(constraint: String)
     case queryFailed(sql: String, error: Error)
     case recordNotFound(table: String, id: String)
+    case invalidState(description: String)
+    case invalidCast(expected: String, actual: String)
     
     var errorDescription: String? {
         switch self {
@@ -50,10 +51,16 @@ internal enum StorageError: LocalizedError {
             
         case .recordNotFound(let table, let id):
             return "Record not found in \(table) with id: \(id)"
+            
+        case .invalidState(let description):
+            return "Invalid state: \(description)"
+            
+        case .invalidCast(let expected, let actual):
+            return "Type casting failed: expected \(expected), got \(actual)"
         }
     }
     
-    /// maps internal storage error to public domain error
+    /// Maps internal storage error to public domain error
     func toDomainError() -> DataAccessError {
         switch self {
         case .databaseLocked:
@@ -82,10 +89,16 @@ internal enum StorageError: LocalizedError {
             
         case .recordNotFound(let table, let id):
             return .storageFailure(reason: "Record not found in \(table): \(id)", underlying: self)
+            
+        case .invalidState(let description):
+            return .storageFailure(reason: description, underlying: self)
+            
+        case .invalidCast(let expected, let actual):
+            return .storageFailure(reason: "Type mismatch: expected \(expected), got \(actual)", underlying: self)
         }
     }
     
-    /// creates storage error from GRDB error
+    /// Creates storage error from GRDB error
     static func from(grdbError error: Error, context: String? = nil) -> StorageError {
         if let dbError = error as? DatabaseError {
             switch dbError.resultCode {
