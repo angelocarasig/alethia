@@ -282,6 +282,7 @@ private extension AddHostView {
                 }
             )
             .loading(vm.isLoading)
+            .opacity(canTest ? 1 : 0.5)
             .disabled(!canTest)
             
             Banner(
@@ -316,7 +317,7 @@ private extension AddHostView {
                 Spacer()
                 
                 Text("\(dto.sources.count)")
-                    .font(.caption)
+                    .font(.caption2)
                     .fontWeight(.bold)
                     .foregroundColor(theme.colors.accent)
                     .padding(.horizontal, dimensions.padding.regular)
@@ -377,7 +378,6 @@ private extension AddHostView {
             .clipShape(.rect(cornerRadius: dimensions.cornerRadius.regular))
             
             VStack(alignment: .leading, spacing: dimensions.spacing.minimal) {
-                // title
                 Text(source.name)
                     .font(.subheadline)
                     .fontWeight(.semibold)
@@ -392,43 +392,32 @@ private extension AddHostView {
             
             Spacer()
             
-            Badge(
-                systemName: "key.fill",
-                text: source.auth.type.displayText,
-                color: theme.colors.appOrange
-            )
-            
-            Badge(
-                systemName: "hexagon",
-                text: "\(source.presets.count) \(source.presets.count == 1 ? "Preset" : "Presets")",
-                color: theme.colors.appGreen
-            )
-            
-            // nsfw badge
-            if source.nsfw {
-                Badge(systemName: "exclamationmark.triangle", text: "NSFW", color: theme.colors.appRed)
+            HStack(spacing: dimensions.spacing.regular) {
+                HStack(spacing: 2) {
+                    Image(systemName: "key.fill")
+                    Text(source.auth.type.displayText)
+                }
+                .font(.caption2)
+                .foregroundColor(theme.colors.appOrange)
+                
+                HStack(spacing: 2) {
+                    Image(systemName: "hexagon")
+                    Text("\(source.presets.count)")
+                }
+                .font(.caption2)
+                .foregroundColor(theme.colors.appGreen)
+                
+                if source.nsfw {
+                    HStack(spacing: 2) {
+                        Image(systemName: "exclamationmark.triangle")
+                        Text("NSFW")
+                    }
+                    .font(.caption2)
+                    .foregroundColor(theme.colors.appRed)
+                }
             }
         }
         .padding(.vertical, dimensions.padding.regular)
-    }
-    
-    @ViewBuilder
-    func Badge(systemName: String, text: String, color: Color) -> some View {
-        HStack {
-            Image(systemName: systemName)
-                .font(.caption)
-            Text(text)
-                .font(.caption2)
-                .fontWeight(.semibold)
-        }
-        .padding(.horizontal, dimensions.padding.regular)
-        .padding(.vertical, dimensions.padding.regular)
-        .background(color.opacity(0.2))
-        .overlay(
-            RoundedRectangle(cornerRadius: dimensions.cornerRadius.card)
-                .strokeBorder(color.opacity(0.3), lineWidth: 1.5)
-        )
-        .cornerRadius(dimensions.cornerRadius.card)
     }
     
     var canTest: Bool {
