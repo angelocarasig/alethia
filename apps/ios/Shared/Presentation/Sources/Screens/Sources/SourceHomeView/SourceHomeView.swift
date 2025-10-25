@@ -280,7 +280,7 @@ public struct SourceHomeView: View {
             
             // presets section
             if source.presets.count > 0 {
-                VStack(alignment: .leading, spacing: dimensions.spacing.regular) {
+                LazyVStack(alignment: .leading, spacing: dimensions.spacing.regular) {
                     sectionHeader(title: "DISCOVER", count: source.presets.count)
                     
                     ForEach(source.presets, id: \.self) { preset in

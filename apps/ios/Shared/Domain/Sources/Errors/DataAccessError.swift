@@ -16,12 +16,13 @@ public enum DataAccessError: DomainError {
     case unavailable(service: String)
     case timeout(operation: String)
     case invalidResponse(statusCode: Int?)
+    case cancelled  // add explicit cancellation case
     
     // MARK: - DomainError Conformance
     
     public var isRecoverable: Bool {
         switch self {
-        case .networkFailure, .unavailable, .timeout, .invalidResponse:
+        case .networkFailure, .unavailable, .timeout, .invalidResponse, .cancelled:
             return true // transient failures, retry may succeed
         case .storageFailure, .dataCorruption:
             return false // likely requires intervention
@@ -30,7 +31,7 @@ public enum DataAccessError: DomainError {
     
     public var category: ErrorCategory {
         switch self {
-        case .networkFailure, .unavailable, .timeout, .invalidResponse:
+        case .networkFailure, .unavailable, .timeout, .invalidResponse, .cancelled:
             return .network
         case .storageFailure, .dataCorruption:
             return .storage
@@ -60,6 +61,8 @@ public enum DataAccessError: DomainError {
                 return "Invalid server response: HTTP \(statusCode)"
             }
             return "Invalid server response"
+        case .cancelled:
+            return "Operation was cancelled"
         }
     }
     
@@ -82,6 +85,8 @@ public enum DataAccessError: DomainError {
                 return "The server returned an invalid response (HTTP \(statusCode))."
             }
             return "The server returned an invalid response."
+        case .cancelled:
+            return nil  // no error message for cancellation
         }
     }
     
@@ -99,6 +104,8 @@ public enum DataAccessError: DomainError {
             return "Check your internet connection and try again."
         case .invalidResponse:
             return "The server may be experiencing issues. Please try again later."
+        case .cancelled:
+            return nil // no suggestion needed for cancellation
         }
     }
     
@@ -108,6 +115,16 @@ public enum DataAccessError: DomainError {
             return error?.localizedDescription
         default:
             return nil
+        }
+    }
+    
+    /// helper to check if this is a cancellation error
+    public var isCancellation: Bool {
+        switch self {
+        case .cancelled:
+            return true
+        default:
+            return false
         }
     }
 }

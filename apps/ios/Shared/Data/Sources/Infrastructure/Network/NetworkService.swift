@@ -34,14 +34,25 @@ public final class NetworkService: Sendable {
     
     // GET request
     func request<Model: Decodable>(url: URL) async throws -> Model {
-        let (data, response) = try await makeRequest(url: url, method: "GET", body: nil)
-        try handleResponse(response)
-        
         do {
+            let (data, response) = try await makeRequest(url: url, method: "GET", body: nil)
+            try handleResponse(response)
+            
             let model = try decoder.decode(Model.self, from: data)
             return model
+        } catch is CancellationError {
+            // propagate swift concurrency cancellation
+            throw CancellationError()
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            // propagate url session cancellation
+            throw NetworkError.cancelled
+        } catch let error as NetworkError {
+            // propagate network errors as-is
+            throw error
+        } catch let decodingError as DecodingError {
+            throw NetworkError.decodingError(type: String(describing: Model.self), error: decodingError)
         } catch {
-            throw NetworkError.decodingError(type: String(describing: Model.self), error: error)
+            throw NetworkError.requestFailed(underlyingError: error as? URLError ?? URLError(.unknown))
         }
     }
     
@@ -51,17 +62,28 @@ public final class NetworkService: Sendable {
         body: Request,
         method: String = "POST"
     ) async throws -> Response {
-        let encoder = JSONEncoder()
-        let bodyData = try encoder.encode(body)
-        
-        let (data, response) = try await makeRequest(url: url, method: method, body: bodyData)
-        try handleResponse(response)
-        
         do {
+            let encoder = JSONEncoder()
+            let bodyData = try encoder.encode(body)
+            
+            let (data, response) = try await makeRequest(url: url, method: method, body: bodyData)
+            try handleResponse(response)
+            
             let model = try decoder.decode(Response.self, from: data)
             return model
+        } catch is CancellationError {
+            // propagate swift concurrency cancellation
+            throw CancellationError()
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            // propagate url session cancellation
+            throw NetworkError.cancelled
+        } catch let error as NetworkError {
+            // propagate network errors as-is
+            throw error
+        } catch let decodingError as DecodingError {
+            throw NetworkError.decodingError(type: String(describing: Response.self), error: decodingError)
         } catch {
-            throw NetworkError.decodingError(type: String(describing: Response.self), error: error)
+            throw NetworkError.requestFailed(underlyingError: error as? URLError ?? URLError(.unknown))
         }
     }
 }
@@ -82,6 +104,9 @@ extension NetworkService {
             return try await URLSession.shared.data(for: request)
         } catch let urlError as URLError {
             switch urlError.code {
+            case .cancelled:
+                // throw as NetworkError.cancelled for consistent handling
+                throw NetworkError.cancelled
             case .notConnectedToInternet:
                 throw NetworkError.noInternetConnection
             case .timedOut:

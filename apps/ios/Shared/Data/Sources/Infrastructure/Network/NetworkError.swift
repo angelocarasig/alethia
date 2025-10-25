@@ -17,6 +17,7 @@ internal enum NetworkError: LocalizedError {
     case decodingError(type: String, error: Error)
     case requestFailed(underlyingError: URLError)
     case timeout
+    case cancelled  // add explicit cancellation case
     
     var errorDescription: String? {
         switch self {
@@ -37,6 +38,9 @@ internal enum NetworkError: LocalizedError {
             
         case .timeout:
             return "Request timed out"
+            
+        case .cancelled:
+            return "Request was cancelled"
         }
     }
     
@@ -60,6 +64,21 @@ internal enum NetworkError: LocalizedError {
             
         case .timeout:
             return .timeout(operation: "network request")
+            
+        case .cancelled:
+            return .cancelled
+        }
+    }
+    
+    /// check if this error represents a cancellation
+    var isCancellation: Bool {
+        switch self {
+        case .cancelled:
+            return true
+        case .requestFailed(let urlError):
+            return urlError.code == .cancelled
+        default:
+            return false
         }
     }
 }

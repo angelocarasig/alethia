@@ -48,6 +48,15 @@ public final class SearchRepositoryImpl: SearchRepository {
                 )
             }
             
+        } catch is CancellationError {
+            // convert to domain cancellation error
+            throw DataAccessError.cancelled
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            // convert to domain cancellation error
+            throw DataAccessError.cancelled
+        } catch let error as NetworkError where error.isCancellation {
+            // convert to domain cancellation error
+            throw DataAccessError.cancelled
         } catch let error as RepositoryError {
             throw error.toDomainError()
         } catch let error as NetworkError {
@@ -98,6 +107,15 @@ public final class SearchRepositoryImpl: SearchRepository {
                 totalCount: nil
             )
             
+        } catch is CancellationError {
+            // convert to domain cancellation error
+            throw DataAccessError.cancelled
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            // convert to domain cancellation error
+            throw DataAccessError.cancelled
+        } catch let error as NetworkError where error.isCancellation {
+            // convert to domain cancellation error
+            throw DataAccessError.cancelled
         } catch let error as RepositoryError {
             throw error.toDomainError()
         } catch let error as NetworkError {
@@ -146,6 +164,15 @@ public final class SearchRepositoryImpl: SearchRepository {
                 totalCount: nil
             )
             
+        } catch is CancellationError {
+            // convert to domain cancellation error
+            throw DataAccessError.cancelled
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            // convert to domain cancellation error
+            throw DataAccessError.cancelled
+        } catch let error as NetworkError where error.isCancellation {
+            // convert to domain cancellation error
+            throw DataAccessError.cancelled
         } catch let error as RepositoryError {
             throw error.toDomainError()
         } catch let error as NetworkError {
