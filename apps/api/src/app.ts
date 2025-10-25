@@ -59,11 +59,12 @@ export const createApp = () => {
         cacheName: 'alethia-api',
         cacheControl: 'max-age=300', // 5 minutes
       })(c, next);
-    } else if (c.req.method === 'POST') {
-      return postCacheMiddleware({
-        cacheControl: 'max-age=300', // 5 minutes
-      })(c, next);
     }
+    // else if (c.req.method === 'POST') {
+    //   return postCacheMiddleware({
+    //     cacheControl: 'max-age=300', // 5 minutes
+    //   })(c, next);
+    // }
     return next();
   });
 
