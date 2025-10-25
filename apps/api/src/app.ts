@@ -14,6 +14,7 @@ import sources from './routes/sources';
 import type { Bindings } from './types';
 import { HTTPException } from 'hono/http-exception';
 import { postCacheMiddleware } from './middleware/post-cache';
+import { subFetch } from './middleware/sub-fetch';
 
 export const createApp = () => {
   const app = new Hono<{ Bindings: Bindings }>();
@@ -45,6 +46,12 @@ export const createApp = () => {
   });
 
   app.use('*', loggingMiddleware());
+  app.use('*', (c, next) => {
+    if (c.env.ENVIRONMENT === 'development') {
+      return subFetch()(c, next);
+    }
+    return next();
+  });
 
   app.use('*', async (c, next) => {
     if (c.req.method === 'GET') {

@@ -410,7 +410,7 @@ export default class MangaDexSource extends Adapter<
     const mappings: Record<ContentRating, Classification> = {
       safe: 'Safe',
       suggestive: 'Suggestive',
-      erotica: 'Erotica',
+      erotica: 'Explicit',
       pornographic: 'Pornographic',
     };
 

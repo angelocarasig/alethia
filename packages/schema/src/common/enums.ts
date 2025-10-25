@@ -1,7 +1,7 @@
 import z from 'zod';
 
 export const ClassificationSchema = z
-  .enum(['Unknown', 'Safe', 'Suggestive', 'Erotica', 'Pornographic'])
+  .enum(['Unknown', 'Safe', 'Suggestive', 'Explicit', 'Pornographic'])
   .describe('The classification of the manga');
 
 export type Classification = z.infer<typeof ClassificationSchema>;

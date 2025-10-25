@@ -155,13 +155,13 @@ export const config: Source = {
   icon: 'https://raw.githubusercontent.com/angelocarasig/alethia/refs/heads/main/sources/mangapark/public/icon.png',
   languages: ['en'],
   auth: {
-    type: 'cookie',
-    required: true,
-    fields: ['cookie'],
+    type: 'none',
+    required: false,
   },
   nsfw: false,
   search: {
     sort: [
+      'relevance',
       'rating',
       'popularity',
       'chapters',
@@ -187,6 +187,7 @@ export const config: Source = {
 };
 
 export const SUPPORTED_SORTS = [
+  'relevance',
   'rating',
   'popularity',
   'chapters',
@@ -205,5 +206,7 @@ export const SUPPORTED_FILTERS = [
 
 export const ENDPOINTS = {
   search: 'https://mangapark.org/search',
+  gql: 'https://mangapark.org/apo/',
   title: (slug: string) => `https://mangapark.org/title/${slug}`,
+  cover: (path: string) => `https://mangapark.org${path}`,
 } as const;

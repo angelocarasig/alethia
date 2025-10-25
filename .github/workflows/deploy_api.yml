@@ -59,7 +59,7 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     strategy:
       matrix:
-        source: [mangadex, weebcentral]
+        source: [mangadex, weebcentral, mangapark]
     steps:
       - name: 🏗 Checkout
         uses: actions/checkout@v4
@@ -78,10 +78,10 @@ jobs:
       - name: 📥 Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: 🧪 Test ${{ matrix.source }} source
-        run: |
-          echo "Testing ${{ matrix.source }} source"
-          # pnpm test --filter=@source/${{ matrix.source }}
+      # - name: 🧪 Test ${{ matrix.source }} source
+      #   run: |
+      #     echo "Testing ${{ matrix.source }} source"
+      #     pnpm test --filter=@source/${{ matrix.source }}
 
   # Deploy to production (on push to main)
   deploy-production:
@@ -116,7 +116,7 @@ jobs:
       - name: 📊 Bundle Size Check
         run: |
           cd apps/api
-          pnpm exec wrangler deploy --dry-run --outdir dist
+          pnpm exec wrangler deploy --env production --dry-run --outdir dist
           size=$(du -sh dist | cut -f1)
           echo "📦 Bundle size: $size"
 
@@ -125,4 +125,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: 'apps/api'
-          command: deploy --minify
+          command: deploy --env production --minify

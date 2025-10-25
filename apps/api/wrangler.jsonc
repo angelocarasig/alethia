@@ -21,4 +21,14 @@
       "invocation_logs": true,
     },
   },
+  "vars": {
+    "ENVIRONMENT": "development",
+  },
+  "env": {
+    "production": {
+      "vars": {
+        "ENVIRONMENT": "production",
+      },
+    },
+  },
 }
