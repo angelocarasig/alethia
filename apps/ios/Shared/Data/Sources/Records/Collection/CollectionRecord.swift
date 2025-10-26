@@ -15,7 +15,6 @@ internal struct CollectionRecord: Codable, DatabaseRecord {
     
     var name: String
     var description: String?
-    var isPrivate: Bool = false
     var createdAt: Date = .now
     var updatedAt: Date = .now
 }
@@ -31,7 +30,6 @@ extension CollectionRecord {
         static let id = Column(CodingKeys.id)
         static let name = Column(CodingKeys.name)
         static let description = Column(CodingKeys.description)
-        static let isPrivate = Column(CodingKeys.isPrivate)
         static let createdAt = Column(CodingKeys.createdAt)
         static let updatedAt = Column(CodingKeys.updatedAt)
     }
@@ -45,7 +43,6 @@ extension CollectionRecord {
                 .collate(.localizedCaseInsensitiveCompare)
             
             t.column(Columns.description.name, .text)
-            t.column(Columns.isPrivate.name, .boolean).notNull().defaults(to: false)
             t.column(Columns.createdAt.name, .datetime).notNull()
             t.column(Columns.updatedAt.name, .datetime).notNull()
         }
