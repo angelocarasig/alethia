@@ -218,27 +218,57 @@ public final class GetMangaDetailsUseCaseImpl: GetMangaDetailsUseCase {
                 )
                 
                 // save all related data
-                let authorIds = try repository.saveAuthors(
+                try repository.saveAuthors(
                     mangaId: mangaId.rawValue,
                     names: mangaDTO.authors,
                     in: db
                 )
                 
-                let tagIds = try repository.saveTags(
+                try repository.saveTags(
                     mangaId: mangaId.rawValue,
                     names: mangaDTO.tags,
                     in: db
                 )
                 
                 // save covers
-                let coverDataList = mangaDTO.covers.enumerated().map { index, urlString in
-                    CoverData(
+                let primaryCoverString = entry.cover.absoluteString
+
+                // to determine a primary cover from the entry cover - extract base identifier (everything before first dot in last path component)
+                func extractBaseIdentifier(from urlString: String) -> String? {
+                    guard let url = URL(string: urlString),
+                          let dotIndex = url.lastPathComponent.firstIndex(of: ".") else {
+                        return URL(string: urlString)?.lastPathComponent
+                    }
+                    return String(url.lastPathComponent[..<dotIndex])
+                }
+
+                // try exact match first
+                var primaryIndex = mangaDTO.covers.firstIndex(where: { $0 == primaryCoverString })
+
+                // if no exact match, try fuzzy match using base identifiers
+                if primaryIndex == nil, let entryBase = extractBaseIdentifier(from: primaryCoverString) {
+                    primaryIndex = mangaDTO.covers.firstIndex { coverURL in
+                        let dtoBase = extractBaseIdentifier(from: coverURL)
+                        return dtoBase == entryBase
+                    }
+                }
+
+                let coverDataList = mangaDTO.covers.enumerated().compactMap { index, urlString -> CoverData? in
+                    guard let coverURL = URL(string: urlString) else {
+                        return nil
+                    }
+                    
+                    // set as primary if matches entry cover, otherwise use first cover as fallback
+                    let isPrimary = primaryIndex == index || (primaryIndex == nil && index == 0)
+                    
+                    return CoverData(
                         mangaId: mangaId.rawValue,
-                        isPrimary: index == 0,
-                        localPath: URL(string: urlString)!,
-                        remotePath: URL(string: urlString)!
+                        isPrimary: isPrimary,
+                        localPath: coverURL,
+                        remotePath: coverURL
                     )
                 }
+                
                 try repository.replaceCovers(
                     mangaId: mangaId.rawValue,
                     covers: coverDataList,

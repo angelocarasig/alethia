@@ -44,6 +44,7 @@ public protocol MangaRepository: Sendable {
     @discardableResult
     func saveAuthors(_ names: [String], in db: Any) throws -> [Any]
     func saveAuthors(mangaId: Int64, authorIds: [Int64], in db: Any) throws
+    @discardableResult
     func saveAuthors(mangaId: Int64, names: [String], in db: Any) throws -> [Int64]
     
     // MARK: Tag Operations
@@ -61,6 +62,7 @@ public protocol MangaRepository: Sendable {
     @discardableResult
     func saveTags(_ tags: [(name: String, displayName: String)], in db: Any) throws -> [Any]
     func saveTags(mangaId: Int64, tagIds: [Int64], in db: Any) throws
+    @discardableResult
     func saveTags(mangaId: Int64, names: [String], in db: Any) throws -> [Int64]
     
     // MARK: Cover Operations
@@ -76,6 +78,7 @@ public protocol MangaRepository: Sendable {
     
     @discardableResult
     func saveCovers(_ covers: [CoverData], in db: Any) throws -> [Any]
+    @discardableResult
     func replaceCovers(mangaId: Int64, covers: [CoverData], in db: Any) throws -> [Any]
     
     // MARK: Alternative Title Operations
