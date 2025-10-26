@@ -8,12 +8,13 @@
 import Foundation
 
 public protocol SearchRepository: Sendable {
-    /// Perform a search using a search preset to return an array of raw entries
-    func searchWithPreset(source: Source, preset: SearchPreset) async throws -> [Entry]
     
-    /// Perform a paginated search using a search preset
-    func searchWithPreset(source: Source, preset: SearchPreset, page: Int, limit: Int) async throws -> SearchQueryResult
+    // MARK: Host Operations
     
-    /// Perform a search with custom parameters
-    func search(source: Source, request: SearchRequestDTO) async throws -> SearchQueryResult
+    func fetch(sourceId: Int64, in db: Any) throws -> (source: Any, host: Any)?
+    
+    // MARK: Search Operations
+    
+    func search(sourceSlug: String, hostURL: URL, request: SearchRequestDTO) async throws -> SearchResponseDTO
+    func search(sourceSlug: String, hostURL: URL, preset: SearchPreset, page: Int, limit: Int) async throws -> SearchResponseDTO
 }

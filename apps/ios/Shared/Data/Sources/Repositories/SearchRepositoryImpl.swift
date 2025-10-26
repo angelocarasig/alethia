@@ -10,179 +10,72 @@ import GRDB
 import Domain
 
 public final class SearchRepositoryImpl: SearchRepository {
-    private let remote: SearchRemoteDataSource
-    private let local: SearchLocalDataSource
-    private let throttler: RequestThrottler
+    private let database: DatabaseConfiguration
+    private let networkService: NetworkService
     
     public init() {
-        self.remote = SearchRemoteDataSourceImpl()
-        self.local = SearchLocalDataSourceImpl()
-        self.throttler = RequestThrottler.shared
+        self.database = DatabaseConfiguration.shared
+        self.networkService = NetworkService()
     }
     
-    public func searchWithPreset(source: Source, preset: SearchPreset) async throws -> [Entry] {
+    // MARK: - Host Operations
+    
+    public func fetch(sourceId: Int64, in db: Any) throws -> (source: Any, host: Any)? {
+        guard let db = db as? Database else {
+            throw StorageError.invalidCast(expected: "Database", actual: String(describing: type(of: db)))
+        }
+        
+        // fetch source with its host relationship
+        guard let sourceRecord = try SourceRecord
+            .filter(SourceRecord.Columns.id == sourceId)
+            .fetchOne(db) else {
+            return nil
+        }
+        
+        // fetch the host through the relationship
+        guard let hostRecord = try sourceRecord.host.fetchOne(db) else {
+            return nil
+        }
+        
+        return (source: sourceRecord, host: hostRecord)
+    }
+    
+    // MARK: - Search Operations
+    
+    public func search(sourceSlug: String, hostURL: URL, request: SearchRequestDTO) async throws -> SearchResponseDTO {
+        let searchURL = hostURL
+            .appendingPathComponent(sourceSlug)
+            .appendingPathComponent("search")
+        
         do {
-            guard let host = try await local.getHostForSource(source.id) else {
-                throw RepositoryError.hostNotFound
-            }
-            
-            // throttle the remote request
-            let responseDTO = try await throttler.execute {
-                try await self.remote.searchWithPreset(
-                    sourceSlug: source.slug,
-                    host: host.url,
-                    preset: preset
-                )
-            }
-            
-            // map dto to domain entities
-            return responseDTO.results.map { dto in
-                Entry(
-                    mangaId: nil,
-                    sourceId: source.id,
-                    slug: dto.slug,
-                    title: dto.title,
-                    cover: URL(string: dto.cover ?? "")!,
-                    state: .noMatch,
-                    unread: 0
-                )
-            }
-            
-        } catch is CancellationError {
-            // convert to domain cancellation error
-            throw DataAccessError.cancelled
-        } catch let urlError as URLError where urlError.code == .cancelled {
-            // convert to domain cancellation error
-            throw DataAccessError.cancelled
-        } catch let error as NetworkError where error.isCancellation {
-            // convert to domain cancellation error
-            throw DataAccessError.cancelled
-        } catch let error as RepositoryError {
-            throw error.toDomainError()
+            return try await networkService.requestWithBody(url: searchURL, body: request)
         } catch let error as NetworkError {
-            throw error.toDomainError()
-        } catch let error as StorageError {
-            throw error.toDomainError()
-        } catch let dbError as DatabaseError {
-            throw RepositoryError.fromGRDB(dbError).toDomainError()
+            throw error
         } catch {
-            throw DataAccessError.networkFailure(reason: "Failed to search", underlying: error)
+            throw NetworkError.requestFailed(underlyingError: error as? URLError ?? URLError(.unknown))
         }
     }
     
-    public func searchWithPreset(source: Source, preset: SearchPreset, page: Int, limit: Int) async throws -> SearchQueryResult {
+    public func search(sourceSlug: String, hostURL: URL, preset: SearchPreset, page: Int, limit: Int) async throws -> SearchResponseDTO {
+        let searchURL = hostURL
+            .appendingPathComponent(sourceSlug)
+            .appendingPathComponent("search")
+        
+        let requestDTO = SearchRequestDTO(
+            query: "",
+            page: page,
+            limit: limit,
+            sort: preset.sortOption,
+            direction: preset.sortDirection,
+            filters: preset.filters
+        )
+        
         do {
-            guard let host = try await local.getHostForSource(source.id) else {
-                throw RepositoryError.hostNotFound
-            }
-            
-            // throttle the remote request
-            let responseDTO = try await throttler.execute {
-                try await self.remote.searchWithPreset(
-                    sourceSlug: source.slug,
-                    host: host.url,
-                    preset: preset,
-                    page: page,
-                    limit: limit
-                )
-            }
-            
-            // map dto to domain entities
-            let entries = responseDTO.results.map { dto in
-                Entry(
-                    mangaId: nil,
-                    sourceId: source.id,
-                    slug: dto.slug,
-                    title: dto.title,
-                    cover: URL(string: dto.cover ?? "")!,
-                    state: .noMatch,
-                    unread: 0
-                )
-            }
-            
-            return SearchQueryResult(
-                entries: entries,
-                hasMore: responseDTO.more,
-                currentPage: responseDTO.page,
-                totalCount: nil
-            )
-            
-        } catch is CancellationError {
-            // convert to domain cancellation error
-            throw DataAccessError.cancelled
-        } catch let urlError as URLError where urlError.code == .cancelled {
-            // convert to domain cancellation error
-            throw DataAccessError.cancelled
-        } catch let error as NetworkError where error.isCancellation {
-            // convert to domain cancellation error
-            throw DataAccessError.cancelled
-        } catch let error as RepositoryError {
-            throw error.toDomainError()
+            return try await networkService.requestWithBody(url: searchURL, body: requestDTO)
         } catch let error as NetworkError {
-            throw error.toDomainError()
-        } catch let error as StorageError {
-            throw error.toDomainError()
-        } catch let dbError as DatabaseError {
-            throw RepositoryError.fromGRDB(dbError).toDomainError()
+            throw error
         } catch {
-            throw DataAccessError.networkFailure(reason: "Failed to search", underlying: error)
-        }
-    }
-    
-    public func search(source: Source, request: SearchRequestDTO) async throws -> SearchQueryResult {
-        do {
-            guard let host = try await local.getHostForSource(source.id) else {
-                throw RepositoryError.hostNotFound
-            }
-            
-            // throttle the remote request
-            let responseDTO = try await throttler.execute {
-                try await self.remote.search(
-                    sourceSlug: source.slug,
-                    host: host.url,
-                    request: request
-                )
-            }
-            
-            // map dto to domain entities
-            let entries = responseDTO.results.map { dto in
-                Entry(
-                    mangaId: nil,
-                    sourceId: source.id,
-                    slug: dto.slug,
-                    title: dto.title,
-                    cover: URL(string: dto.cover ?? "") ?? URL(fileURLWithPath: ""),
-                    state: .noMatch,
-                    unread: 0
-                )
-            }
-            
-            return SearchQueryResult(
-                entries: entries,
-                hasMore: responseDTO.more,
-                currentPage: responseDTO.page,
-                totalCount: nil
-            )
-            
-        } catch is CancellationError {
-            // convert to domain cancellation error
-            throw DataAccessError.cancelled
-        } catch let urlError as URLError where urlError.code == .cancelled {
-            // convert to domain cancellation error
-            throw DataAccessError.cancelled
-        } catch let error as NetworkError where error.isCancellation {
-            // convert to domain cancellation error
-            throw DataAccessError.cancelled
-        } catch let error as RepositoryError {
-            throw error.toDomainError()
-        } catch let error as NetworkError {
-            throw error.toDomainError()
-        } catch let error as StorageError {
-            throw error.toDomainError()
-        } catch let dbError as DatabaseError {
-            throw RepositoryError.fromGRDB(dbError).toDomainError()
-        } catch {
-            throw DataAccessError.networkFailure(reason: "Failed to search", underlying: error)
+            throw NetworkError.requestFailed(underlyingError: error as? URLError ?? URLError(.unknown))
         }
     }
 }
