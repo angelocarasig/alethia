@@ -81,14 +81,6 @@ public extension Injector {
     static func makeGetCollectionsUseCase() -> GetCollectionsUseCase {
         GetCollectionsUseCaseImpl(repository: libraryRepository)
     }
-    
-    static func makeAddMangaToLibraryUseCase() -> AddMangaToLibraryUseCase {
-        AddMangaToLibraryUseCaseImpl(repository: libraryRepository)
-    }
-    
-    static func makeRemoveMangaFromLibraryUseCase() -> RemoveMangaFromLibraryUseCase {
-        RemoveMangaFromLibraryUseCaseImpl(repository: libraryRepository)
-    }
 }
 
 // MARK: - Manga Use Cases
@@ -96,6 +88,14 @@ public extension Injector {
 public extension Injector {
     static func makeGetMangaDetailsUseCase() -> GetMangaDetailsUseCase {
         GetMangaDetailsUseCaseImpl(repository: mangaRepository)
+    }
+    
+    static func makeAddMangaToLibraryUseCase() -> AddMangaToLibraryUseCase {
+        AddMangaToLibraryUseCaseImpl(repository: mangaRepository)
+    }
+    
+    static func makeRemoveMangaFromLibraryUseCase() -> RemoveMangaFromLibraryUseCase {
+        RemoveMangaFromLibraryUseCaseImpl(repository: mangaRepository)
     }
 }
 

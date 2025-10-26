@@ -10,23 +10,19 @@ import GRDB
 import Domain
 
 public final class AddMangaToLibraryUseCaseImpl: AddMangaToLibraryUseCase {
-    private let repository: LibraryRepository
+    private let repository: MangaRepository
+    private let database: DatabaseConfiguration
     
-    public init(repository: LibraryRepository) {
+    public init(repository: MangaRepository) {
         self.repository = repository
+        self.database = DatabaseConfiguration.shared
     }
     
     public func execute(mangaId: Int64) async throws {
-        #warning("Update in mange repository impl")
-        try await DatabaseConfiguration.shared.writer.write { db in
-            let record = try MangaRecord.fetchOne(db, key: MangaRecord.ID(rawValue: mangaId))
+        try await database.writer.write { db in
+            let fields: MangaUpdateFields = .init(inLibrary: true)
             
-            if var record = record {
-                record.inLibrary = true
-                record.addedAt = Date()
-                
-                try record.save(db)
-            }
+            try repository.update(mangaId: mangaId, fields: fields, in: db)
         }
     }
 }
