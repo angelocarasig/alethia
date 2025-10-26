@@ -3,7 +3,17 @@ import { LanguageSchema } from '@repo/schema';
 
 // Base schemas
 const SlugSchema = z.uuid();
-const LocalizedStringSchema = z.record(LanguageSchema, z.string());
+const LocalizedStringSchema = z
+  .record(z.string(), z.string())
+  .transform((obj) => {
+    // filter out keys that don't match LanguageSchema
+    const validEntries = Object.entries(obj).filter(([key]) => {
+      const result = LanguageSchema.safeParse(key);
+      return result.success;
+    });
+    return Object.fromEntries(validEntries);
+  })
+  .pipe(z.record(LanguageSchema, z.string()));
 
 // Relationship schemas
 const BaseRelationshipSchema = z.object({
